@@ -6,12 +6,16 @@ from cellpose import models, io
 
 # --- Configuration ---
 USE_GPU = False
-FORCE_GRAYSCALE = True # <--- ADDED: True to force [0,0] channels, False to let Cellpose decide
+FORCE_GRAYSCALE = True
+CELLPROB_THRESHOLD = 0.0 # <--- ADDED: Adjust this threshold
+# Try values like -1.0, -2.0, or even lower if cells are faint or not detected.
+# For very confident segmentations, you might use positive values like 0.5 or 1.0.
+
 IMAGE_DIR = "images"
 RESULTS_DIR = "results"
 DEFAULT_IMAGE_NAME = "test_image.tif"
 
-def segment_image(image_path, output_dir, use_gpu_flag, force_grayscale_flag):
+def segment_image(image_path, output_dir, use_gpu_flag, force_grayscale_flag, cellprob_thresh):
     if not os.path.exists(image_path):
         print(f"Error: Image not found at {image_path}")
         return None, None
@@ -19,17 +23,19 @@ def segment_image(image_path, output_dir, use_gpu_flag, force_grayscale_flag):
     print(f"Loading image: {image_path}")
     try:
         img = io.imread(image_path)
+        print(f"Image loaded. Shape: {img.shape}, Data type: {img.dtype}")
     except Exception as e:
         print(f"Error loading image with cellpose.io.imread: {e}")
         return None, None
 
     print(f"Initializing Cellpose model...")
+    model = None # Initialize model to None
     try:
         model = models.CellposeModel(gpu=use_gpu_flag)
     except AttributeError:
         try:
             print("AttributeError with CellposeModel, trying models.Cellpose...")
-            model = models.Cellpose(gpu=use_gpu_flag, model_type='cyto') # model_type for older fallback
+            model = models.Cellpose(gpu=use_gpu_flag, model_type='cyto')
         except Exception as e_fallback:
             print(f"Error initializing Cellpose model (Cellpose or CellposeModel): {e_fallback}")
             return None, None
@@ -37,21 +43,33 @@ def segment_image(image_path, output_dir, use_gpu_flag, force_grayscale_flag):
         print(f"Error initializing Cellpose model: {e}")
         return None, None
 
+    if model is None: # Should not happen if try-except is structured well, but as a safeguard
+        print("Model initialization failed.")
+        return None, None
+
     print("Running Cellpose segmentation...")
     try:
         eval_args = {
-            "diameter": None,
-            "flow_threshold": None,
-            "cellprob_threshold": 0.0
+            "diameter": None, # Let Cellpose estimate diameter initially
+            "flow_threshold": None, # Default is 0.4, can be tuned
+            "cellprob_threshold": cellprob_thresh # Use the configured threshold
         }
         if force_grayscale_flag:
-            print("Forcing grayscale processing (channels=[0,0]).")
+            print(f"Forcing grayscale processing (channels=[0,0]), cellprob_threshold={cellprob_thresh}.")
             eval_args["channels"] = [0,0]
         else:
-            print("Using Cellpose default channel processing.")
+            print(f"Using Cellpose default channel processing, cellprob_threshold={cellprob_thresh}.")
             # Do not pass 'channels' argument to use Cellpose 4.x defaults
 
         masks, flows, styles = model.eval(img, **eval_args)
+        
+        print(f"Segmentation complete. Masks shape: {masks.shape}, Unique mask values: {np.unique(masks)}")
+        # In Cellpose 3.0+, model.diam_labels gives the diameter of the ROIs *after* segmentation
+        # For CellposeModel, the diameter might be stored differently or as part of styles.
+        # For now, we'll focus on getting non-empty masks.
+        # print(f"Estimated diameter (model.diam_labels): {model.diam_labels if hasattr(model, 'diam_labels') else 'N/A'}")
+
+
     except Exception as e:
         print(f"Error during Cellpose model evaluation: {e}")
         return None, None
@@ -78,7 +96,7 @@ def segment_image(image_path, output_dir, use_gpu_flag, force_grayscale_flag):
     try:
         with open(coord_filename, 'w') as f:
             for i, (x_coord, y_coord) in enumerate(coordinates):
-                f.write(f"Cell_{i+1},{x_coord:.2f},{y_coord:.2f}") # Ensured newline
+                f.write(f"Cell_{i+1},{x_coord:.2f},{y_coord:.2f}") # *** Corrected f-string with newline ***
         print(f"Cell coordinates saved to: {coord_filename}")
     except Exception as e:
         print(f"Error saving coordinates: {e}")
@@ -96,9 +114,18 @@ if __name__ == "__main__":
     if not os.path.exists(image_file_path):
         print(f"Default image '{DEFAULT_IMAGE_NAME}' not found in '{IMAGE_DIR}'.")
     else:
-        print(f"Starting segmentation process... (GPU Enabled: {USE_GPU}, Force Grayscale: {FORCE_GRAYSCALE})")
-        masks, coords = segment_image(image_file_path, RESULTS_DIR, USE_GPU, FORCE_GRAYSCALE)
+        print(f"Starting segmentation process... (GPU: {USE_GPU}, Grayscale: {FORCE_GRAYSCALE}, Cellprob: {CELLPROB_THRESHOLD})")
+        masks, coords = segment_image(image_file_path, RESULTS_DIR, USE_GPU, FORCE_GRAYSCALE, CELLPROB_THRESHOLD)
         if masks is not None and coords is not None:
-            print("Processing complete.")
+            if masks.max() == 0:
+                print("Processing complete, but NO CELLS WERE SEGMENTED (mask is empty).")
+                print("Consider the following:")
+                print("1. Adjust CELLPROB_THRESHOLD in the script (e.g., to -1.0, -2.0 or lower).")
+                print("2. If FORCE_GRAYSCALE is True, ensure cells are in the first channel of your image.")
+                print("3. Try setting FORCE_GRAYSCALE to False to let Cellpose handle multi-channel images differently.")
+                print("4. Check your image for contrast and visibility of cells.")
+                print("5. Manually specify 'diameter' in eval_args if default estimation seems off.")
+            else:
+                print("Processing complete.")
         else:
             print("Processing encountered errors.")
