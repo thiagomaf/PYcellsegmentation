@@ -1,36 +1,74 @@
 {
   "global_image_filename_list": [
     "test_image.tif",
-    "another_sample.tif"
+    "processed_plane_s0.tif"
   ],
   "parameter_configurations": [
     {
-      "experiment_id_base": "paramsA_cyto3_default",
+      "experiment_id_base": "run02_lower_cellprob",
       "MODEL_CHOICE": "cyto3",
       "DIAMETER": null,
       "FLOW_THRESHOLD": null,
       "MIN_SIZE": null,
-      "CELLPROB_THRESHOLD": 0.0,
+      "CELLPROB_THRESHOLD": -1.0,
       "FORCE_GRAYSCALE": true,
       "USE_GPU": false,
-      "is_active": true
-    },
-    {
-      "experiment_id_base": "paramsB_cyto2_lowprob",
-      "MODEL_CHOICE": "cyto2",
-      "DIAMETER": 30,
-      "FLOW_THRESHOLD": 0.2,
-      "MIN_SIZE": 10,
-      "CELLPROB_THRESHOLD": -1.5,
-      "FORCE_GRAYSCALE": true,
-      "USE_GPU": false,
-      "is_active": true
-    },
-    {
-      "experiment_id_base": "paramsC_inactive_test",
-      "MODEL_CHOICE": "cyto3",
-      "CELLPROB_THRESHOLD": -2.0,
       "is_active": false
+    },
+    {
+      "experiment_id_base": "run04_set_diameter_low_cellprob",
+      "MODEL_CHOICE": "cyto3",
+      "DIAMETER": 30,
+      "FLOW_THRESHOLD": null,
+      "MIN_SIZE": null,
+      "CELLPROB_THRESHOLD": -0.5,
+      "FORCE_GRAYSCALE": true,
+      "USE_GPU": false,
+      "is_active": false
+    },
+    {
+      "experiment_id_base": "run06_small_cells_diam15_lowprob",
+      "MODEL_CHOICE": "cyto3",
+      "DIAMETER": 15,
+      "FLOW_THRESHOLD": 0.4,
+      "MIN_SIZE": 5,
+      "CELLPROB_THRESHOLD": -2.0,
+      "FORCE_GRAYSCALE": true,
+      "USE_GPU": false,
+      "is_active": false
+    },
+    {
+      "experiment_id_base": "run07_small_cells_diam15_vlowprob",
+      "MODEL_CHOICE": "cyto3",
+      "DIAMETER": 15,
+      "FLOW_THRESHOLD": 0.4,
+      "MIN_SIZE": 5,
+      "CELLPROB_THRESHOLD": -3.0,
+      "FORCE_GRAYSCALE": true,
+      "USE_GPU": false,
+      "is_active": false
+    },
+    {
+      "experiment_id_base": "run08_small_cells_diam10_lowprob_lowflow",
+      "MODEL_CHOICE": "cyto3",
+      "DIAMETER": 10,
+      "FLOW_THRESHOLD": 0.2,
+      "MIN_SIZE": 3,
+      "CELLPROB_THRESHOLD": -2.5,
+      "FORCE_GRAYSCALE": true,
+      "USE_GPU": false,
+      "is_active": false
+    },
+    {
+      "experiment_id_base": "run09_cyto2_small_cells_diam15_lowprob",
+      "MODEL_CHOICE": "cyto2",
+      "DIAMETER": 15,
+      "FLOW_THRESHOLD": 0.4,
+      "MIN_SIZE": 5,
+      "CELLPROB_THRESHOLD": -2.0,
+      "FORCE_GRAYSCALE": true,
+      "USE_GPU": false,
+      "is_active": true
     }
   ]
 }
