@@ -65,8 +65,7 @@ def segment_image_worker(params_dict):
 
         print(f"[{experiment_id}] Running Cellpose segmentation...")
         
-        # Construct eval_params carefully, only including keys if their values are not None
-        eval_params = {"cellprob_threshold": cellprob_thresh} # This always has a value
+        eval_params = {"cellprob_threshold": cellprob_thresh}
         if diameter_val is not None:
             eval_params["diameter"] = diameter_val
         if flow_thresh_val is not None:
@@ -77,11 +76,17 @@ def segment_image_worker(params_dict):
         if force_grayscale_flag:
             eval_params["channels"] = [0,0]
 
-        current_params_info = (f"cellprob={eval_params['cellprob_threshold']}, "
-                               f"diam={'auto' if 'diameter' not in eval_params else eval_params['diameter']}, "
-                               f"flow={'default' if 'flow_threshold' not in eval_params else eval_params['flow_threshold']}, "
-                               f"min_size={'default' if 'min_size' not in eval_params else eval_params['min_size']}, "
-                               f"channels={'[0,0]' if 'channels' in eval_params else 'Cellpose default'}")
+        # Corrected f-string for current_params_info
+        diam_log = 'auto' if 'diameter' not in eval_params else eval_params['diameter']
+        flow_log = 'default' if 'flow_threshold' not in eval_params else eval_params['flow_threshold']
+        min_size_log = 'default' if 'min_size' not in eval_params else eval_params['min_size']
+        channels_log = '[0,0]' if 'channels' in eval_params else 'Cellpose default'
+        
+        current_params_info = (
+            f"cellprob={eval_params['cellprob_threshold']}, "
+            f"diam={diam_log}, flow={flow_log}, "
+            f"min_size={min_size_log}, channels={channels_log}"
+        )
         print(f"[{experiment_id}] Effective eval() params: {current_params_info}")
         
         masks, flows, styles = model.eval(img_for_cellpose, **eval_params)
@@ -193,7 +198,6 @@ if __name__ == "__main__":
         print("
 WARNING: GPU usage detected with MAX_PARALLEL_PROCESSES > 1. Consider setting to 1 for stability on single GPU.
 ")
-        # num_processes_to_use = 1 # Uncomment to force sequential if GPU is used
 
     print(f"Using up to {num_processes_to_use} parallel processes.")
     start_time_all = time.time()
