@@ -7,11 +7,11 @@ import traceback
 import time
 from multiprocessing import Pool, cpu_count, freeze_support
 import re
-from .tile_large_image import tile_image # CORRECTED: Relative import
+from .tile_large_image import tile_image # Relative import
 
 # --- Global Configuration ---
-IMAGE_DIR_BASE = "images" # Original images here
-TILED_IMAGE_OUTPUT_BASE = os.path.join(IMAGE_DIR_BASE, "tiled_outputs") # Store generated tiles here
+IMAGE_DIR_BASE = "images" 
+TILED_IMAGE_OUTPUT_BASE = os.path.join(IMAGE_DIR_BASE, "tiled_outputs") 
 RESULTS_DIR_BASE = "results"
 RUN_LOG_FILE = os.path.join(RESULTS_DIR_BASE, "run_log.json")
 MAX_PARALLEL_PROCESSES = max(1, cpu_count() // 2)
@@ -23,7 +23,7 @@ def clean_filename_for_dir(filename):
     return cleaned_name
 
 def segment_image_worker(job_params_dict):
-    experiment_id_final = job_params_dict["experiment_id_final"]
+    experiment_id_final = job_params_dict["experiment_id_final"] 
     model_choice = job_params_dict["MODEL_CHOICE"]
     diameter_val = job_params_dict["DIAMETER"]
     flow_thresh_val = job_params_dict["FLOW_THRESHOLD"]
@@ -31,8 +31,8 @@ def segment_image_worker(job_params_dict):
     cellprob_thresh = job_params_dict["CELLPROB_THRESHOLD"]
     force_grayscale_flag = job_params_dict["FORCE_GRAYSCALE"]
     use_gpu_flag = job_params_dict["USE_GPU"]
-    actual_image_path_to_process = job_params_dict["actual_image_path_to_process"]
-    processing_unit_name = job_params_dict["processing_unit_name"]
+    actual_image_path_to_process = job_params_dict["actual_image_path_to_process"] 
+    processing_unit_name = job_params_dict["processing_unit_name"] 
 
     output_dir_job = os.path.join(RESULTS_DIR_BASE, experiment_id_final)
 
@@ -43,12 +43,13 @@ def segment_image_worker(job_params_dict):
             print(error_msg); return {**job_params_dict, "status": "failed", "error_message": error_msg}
 
     print(f"--- [{experiment_id_final}] Starting (Processing Unit: {processing_unit_name}) ---")
-    log_diameter_eff = 0 if diameter_val is None else diameter_val
-    log_flow_eff = 'Cellpose default' if flow_thresh_val is None else flow_thresh_val
-    log_min_size_eff = 15 if min_size_val is None else min_size_val
+    log_diameter_for_eval = 0 if diameter_val is None else diameter_val
+    log_flow_for_eval = 'Cellpose default (0.4)' if flow_thresh_val is None else flow_thresh_val
+    log_min_size_for_eval = 15 if min_size_val is None else min_size_val
+
     print(f"[{experiment_id_final}] Params: Model={model_choice}, GPU={use_gpu_flag}, Gray={force_grayscale_flag}, "
-          f"CellProb={cellprob_thresh}, Diam(eff)={log_diameter_eff if log_diameter_eff!=0 else 'auto'}, "
-          f"Flow(eff)={log_flow_eff}, MinSize(eff)={log_min_size_eff}")
+          f"CellProb={cellprob_thresh}, Diam(eval)={log_diameter_for_eval if log_diameter_for_eval!=0 else 'auto'}, "
+          f"Flow(eval)={log_flow_for_eval}, MinSize(eval)={log_min_size_for_eval}")
 
     if not os.path.exists(actual_image_path_to_process):
         error_msg = f"[{experiment_id_final}] Error: Image not found: {actual_image_path_to_process}"
@@ -68,13 +69,26 @@ def segment_image_worker(job_params_dict):
         if model is None: raise ValueError("Model init failed.")
 
         print(f"[{experiment_id_final}] Running segmentation...")
-        eval_params = {"cellprob_threshold": cellprob_thresh}
-        eval_params["diameter"] = 0 if diameter_val is None else diameter_val
-        if flow_thresh_val is not None: eval_params["flow_threshold"] = flow_thresh_val
-        eval_params["min_size"] = 15 if min_size_val is None else min_size_val
-        if force_grayscale_flag: eval_params["channels"] = [0,0]
         
+        eval_params = {"cellprob_threshold": cellprob_thresh}
+        eval_params["diameter"] = 0 if diameter_val is None else diameter_val 
+        if flow_thresh_val is not None: 
+            eval_params["flow_threshold"] = flow_thresh_val
+        eval_params["min_size"] = 15 if min_size_val is None else min_size_val 
+
+        if force_grayscale_flag:
+            eval_params["channels"] = [0,0]
+        
+        diam_to_log_eval = eval_params['diameter'] if eval_params['diameter'] !=0 else 'auto'
+        flow_to_log_eval = eval_params.get('flow_threshold', 'Cellpose default (0.4)') 
+        min_size_to_log_eval = eval_params.get('min_size', 'Cellpose default (15)') 
+        channels_to_log_eval = eval_params.get('channels', 'Cellpose default')
+        print(f"[{experiment_id_final}] Actual eval() call params: cellprob={eval_params['cellprob_threshold']}, "
+              f"diam={diam_to_log_eval}, flow={flow_to_log_eval}, "
+              f"min_size={min_size_to_log_eval}, channels={channels_to_log_eval}")
+
         masks, flows, styles = model.eval(img_for_cellpose, **eval_params)
+        
         print(f"[{experiment_id_final}] Seg done. Masks: {masks.shape}, Unique (top 20): {np.unique(masks)[:20]}")
         if eval_params['diameter'] == 0:
              if hasattr(model, 'sz_estimate') and model.sz_estimate is not None: print(f"[{experiment_id_final}] Cellpose size est: {model.sz_estimate:.2f}")
@@ -153,7 +167,7 @@ if __name__ == "__main__":
         tiling_cfg = img_config.get("tiling_config")
         if tiling_cfg and tiling_cfg.get("tile_size"):
             print(f"Tiling configured for {original_image_filename} (Image ID: {image_id_from_config}).")
-            tile_storage_dir = os.path.join(TILED_IMAGE_OUTPUT_BASE, image_id_from_config + "_tiles")
+            tile_storage_dir = os.path.join(TILED_IMAGE_OUTPUT_BASE, image_id_from_config) 
             tile_prefix = tiling_cfg.get("tile_output_prefix_base", clean_filename_for_dir(original_image_filename) + "_tile")
             
             if not os.path.exists(tile_storage_dir):
@@ -179,7 +193,7 @@ if __name__ == "__main__":
                     })
                 print(f"Generated {len(tile_manifest_data['tiles'])} tiles for {original_image_filename}.")
             else:
-                print(f"Warning: Tiling failed or produced no tiles for {original_image_filename}. Will attempt to process as full image.")
+                print(f"Warning: Tiling failed or produced no tiles for {original_image_filename}. Attempting full image.")
                 images_to_process_for_this_img_config.append({
                     "path": original_image_path, "name": original_image_filename,
                     "original_image_id": image_id_from_config, "original_image_filename": original_image_filename,
@@ -204,7 +218,7 @@ if __name__ == "__main__":
                         job[key] = value
                 
                 job["actual_image_path_to_process"] = img_proc_info["path"]
-                job["processing_unit_name"] = img_proc_info["name"]
+                job["processing_unit_name"] = img_proc_info["name"] 
                 job["original_image_id_for_log"] = img_proc_info["original_image_id"]
                 job["original_image_filename_for_log"] = img_proc_info["original_image_filename"]
                 job["is_tile_for_log"] = img_proc_info["is_tile"]
@@ -218,9 +232,9 @@ if __name__ == "__main__":
                     job["experiment_id_final"] = f"{img_proc_info['original_image_id']}_{param_set_id}"
 
                 job.setdefault("MODEL_CHOICE", "cyto3")
-                job.setdefault("DIAMETER", None)
-                job.setdefault("FLOW_THRESHOLD", None)
-                job.setdefault("MIN_SIZE", 15) 
+                job.setdefault("DIAMETER", None) 
+                job.setdefault("FLOW_THRESHOLD", None) 
+                job.setdefault("MIN_SIZE", None) 
                 job.setdefault("CELLPROB_THRESHOLD", 0.0)
                 job.setdefault("FORCE_GRAYSCALE", True)
                 job.setdefault("USE_GPU", False)
