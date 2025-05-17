@@ -8,3 +8,4 @@ cellpose
 opencv-python
 scikit-image
 matplotlib
+tifffile
