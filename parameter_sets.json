@@ -1,11 +1,34 @@
 {
-  "global_image_filename_list": [
-    "test_image.tif",
-    "processed_plane_s0.tif"
-  ],
-  "parameter_configurations": [
+  "image_configurations": [
     {
-      "experiment_id_base": "run02_lower_cellprob",
+      "image_id": "processed_plane_s0",
+      "original_image_filename": "processed_plane_s0.tif",
+      "is_active": true,
+      "tiling_config": {
+        "tile_size": 2048,
+        "overlap": 200,
+        "tile_output_prefix_base": "processed_plane_s0_tiles"
+      }
+    },
+    {
+      "image_id": "SmallTestImage_NoTile",
+      "original_image_filename": "test_image.tif",
+      "is_active": false
+    },
+    {
+      "image_id": "AnotherLargeOne_DefaultTiles",
+      "original_image_filename": "another_large_image.tif",
+      "is_active": false,
+      "tiling_config": {
+        "tile_size": 1024,
+        "overlap": 100,
+        "tile_output_prefix_base": "another_large_tiles"
+      }
+    }
+  ],
+  "cellpose_parameter_configurations": [
+    {
+      "param_set_id": "run02_lower_cellprob",
       "MODEL_CHOICE": "cyto3",
       "DIAMETER": null,
       "FLOW_THRESHOLD": null,
@@ -16,7 +39,7 @@
       "is_active": false
     },
     {
-      "experiment_id_base": "run04_set_diameter_low_cellprob",
+      "param_set_id": "run04_set_diameter_low_cellprob",
       "MODEL_CHOICE": "cyto3",
       "DIAMETER": 30,
       "FLOW_THRESHOLD": null,
@@ -27,7 +50,7 @@
       "is_active": false
     },
     {
-      "experiment_id_base": "run06_small_cells_diam15_lowprob",
+      "param_set_id": "run06_small_cells_diam15_lowprob",
       "MODEL_CHOICE": "cyto3",
       "DIAMETER": 15,
       "FLOW_THRESHOLD": 0.4,
@@ -38,7 +61,7 @@
       "is_active": false
     },
     {
-      "experiment_id_base": "run07_small_cells_diam15_vlowprob",
+      "param_set_id": "run07_small_cells_diam15_vlowprob",
       "MODEL_CHOICE": "cyto3",
       "DIAMETER": 15,
       "FLOW_THRESHOLD": 0.4,
@@ -49,7 +72,7 @@
       "is_active": false
     },
     {
-      "experiment_id_base": "run08_small_cells_diam10_lowprob_lowflow",
+      "param_set_id": "run08_small_cells_diam10_lowprob_lowflow",
       "MODEL_CHOICE": "cyto3",
       "DIAMETER": 10,
       "FLOW_THRESHOLD": 0.2,
@@ -60,7 +83,7 @@
       "is_active": false
     },
     {
-      "experiment_id_base": "run09_cyto2_small_cells_diam15_lowprob",
+      "param_set_id": "run09_cyto2_small_cells_diam15_lowprob",
       "MODEL_CHOICE": "cyto2",
       "DIAMETER": 15,
       "FLOW_THRESHOLD": 0.4,

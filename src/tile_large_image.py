@@ -9,17 +9,11 @@ import traceback
 def tile_image(input_image_path, output_dir, tile_size=1024, overlap=100, output_prefix="tile"):
     """
     Tiles a large 2D image into smaller, overlapping TIFF files and saves a JSON manifest.
-
-    Args:
-        input_image_path (str): Path to the large input 2D TIFF image.
-        output_dir (str): Directory to save the tiled images and the manifest file.
-        tile_size (int): Desired size (width and height) of each square tile.
-        overlap (int): Number of pixels to overlap between adjacent tiles.
-        output_prefix (str): Prefix for the output tiled image filenames and manifest.
+    Returns the manifest data (dictionary) on success, None on failure.
     """
     if not os.path.exists(input_image_path):
         print(f"Error: Input image file not found: {input_image_path}")
-        return
+        return None
 
     if not os.path.exists(output_dir):
         try:
@@ -27,22 +21,22 @@ def tile_image(input_image_path, output_dir, tile_size=1024, overlap=100, output
             print(f"Created output directory: {output_dir}")
         except OSError as e:
             print(f"Error creating output directory {output_dir}: {e}")
-            return
+            return None
 
     try:
-        print(f"Loading large image: {input_image_path} ...")
+        print(f"Loading large image for tiling: {input_image_path} ...")
         large_image = tifffile.imread(input_image_path)
         
         if large_image.ndim != 2:
-            if large_image.ndim == 3:
+            if large_image.ndim == 3: # Try to take first plane for ZYX or CYX etc.
                 print(f"Warning: Input image is 3D (shape: {large_image.shape}). Using the first 2D plane (index 0 of the first axis).")
                 large_image = large_image[0, :, :]
-            elif large_image.ndim > 3: 
+            elif large_image.ndim > 3: # Try to take first plane for ZCYX etc.
                  print(f"Warning: Input image is >3D (shape: {large_image.shape}). Using the first 2D plane from the first two axes (e.g. Z=0, C=0).")
                  large_image = large_image[0, 0, :, :] 
             else: 
                 print(f"Error: Input image is not 2D (shape: {large_image.shape}). Tiling requires a 2D image.")
-                return
+                return None
         
         print(f"Image loaded for tiling. Shape: {large_image.shape}, dtype: {large_image.dtype}")
 
@@ -61,7 +55,7 @@ def tile_image(input_image_path, output_dir, tile_size=1024, overlap=100, output
 
         if step_size <= 0:
             print("Error: Overlap must be less than tile_size.")
-            return
+            return None
 
         print(f"Tiling image into {tile_size}x{tile_size} tiles with {overlap}px overlap (step size: {step_size})...")
 
@@ -78,8 +72,7 @@ def tile_image(input_image_path, output_dir, tile_size=1024, overlap=100, output
 
                 tile_data = large_image[y_start:actual_y_end, x_start:actual_x_end]
 
-                if tile_data.size == 0:
-                    continue
+                if tile_data.size == 0: continue
 
                 tile_filename = f"{output_prefix}_r{r_idx:03d}_c{c_idx:03d}.tif"
                 tile_filepath = os.path.join(output_dir, tile_filename)
@@ -100,19 +93,25 @@ def tile_image(input_image_path, output_dir, tile_size=1024, overlap=100, output
                     print(f"Error writing tile {tile_filepath}: {e_write}")
 
         print(f"Generated {tile_count} tiles.")
+        if tile_count == 0 and (img_width > 0 and img_height > 0) : # If image had size but no tiles (e.g. smaller than tile_size)
+             print("Warning: No tiles were generated. Image might be smaller than tile_size or overlap is too large.")
+             # Consider if a single tile should be made if image < tile_size
 
         manifest_filename = f"{output_prefix}_manifest.json"
-        manifest_filepath = os.path.join(output_dir, manifest_filename) # Save manifest in the tile output dir
+        manifest_filepath = os.path.join(output_dir, manifest_filename)
         try:
             with open(manifest_filepath, 'w') as f_manifest:
                 json.dump(tile_manifest, f_manifest, indent=4)
             print(f"Tile manifest saved to: {manifest_filepath}")
+            return tile_manifest # Return the manifest data
         except Exception as e_json:
             print(f"Error saving tile manifest {manifest_filepath}: {e_json}")
+            return None # Indicate failure
 
     except Exception as e:
         print(f"An error occurred during tiling: {e}")
         traceback.print_exc()
+        return None
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Tile a large 2D TIFF image into smaller, overlapping tiles.")
@@ -130,10 +129,13 @@ if __name__ == "__main__":
     print(f"Tiling image: {args.input_image}")
     print(f"Output directory: {args.output_dir}")
     
-    tile_image(args.input_image, args.output_dir, 
-               tile_size=args.tile_size, 
-               overlap=args.overlap, 
-               output_prefix=args.prefix)
+    tile_manifest_data = tile_image(args.input_image, args.output_dir, 
+                                   tile_size=args.tile_size, 
+                                   overlap=args.overlap, 
+                                   output_prefix=args.prefix)
     
-    print("Tiling process finished.")
+    if tile_manifest_data:
+        print("Tiling process finished successfully.")
+    else:
+        print("Tiling process encountered errors or produced no manifest.")
 
