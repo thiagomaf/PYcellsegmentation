@@ -12,7 +12,7 @@ from multiprocessing import Pool, cpu_count, freeze_support
 IMAGE_DIR_BASE = "images"       # Base directory for input images
 RESULTS_DIR_BASE = "results"    # Base directory for all experiment outputs
 MAX_PARALLEL_PROCESSES = max(1, cpu_count() // 2)
-# MAX_PARALLEL_PROCESSES = 1 # Safer option if GPU is involved or for debugging
+#MAX_PARALLEL_PROCESSES = 1 # Safer option if GPU is involved or for debugging
 
 def segment_image_worker(params_dict):
     experiment_id = params_dict.get("experiment_id", f"exp_{time.strftime('%Y%m%d_%H%M%S')}")

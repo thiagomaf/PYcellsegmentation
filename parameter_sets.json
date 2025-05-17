@@ -1,31 +1,9 @@
 [
   {
-    "experiment_id": "run01_current_good",
-    "MODEL_CHOICE": "cyto3",
-    "DIAMETER": null,
-    "FLOW_THRESHOLD": null,
-    "MIN_SIZE": null,
-    "CELLPROB_THRESHOLD": 0.0,
-    "FORCE_GRAYSCALE": true,
-    "USE_GPU": false,
-    "image_filename": "test_image.tif"
-  },
-  {
     "experiment_id": "run02_lower_cellprob",
     "MODEL_CHOICE": "cyto3",
     "DIAMETER": null,
     "FLOW_THRESHOLD": null,
-    "MIN_SIZE": null,
-    "CELLPROB_THRESHOLD": -1.0,
-    "FORCE_GRAYSCALE": true,
-    "USE_GPU": false,
-    "image_filename": "test_image.tif"
-  },
-  {
-    "experiment_id": "run03_lower_cellprob_flow",
-    "MODEL_CHOICE": "cyto3",
-    "DIAMETER": null,
-    "FLOW_THRESHOLD": 0.2,
     "MIN_SIZE": null,
     "CELLPROB_THRESHOLD": -1.0,
     "FORCE_GRAYSCALE": true,
@@ -44,12 +22,45 @@
     "image_filename": "test_image.tif"
   },
   {
-    "experiment_id": "run05_cyto2_low_cellprob",
+    "experiment_id": "run06_small_cells_diam15_lowprob",
+    "MODEL_CHOICE": "cyto3",
+    "DIAMETER": 15,
+    "FLOW_THRESHOLD": 0.4,
+    "MIN_SIZE": 5,
+    "CELLPROB_THRESHOLD": -2.0,
+    "FORCE_GRAYSCALE": true,
+    "USE_GPU": false,
+    "image_filename": "test_image.tif"
+  },
+  {
+    "experiment_id": "run07_small_cells_diam15_vlowprob",
+    "MODEL_CHOICE": "cyto3",
+    "DIAMETER": 15,
+    "FLOW_THRESHOLD": 0.4,
+    "MIN_SIZE": 5,
+    "CELLPROB_THRESHOLD": -3.0,
+    "FORCE_GRAYSCALE": true,
+    "USE_GPU": false,
+    "image_filename": "test_image.tif"
+  },
+  {
+    "experiment_id": "run08_small_cells_diam10_lowprob_lowflow",
+    "MODEL_CHOICE": "cyto3",
+    "DIAMETER": 10,
+    "FLOW_THRESHOLD": 0.2,
+    "MIN_SIZE": 3,
+    "CELLPROB_THRESHOLD": -2.5,
+    "FORCE_GRAYSCALE": true,
+    "USE_GPU": false,
+    "image_filename": "test_image.tif"
+  },
+  {
+    "experiment_id": "run09_cyto2_small_cells_diam15_lowprob",
     "MODEL_CHOICE": "cyto2",
-    "DIAMETER": null,
-    "FLOW_THRESHOLD": null,
-    "MIN_SIZE": null,
-    "CELLPROB_THRESHOLD": -1.0,
+    "DIAMETER": 15,
+    "FLOW_THRESHOLD": 0.4,
+    "MIN_SIZE": 5,
+    "CELLPROB_THRESHOLD": -2.0,
     "FORCE_GRAYSCALE": true,
     "USE_GPU": false,
     "image_filename": "test_image.tif"
