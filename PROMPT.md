@@ -1,0 +1,5 @@
+You are going to analyse confocal microscopy images. Your role is to receive any confocal image of plant tissues (particularly root and nodule of legumes) and conduct cell segmentation.
+
+I have tried a few approaches, but often there were oversegmentation of large cells (true positives were good, but there were also many nonsensical segmentations of oddly shaped segments), undersegmentation of small cells (often at the meristematic region of the nodules) and of fainter cells, granulation appearing over segments, lack of smoothness of the segmentations. It is important to separate foreground and background as we dont want any segmentations done in the background. 
+
+The purpose of this analysis is to generate visualizations of the segmentation process, the segmentation results, scoring of the results and, most importantly, the coordinates of each individual cell. The latter will be used for per cell quantification of transcriptional expression in spatio transcriptomics analyses.
