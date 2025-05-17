@@ -126,9 +126,7 @@ def create_summary_image(parameter_sets):
         overlay_path = os.path.join(RESULTS_DIR_PATH, experiment_id, overlay_filename)
         
         score = experiment_scores.get(experiment_id, "N/A")
-        title = f"{experiment_id}
-Dice: {score:.3f}" if isinstance(score, float) else f"{experiment_id}
-Dice: N/A"
+        title = f"{experiment_id}Dice: {score:.3f}" if isinstance(score, float) else f"{experiment_id}Dice: N/A"
 
         ax = axes[i]
         ax.set_title(title, fontsize=9)
