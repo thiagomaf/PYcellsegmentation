@@ -92,8 +92,7 @@ def segment_image(image_path, output_dir):
         with open(coord_filename, 'w') as f:
             for i, (x_coord, y_coord) in enumerate(coordinates):
                 # *** Corrected f-string with newline ***
-                f.write(f"Cell_{i+1},{x_coord:.2f},{y_coord:.2f}
-")
+                f.write(f"Cell_{i+1},{x_coord:.2f},{y_coord:.2f}")
         print(f"Cell coordinates saved to: {coord_filename}")
     except Exception as e:
         print(f"Error saving coordinates: {e}")
