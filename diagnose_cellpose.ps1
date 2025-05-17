@@ -5,7 +5,7 @@ $VenvName = ".venv-cellpose-diag"
 $ProjectDir = $PSScriptRoot # Assumes the script is in your project root, adjust if needed
 $VenvPath = Join-Path -Path $ProjectDir -ChildPath $VenvName
 $VenvPythonPath = Join-Path -Path $VenvPath -ChildPath "Scripts\python.exe"
-$VenvPipPath = Join-Path -Path $VenvPath -ChildPath "Scripts\pip.exe"
+# $VenvPipPath is still useful for other commands, but upgrade is special
 
 # --- Script ---
 Write-Host "Starting Cellpose Diagnostic Script..."
@@ -25,17 +25,18 @@ if (-not $?) {
     exit 1
 }
 
-# 3. Upgrade pip within the virtual environment
+# 3. Upgrade pip within the virtual environment using python -m pip
 Write-Host "Upgrading pip in the virtual environment..."
-& $VenvPipPath install --upgrade pip
+& $VenvPythonPath -m pip install --upgrade pip # Corrected line
 if (-not $?) {
-    Write-Error "Failed to upgrade pip."
-    exit 1
+    Write-Host "Warning: Failed to upgrade pip. Continuing with existing pip version. This might cause issues."
+    # Not exiting on pip upgrade failure, as sometimes install might still work
 }
 
 # 4. Install cellpose[gui] in the virtual environment
 Write-Host "Installing cellpose[gui] (this may take a while)..."
-& $VenvPipPath install "cellpose[gui]" --no-cache-dir
+# Use python -m pip for installing packages as well for robustness
+& $VenvPythonPath -m pip install "cellpose[gui]" --no-cache-dir
 if (-not $?) {
     Write-Error "Failed to install cellpose."
     exit 1
