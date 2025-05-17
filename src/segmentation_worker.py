@@ -8,12 +8,11 @@ import traceback
 RESULTS_DIR_BASE = "results" # Relative to project root
 
 def segment_image_worker(job_params_dict):
-    # Assumes job_params_dict contains all necessary resolved parameters
     experiment_id_final = job_params_dict["experiment_id_final"]
     model_choice = job_params_dict["MODEL_CHOICE"]
     diameter_val_for_cp = job_params_dict["DIAMETER_FOR_CELLPOSE"]
     flow_thresh_val = job_params_dict["FLOW_THRESHOLD"]
-    min_size_val = job_params_dict["MIN_SIZE"] # This is now always a number (e.g. 15 if was None)
+    min_size_val = job_params_dict["MIN_SIZE"] 
     cellprob_thresh = job_params_dict["CELLPROB_THRESHOLD"]
     force_grayscale_flag = job_params_dict["FORCE_GRAYSCALE"]
     use_gpu_flag = job_params_dict["USE_GPU"]
@@ -22,8 +21,11 @@ def segment_image_worker(job_params_dict):
 
     output_dir_job = os.path.join(RESULTS_DIR_BASE, experiment_id_final)
 
-    log_diameter_for_eval = 0 if diameter_val_for_cp is None else diameter_val_for_cp
-    log_flow_for_eval = 'Cellpose default' if flow_thresh_val is None else flow_thresh_val
+    log_diameter_for_eval_display = 'auto'
+    if diameter_val_for_cp is not None and diameter_val_for_cp > 0 :
+        log_diameter_for_eval_display = diameter_val_for_cp
+    
+    log_flow_for_eval = 'Cellpose default (0.4)' if flow_thresh_val is None else flow_thresh_val
     log_min_size_for_eval = min_size_val 
 
     print(f">>> [START JOB] ID: {experiment_id_final} (Unit: {processing_unit_name})")
@@ -33,7 +35,7 @@ def segment_image_worker(job_params_dict):
         f"    USE_GPU       : {use_gpu_flag}",
         f"    ForceGrayscale: {force_grayscale_flag}",
         f"    CellProbThr   : {cellprob_thresh}",
-        f"    Diameter(eval): {log_diameter_for_eval if log_diameter_for_eval!=0 else 'auto'}",
+        f"    Diameter(eval): {log_diameter_for_eval_display}", 
         f"    FlowThr(eval) : {log_flow_for_eval}",
         f"    MinSize(eval) : {log_min_size_for_eval}"
     ]
@@ -67,16 +69,31 @@ def segment_image_worker(job_params_dict):
 
         print(f"[{experiment_id_final}] Running Cellpose segmentation...")
         eval_params = {"cellprob_threshold": cellprob_thresh}
-        eval_params["diameter"] = 0 if diameter_val_for_cp is None else diameter_val_for_cp
-        if flow_thresh_val is not None: eval_params["flow_threshold"] = flow_thresh_val
+        
+        if diameter_val_for_cp is None or diameter_val_for_cp == 0:
+            eval_params["diameter"] = None 
+        else:
+            eval_params["diameter"] = diameter_val_for_cp
+            
+        if flow_thresh_val is not None: 
+            eval_params["flow_threshold"] = flow_thresh_val
+        
         eval_params["min_size"] = min_size_val 
-        if force_grayscale_flag: eval_params["channels"] = [0,0]
+
+        if force_grayscale_flag: 
+            eval_params["channels"] = [0,0]
         
         masks, flows, styles = model.eval(img_for_cellpose, **eval_params)
+
         print(f"[{experiment_id_final}] Segmentation done. Masks shape: {masks.shape}, Unique (top 20): {np.unique(masks)[:20]}")
-        if eval_params['diameter'] == 0:
-             if hasattr(model, 'sz_estimate') and model.sz_estimate is not None: print(f"[{experiment_id_final}] Cellpose size est: {model.sz_estimate:.2f}")
-             elif hasattr(model, 'diam_mean'): print(f"[{experiment_id_final}] Model training diam: {model.diam_mean:.2f}")
+        if eval_params.get('diameter') is None: 
+             if hasattr(model, 'sz_estimate') and model.sz_estimate is not None: 
+                 print(f"[{experiment_id_final}] Cellpose size est (model.sz_estimate): {model.sz_estimate:.2f}")
+             elif hasattr(model, 'diam_labels') and model.diam_labels is not None and len(model.diam_labels)>0 : 
+                 print(f"[{experiment_id_final}] Avg diam from model.diam_labels: {np.mean(model.diam_labels):.2f}")
+             elif hasattr(model, 'diam_mean'): 
+                 print(f"[{experiment_id_final}] Model training diam (model.diam_mean): {model.diam_mean:.2f}")
+
 
         base_output_filename = os.path.splitext(processing_unit_name)[0]
         mask_filename = os.path.join(output_dir_job, base_output_filename + "_mask.tif")
@@ -109,3 +126,4 @@ def segment_image_worker(job_params_dict):
         short_error_msg = error_full_msg.splitlines()[0]
         print(f"<<< [END JOB] ID: {experiment_id_final}. Status: FAILED. ({short_error_msg})")
         return {**job_params_dict, "status": "failed", "error_message": error_full_msg, "message": short_error_msg}
+
