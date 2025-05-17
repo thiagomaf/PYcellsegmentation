@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.colors
 import math
-from cellpose import io # For loading masks consistently with how they were saved
+from cellpose import io, plot # <--- CORRECTED IMPORT
 
 # --- Configuration ---
 PARAMETER_SETS_FILE = "parameter_sets.json"
@@ -49,46 +49,37 @@ def normalize_to_8bit(img_array):
         img_min, img_max = np.min(img_array), np.max(img_array)
         if img_max > img_min:
             img_array = ((img_array - img_min) / (img_max - img_min) * 255.0)
-        else: # Flat float image
-            img_array = np.zeros_like(img_array) + 128 # Mid-gray
+        else: 
+            img_array = np.zeros_like(img_array) + 128 
     elif img_array.dtype == np.uint16:
-        # Scale based on max value of uint16 for consistent scaling across images if needed,
-        # or scale by actual max in image for better contrast of a single image.
-        # Using actual max for better individual image display.
         img_actual_max = np.max(img_array)
         if img_actual_max > 0:
             img_array = (img_array / img_actual_max * 255.0)
-        else: # All zero
+        else: 
             img_array = np.zeros_like(img_array)
-    else: # Other integer types
+    else: 
         img_actual_max = np.max(img_array)
         if img_actual_max > 0:
             img_array = (img_array / img_actual_max * 255.0)
-        else: # All zero
+        else: 
             img_array = np.zeros_like(img_array)
             
     return img_array.astype(np.uint8)
 
 
 def get_consistency_colors_for_mask(instance_mask, consensus_prob_map, colormap):
-    """
-    Generates an array of colors for each cell instance in instance_mask
-    based on its average consistency with the consensus_prob_map.
-    """
     num_cells = instance_mask.max()
-    cell_colors_rgb = np.zeros((num_cells + 1, 3), dtype=np.uint8) # +1 for background color at index 0
+    cell_colors_rgb = np.zeros((num_cells + 1, 3), dtype=np.uint8) 
 
     if num_cells == 0:
-        return cell_colors_rgb # Return array of zeros if no cells
+        return cell_colors_rgb 
 
     for i in range(1, num_cells + 1):
         cell_pixels = (instance_mask == i)
         if np.any(cell_pixels):
-            avg_consistency = np.mean(consensus_prob_map[cell_pixels]) # Score from 0 to 1
-            # Get RGBA color from colormap, convert to RGB 0-255
+            avg_consistency = np.mean(consensus_prob_map[cell_pixels]) 
             rgba_color = colormap(avg_consistency) 
             cell_colors_rgb[i] = (np.array(rgba_color[:3]) * 255).astype(np.uint8)
-        # else, color remains black (0,0,0)
     return cell_colors_rgb
 
 
@@ -99,21 +90,20 @@ def create_summary_image_with_consistency_coloring(parameter_sets):
 
     print("Loading all segmentation masks and original images...")
     all_masks_data = []
-    original_images_cache = {} # Cache for original images {image_filename: np.array}
+    original_images_cache = {} 
     mask_shape = None
-    base_image_filename_for_consensus_display = None # To pick one original image for displaying consensus
+    base_image_filename_for_consensus_display = None 
 
     for i, params in enumerate(parameter_sets):
         experiment_id = params.get("experiment_id", f"unknown_exp_{i}")
         image_filename = params.get("image_filename", "unknown_image.tif")
         
         if base_image_filename_for_consensus_display is None:
-            base_image_filename_for_consensus_display = image_filename # Pick the first one
+            base_image_filename_for_consensus_display = image_filename
 
         mask_filepath = os.path.join(RESULTS_DIR_PATH, experiment_id, os.path.splitext(image_filename)[0] + "_mask.tif")
         original_image_path = os.path.join(IMAGE_DIR_PATH, image_filename)
 
-        # Load original image if not cached
         if image_filename not in original_images_cache:
             if os.path.exists(original_image_path):
                 try:
@@ -128,10 +118,9 @@ def create_summary_image_with_consistency_coloring(parameter_sets):
                 print(f"Original image {original_image_path} not found. Skipping experiment {experiment_id}.")
                 continue
         
-        # Load mask
         if os.path.exists(mask_filepath):
             try:
-                mask = io.imread(mask_filepath) # Using cellpose.io for consistency
+                mask = io.imread(mask_filepath) 
                 if mask_shape is None: mask_shape = mask.shape
                 elif mask.shape != mask_shape:
                     print(f"Shape mismatch for mask {experiment_id}. Skipping.")
@@ -147,7 +136,6 @@ def create_summary_image_with_consistency_coloring(parameter_sets):
         return
     print(f"Loaded {len(all_masks_data)} segmentation masks for processing.")
 
-    # --- Create Consensus Probability Map ---
     print("Generating consensus probability map...")
     consensus_accumulator = np.zeros(mask_shape, dtype=np.float32)
     for data in all_masks_data:
@@ -156,7 +144,6 @@ def create_summary_image_with_consistency_coloring(parameter_sets):
     binary_consensus_for_dice = (consensus_probability_map > CONSENSUS_THRESHOLD_FOR_DICE).astype(np.uint8)
     print("Consensus probability map generated.")
 
-    # --- Calculate Dice scores and prepare plot data ---
     plot_data = []
     for data in all_masks_data:
         exp_id = data["id"]
@@ -170,64 +157,55 @@ def create_summary_image_with_consistency_coloring(parameter_sets):
         })
         print(f"Experiment {exp_id}: Dice against consensus = {dice_score:.4f}")
     
-    # --- Plotting ---
-    # Optionally add consensus probability map to the plot items
-    num_plots = len(plot_data) # +1 if plotting consensus map
+    num_plots = len(plot_data)
     cols = IMAGES_PER_ROW
     rows = math.ceil(num_plots / cols)
 
-    fig, axes = plt.subplots(rows, cols, figsize=(cols * 5.5, rows * 5.5)) # Adjusted figsize
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * 5.5, rows * 5.5)) 
     if num_plots == 0 : print("No data to plot."); plt.close(fig); return
     if num_plots == 1 and not isinstance(axes, np.ndarray): axes = np.array([axes])
     axes = axes.flatten()
 
-    colormap = plt.cm.get_cmap(COLORMAP_NAME)
+    # Corrected: Use matplotlib.colormaps instead of plt.cm.get_cmap
+    try:
+        colormap = matplotlib.colormaps[COLORMAP_NAME]
+    except AttributeError: # Fallback for older matplotlib
+        colormap = plt.cm.get_cmap(COLORMAP_NAME)
+
 
     for i, data in enumerate(plot_data):
         ax = axes[i]
         original_img_8bit = original_images_cache[data["image_filename"]]
         
-        # Ensure original_img_8bit is 2D for grayscale or 3D (RGB) for color before passing to mask_overlay
-        # For consistency coloring, we need to prepare the base image correctly.
-        # cellpose.plot.mask_overlay expects a 2D image (grayscale) or a 3D image (RGB)
-        # If original_img_8bit is BGR from cv2, convert to RGB or Grayscale
-        
         img_display_for_overlay = original_img_8bit.copy()
-        if img_display_for_overlay.ndim == 3 and img_display_for_overlay.shape[-1] == 3: # BGR
+        if img_display_for_overlay.ndim == 3 and img_display_for_overlay.shape[-1] == 3: 
             img_display_for_overlay = cv2.cvtColor(img_display_for_overlay, cv2.COLOR_BGR2RGB)
-        elif img_display_for_overlay.ndim == 2: # Already Grayscale
-            pass # Good for mask_overlay
-        else: # Unexpected format, try to make it grayscale
+        elif img_display_for_overlay.ndim == 2: 
+            pass 
+        else: 
             print(f"Warning: Unexpected image format for overlay for {data['id']}. Shape: {img_display_for_overlay.shape}. Attempting grayscale.")
             if img_display_for_overlay.ndim > 2: img_display_for_overlay = img_display_for_overlay[:,:,0]
-            # ensure it's uint8
             if img_display_for_overlay.dtype != np.uint8 : img_display_for_overlay = normalize_to_8bit(img_display_for_overlay)
-
 
         cell_specific_colors = get_consistency_colors_for_mask(data["mask"], consensus_probability_map, colormap)
         
-        # plot.mask_overlay will apply these colors to the outlines or filled masks
-        # Ensure the number of colors matches the number of cells in data["mask"]
-        # The colors array should be (max_mask_id + 1, 3)
-        
-        overlay_img_rgb = plot.mask_overlay(img_display_for_overlay, data["mask"], colors=cell_specific_colors)
+        overlay_img_rgb = plot.mask_overlay(img_display_for_overlay, data["mask"], colors=cell_specific_colors) # 'plot' is now defined
         
         ax.imshow(overlay_img_rgb)
-        ax.set_title(f"{data['id']}\nDice: {data['dice']:.3f}", fontsize=9)
+        ax.set_title(f"{data['id']} Dice: {data['dice']:.3f}", fontsize=9)
         ax.axis('off')
 
-    # Hide unused subplots
     for j in range(num_plots, len(axes)):
         fig.delaxes(axes[j])
 
-    plt.tight_layout(pad=2.5, h_pad=2.5, w_pad=1.5) # Adjusted padding
+    plt.tight_layout(pad=2.5, h_pad=2.5, w_pad=1.5) 
     
     if not os.path.exists(RESULTS_DIR_PATH):
         try: os.makedirs(RESULTS_DIR_PATH)
         except OSError as e: print(f"Error creating base results dir for summary: {RESULTS_DIR_PATH}: {e}"); return
 
     try:
-        plt.savefig(SUMMARY_IMAGE_SAVE_PATH, dpi=120) # Adjusted DPI
+        plt.savefig(SUMMARY_IMAGE_SAVE_PATH, dpi=120) 
         print(f"Summary image with consistency colors saved to: {SUMMARY_IMAGE_SAVE_PATH}")
     except Exception as e:
         print(f"Error saving summary image: {e}")
@@ -245,3 +223,4 @@ if __name__ == "__main__":
         create_summary_image_with_consistency_coloring(loaded_params)
     else:
         print("Could not load parameter sets. Exiting summary creation.")
+

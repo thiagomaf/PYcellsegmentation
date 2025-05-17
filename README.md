@@ -1,122 +1,117 @@
-# Cell Segmentation Pipeline using Cellpose
+# Advanced Cell Segmentation & Analysis Pipeline using Cellpose
 
-This project provides a Python-based pipeline for segmenting cells in microscopy images using the Cellpose library. It supports batch processing of multiple parameter combinations, configurable GPU usage, and outputs raw segmentation masks, cell coordinates, and visual overlay images.
+This project provides a Python-based pipeline for segmenting cells in microscopy images using Cellpose. It features batch processing for parameter optimization and a sophisticated summary tool for comparative analysis, including consistency-based cell coloring and Dice scores against a consensus segmentation.
+
+## Core Components
+
+1.  **`src/segmentation_pipeline.py`**:
+    *   Performs cell segmentation using various Cellpose models and parameters.
+    *   Processes a batch of experiments defined in `parameter_sets.json`.
+    *   Outputs for each experiment:
+        *   Raw integer-labeled segmentation mask (`_mask.tif`).
+        *   Cell coordinates (centroids) in JSON format (`_coords.json`).
+    *   Supports CPU-based parallel processing for multiple experiments.
+
+2.  **`src/create_summary_image.py`**:
+    *   Analyzes the results from `segmentation_pipeline.py`.
+    *   Generates a consensus probability map from all experiment masks.
+    *   Calculates Dice similarity scores for each experiment against the consensus.
+    *   Creates a summary image (`segmentation_summary_consistency.png`) where:
+        *   Each experiment's segmentation is overlaid on the original image.
+        *   Segmented cells are colored based on their consistency with the consensus (red for low, green for high).
+        *   Dice scores are displayed for each experiment.
 
 ## Features
 
-*   Cell segmentation using pre-trained Cellpose models.
-*   Batch processing of multiple experiments with different parameter combinations via a JSON configuration file.
-*   Configurable GPU usage per experiment.
-*   Option to force grayscale processing for multi-channel images.
-*   Adjustable parameters for optimizing segmentation:
-    *   Cell probability threshold (`CELLPROB_THRESHOLD`)
-    *   Cell diameter (`DIAMETER`)
-    *   Flow threshold (`FLOW_THRESHOLD`)
-    *   Minimum mask size (`MIN_SIZE`)
-    *   Choice of Cellpose model (`MODEL_CHOICE`)
-*   Outputs for each experiment (saved in a unique subfolder):
-    *   Integer-labeled segmentation mask (`_mask.tif`).
-    *   Cell coordinates (centroids) in JSON format (`_coords.json`).
-    *   Visual overlay of segmentations on the original image (`_overlay.png`).
-*   Basic CPU-based parallel processing for running multiple experiments.
+*   Batch segmentation with configurable parameters per run (`parameter_sets.json`).
+*   Choice of Cellpose models (`MODEL_CHOICE`).
+*   Adjustable segmentation parameters: `DIAMETER`, `FLOW_THRESHOLD`, `MIN_SIZE`, `CELLPROB_THRESHOLD`.
+*   Configurable GPU usage per experiment (with caveats for parallel processing on a single GPU).
+*   Option to force grayscale processing.
+*   Advanced summary visualization with cell consistency coloring and Dice scores.
 
 ## Installation
 
-1.  **Clone the Repository (if applicable):**
-    If this code is in a repository, clone it first.
+1.  **Clone the Repository (if applicable).**
 
 2.  **Create a Python Virtual Environment:**
-    It's highly recommended to use a virtual environment. In the project's root directory:
+    (Recommended) In the project's root directory:
     ```bash
     python -m venv .venv
     ```
 
 3.  **Activate the Virtual Environment:**
     *   Windows (CMD): `.venv\Scripts\activate`
-    *   Windows (PowerShell): `.venv\Scripts\Activate.ps1` (May require `Set-ExecutionPolicy Unrestricted -Scope Process`)
+    *   Windows (PowerShell): `.venv\Scripts\Activate.ps1`
     *   Linux/macOS: `source .venv/bin/activate`
-    Your terminal prompt should change (e.g., `(.venv)`).
 
 4.  **Install Dependencies:**
     ```bash
     pip install -r requirements.txt
     ```
-    This installs `cellpose`, `opencv-python`, `numpy`, etc.
+    (Ensures `cellpose`, `opencv-python`, `numpy`, `matplotlib` are installed).
 
 5.  **Handling Potential OpenMP Errors (Windows):**
-    The script `src/segmentation_pipeline.py` includes `os.environ['KMP_DUPLICATE_LIB_OK']='True'` at the top to help mitigate OpenMP runtime conflicts on Windows.
+    `src/segmentation_pipeline.py` includes `os.environ['KMP_DUPLICATE_LIB_OK']='True'` to help mitigate OpenMP runtime conflicts.
 
-## Usage
+## Workflow
+
+### Step 1: Run Batch Segmentations
 
 1.  **Place Input Images:**
-    *   The script looks for images in the `images/` folder in the project root.
-    *   Ensure the image filenames specified in your `parameter_sets.json` exist in this folder.
+    *   Ensure images are in the `images/` folder (project root).
+    *   Image filenames must match those specified in `parameter_sets.json`.
 
-2.  **Configure Experiments in `parameter_sets.json`:**
-    *   A `parameter_sets.json` file in the project root defines the batch of experiments to run. If it doesn't exist, create one based on the example below.
-    *   Each object in the JSON array represents one segmentation experiment with its own set of parameters.
+2.  **Configure Experiments (`parameter_sets.json`):**
+    *   Create or edit `parameter_sets.json` in the project root. Each JSON object in the list defines one experiment.
     *   **Key parameters per experiment:**
-        *   `"experiment_id"`: (String) A unique name for the experiment. Output files will be saved in `results/<experiment_id>/`.
-        *   `"image_filename"`: (String) Filename of the image in the `images/` folder to process for this experiment.
-        *   `"MODEL_CHOICE"`: (String) Cellpose model to use (e.g., `"cyto3"`, `"cyto2"`, `"cyto"`, or a path to a custom model). Defaults to `"cyto3"` if omitted.
-        *   `"DIAMETER"`: (Number or `null`) Approximate cell diameter in pixels. Set to `null` or `0` for auto-estimation by Cellpose. Example: `30`.
-        *   `"FLOW_THRESHOLD"`: (Number or `null`) Cellpose flow threshold. Cellpose default (e.g., 0.4) is used if `null`. Lower values (e.g., `0.2`) might detect more cells with weaker flows.
-        *   `"MIN_SIZE"`: (Number or `null`) Minimum number of pixels for a mask. Cellpose default (e.g., 15) is used if `null`.
-        *   `"CELLPROB_THRESHOLD"`: (Number) Threshold for cell probability. Lower values (e.g., `-1.0`, `-2.0`) detect more/fainter cells. Defaults to `0.0`.
-        *   `"FORCE_GRAYSCALE"`: (Boolean) `true` to force grayscale processing (uses first channel); `false` to let Cellpose handle multi-channel images. Defaults to `true`.
-        *   `"USE_GPU"`: (Boolean) `true` to use GPU for this experiment; `false` to use CPU. Defaults to `false`.
-            *   **Important for GPU Users:** If any experiment has `"USE_GPU": true` and you have only one GPU, it is **highly recommended** to set `MAX_PARALLEL_PROCESSES = 1` at the top of `src/segmentation_pipeline.py` to run experiments sequentially and avoid GPU memory issues.
+        *   `"experiment_id"`: (String) Unique name for the experiment's results subfolder.
+        *   `"image_filename"`: (String) Image filename from the `images/` folder.
+        *   `"MODEL_CHOICE"`: (String) E.g., `"cyto3"`, `"cyto2"`, `"cyto"`.
+        *   `"DIAMETER"`: (Number or `null`) Cell diameter in pixels; `null` or `0` for auto-estimate.
+        *   `"FLOW_THRESHOLD"`: (Number or `null`) Cellpose flow threshold; `null` for default (e.g., 0.4).
+        *   `"MIN_SIZE"`: (Number or `null`) Minimum pixels per mask; `null` for default (e.g., 15).
+        *   `"CELLPROB_THRESHOLD"`: (Number) Cell probability threshold.
+        *   `"FORCE_GRAYSCALE"`: (Boolean) `true` for grayscale, `false` for Cellpose default channel handling.
+        *   `"USE_GPU"`: (Boolean) `true` to use GPU.
+            *   **GPU & Parallelism:** If any experiment uses GPU, set `MAX_PARALLEL_PROCESSES = 1` in `src/segmentation_pipeline.py` for stability on single-GPU systems.
 
-    *   **Example `parameter_sets.json` entry:**
-        ```json
-        {
-          "experiment_id": "my_gpu_experiment",
-          "image_filename": "sample_image.tif",
-          "MODEL_CHOICE": "cyto2",
-          "DIAMETER": 35,
-          "FLOW_THRESHOLD": 0.3,
-          "MIN_SIZE": 20,
-          "CELLPROB_THRESHOLD": -0.5,
-          "FORCE_GRAYSCALE": true,
-          "USE_GPU": true
-        }
-        ```
-        (Your `parameter_sets.json` will be a list `[` ... `]` of such objects).
+3.  **Configure Parallel Processing (Optional for Segmentation):**
+    *   Edit `MAX_PARALLEL_PROCESSES` at the top of `src/segmentation_pipeline.py`.
 
-3.  **Configure Parallel Processing (Optional):**
-    *   Open `src/segmentation_pipeline.py`.
-    *   At the top, you can adjust `MAX_PARALLEL_PROCESSES`. It defaults to half your CPU cores.
-    *   **If using GPU for any experiment, set `MAX_PARALLEL_PROCESSES = 1` for stability on single-GPU systems.**
+4.  **Execute Segmentation Pipeline:**
+    From the project root (with virtual environment active):
+    ```bash
+    python src/segmentation_pipeline.py
+    ```
+    This populates `results/<experiment_id>/` with `_mask.tif` and `_coords.json` files.
 
-4.  **Run the Segmentation Pipeline:**
-    *   Ensure your virtual environment is activated.
-    *   Navigate to the project's root directory.
-    *   Execute the script:
-        ```bash
-        python src/segmentation_pipeline.py
-        ```
-    The script will process each set of parameters defined in `parameter_sets.json`.
+### Step 2: Generate Summary Image and Analysis
 
-5.  **Outputs:**
-    *   A base `results/` folder will be created.
-    *   Inside `results/`, a subfolder for each `experiment_id` will contain:
-        *   `image_filename_mask.tif`: Integer-labeled segmentation mask. (View with ImageJ/Fiji).
-        *   `image_filename_coords.json`: Cell coordinates.
-        *   `image_filename_overlay.png`: Visual overlay for quick feedback.
-        *   `error_log.txt` (only if an error occurred for that specific experiment).
+1.  **Run Summary Script:**
+    After the segmentation pipeline completes for all desired experiments:
+    ```bash
+    python src/create_summary_image.py
+    ```
+
+2.  **View Outputs:**
+    *   **`results/segmentation_summary_consistency.png`**: The main visual output showing all experiments with consistency-colored cells and Dice scores.
+    *   Individual experiment folders in `results/` will contain the raw masks and coordinate files.
+    *   Console output from the summary script will also list Dice scores.
 
 ## Troubleshooting
 
-*   **No cells segmented / Black mask output:**
-    *   Adjust `CELLPROB_THRESHOLD`, `DIAMETER`, `FLOW_THRESHOLD`, and `MIN_SIZE` in `parameter_sets.json`.
-    *   Experiment with `MODEL_CHOICE`.
-    *   Toggle `FORCE_GRAYSCALE`.
-    *   Check image quality and contrast.
-    *   Use ImageJ/Fiji for `_mask.tif` files.
-*   **GPU errors / Out of memory:**
-    *   If using GPU (`"USE_GPU": true`), ensure `MAX_PARALLEL_PROCESSES = 1` in `src/segmentation_pipeline.py` if you have a single GPU.
-    *   Ensure CUDA drivers and PyTorch with GPU support are correctly installed in your environment.
-*   **Errors during execution:**
-    *   Check console output and any `error_log.txt` files in experiment subfolders.
-    *   Ensure dependencies are installed.
+*   **Segmentation Errors (`segmentation_pipeline.py`):**
+    *   Check `error_log.txt` in the specific `results/<experiment_id>/` folder.
+    *   Review console output for messages.
+    *   Ensure parameters in `parameter_sets.json` are valid.
+*   **Summary Image Issues (`create_summary_image.py`):**
+    *   Ensure `_mask.tif` files exist for all experiments listed in `parameter_sets.json`.
+    *   Verify original images are accessible in the `images/` folder.
+*   **GPU Errors:**
+    *   If using GPU (`"USE_GPU": true`), set `MAX_PARALLEL_PROCESSES = 1` in `segmentation_pipeline.py` for single-GPU systems.
+    *   Confirm CUDA and PyTorch GPU setup.
+*   **No Cells Segmented (in `_mask.tif`):**
+    *   Adjust `CELLPROB_THRESHOLD`, `DIAMETER`, `FLOW_THRESHOLD`, `MIN_SIZE` in `parameter_sets.json`.
+    *   Try different `MODEL_CHOICE` or `FORCE_GRAYSCALE` settings.
 
