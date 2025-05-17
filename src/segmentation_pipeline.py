@@ -7,7 +7,7 @@ import traceback
 import time
 from multiprocessing import Pool, cpu_count, freeze_support
 import re
-from src.tile_large_image import tile_image # Import the tiling function
+from .tile_large_image import tile_image # CORRECTED: Relative import
 
 # --- Global Configuration ---
 IMAGE_DIR_BASE = "images" # Original images here
@@ -42,7 +42,8 @@ def segment_image_worker(job_params_dict):
             error_msg = f"[{experiment_id_final}] Error creating output dir {output_dir_job}: {e}"
             print(error_msg); return {**job_params_dict, "status": "failed", "error_message": error_msg}
 
-    print(f"--- [{experiment_id_final}] Starting (Processing Unit: {processing_unit_name}) ---")
+    print(f"
+--- [{experiment_id_final}] Starting (Processing Unit: {processing_unit_name}) ---")
     log_diameter_eff = 0 if diameter_val is None else diameter_val
     log_flow_eff = 'Cellpose default' if flow_thresh_val is None else flow_thresh_val
     log_min_size_eff = 15 if min_size_val is None else min_size_val
@@ -102,7 +103,8 @@ def segment_image_worker(job_params_dict):
         return {**job_params_dict, "status": "succeeded", "num_cells": int(num_cells), "output_mask_path": mask_filename}
 
     except Exception as e:
-        error_full_msg = f"Error in {experiment_id_final} (Unit: {processing_unit_name}): {e} {traceback.format_exc()}"
+        error_full_msg = f"Error in {experiment_id_final} (Unit: {processing_unit_name}): {e}
+{traceback.format_exc()}"
         print(error_full_msg)
         if os.path.exists(output_dir_job):
             with open(os.path.join(output_dir_job, "error_log.txt"), "w") as f_err: f_err.write(error_full_msg)
@@ -153,7 +155,6 @@ if __name__ == "__main__":
         tiling_cfg = img_config.get("tiling_config")
         if tiling_cfg and tiling_cfg.get("tile_size"):
             print(f"Tiling configured for {original_image_filename} (Image ID: {image_id_from_config}).")
-            # Define a specific output directory for tiles of this original image
             tile_storage_dir = os.path.join(TILED_IMAGE_OUTPUT_BASE, image_id_from_config + "_tiles")
             tile_prefix = tiling_cfg.get("tile_output_prefix_base", clean_filename_for_dir(original_image_filename) + "_tile")
             
@@ -163,7 +164,7 @@ if __name__ == "__main__":
 
             tile_manifest_data = tile_image(
                 original_image_path, 
-                tile_storage_dir, # Tiles are saved here
+                tile_storage_dir, 
                 tile_size=tiling_cfg["tile_size"],
                 overlap=tiling_cfg.get("overlap", 100),
                 output_prefix=tile_prefix
@@ -176,7 +177,7 @@ if __name__ == "__main__":
                         "original_image_id": image_id_from_config,
                         "original_image_filename": original_image_filename,
                         "is_tile": True,
-                        "tile_info": tile_info # Store full tile info if needed later for stitching
+                        "tile_info": tile_info
                     })
                 print(f"Generated {len(tile_manifest_data['tiles'])} tiles for {original_image_filename}.")
             else:
@@ -212,7 +213,7 @@ if __name__ == "__main__":
                 if img_proc_info["is_tile"]:
                     job["tile_details_for_log"] = img_proc_info["tile_info"]
 
-                cleaned_processing_unit_name = clean_filename_for_dir(img_proc_info["name"]) # Used for unique folder part
+                cleaned_processing_unit_name = clean_filename_for_dir(img_proc_info["name"]) 
                 if img_proc_info["is_tile"]:
                     job["experiment_id_final"] = f"{img_proc_info['original_image_id']}_{param_set_id}_{cleaned_processing_unit_name}"
                 else: 
@@ -234,7 +235,9 @@ if __name__ == "__main__":
     num_processes_to_use = MAX_PARALLEL_PROCESSES
     any_gpu_run = any(job.get("USE_GPU", False) for job in all_jobs_to_create)
     if any_gpu_run and MAX_PARALLEL_PROCESSES > 1:
-        print("WARNING: GPU usage with MAX_PARALLEL_PROCESSES > 1. Consider setting to 1 for stability.")
+        print("
+WARNING: GPU usage with MAX_PARALLEL_PROCESSES > 1. Consider setting to 1 for stability.
+")
 
     print(f"Using up to {num_processes_to_use} parallel processes.")
     start_time_all = time.time()
@@ -249,11 +252,14 @@ if __name__ == "__main__":
 
     try:
         with open(RUN_LOG_FILE, 'w') as f_log: json.dump(job_results, f_log, indent=4)
-        print(f"Run log saved to: {RUN_LOG_FILE}")
-    except Exception as e: print(f"Error saving run log: {e}")
+        print(f"
+Run log saved to: {RUN_LOG_FILE}")
+    except Exception as e: print(f"
+Error saving run log: {e}")
 
     end_time_all = time.time()
-    print(f"--- All Jobs Finished ---")
+    print(f"
+--- All Jobs Finished ---")
     total_duration = end_time_all - start_time_all
     print(f"Total processing time for {len(all_jobs_to_create)} jobs: {total_duration:.2f} seconds.")
 
@@ -261,6 +267,7 @@ if __name__ == "__main__":
     for result in job_results:
         if result.get("status") == "succeeded": successful_runs += 1
         else: failed_runs += 1
-    print(f"Summary: {successful_runs} successful, {failed_runs} failed out of {len(all_jobs_to_create)} jobs.")
+    print(f"
+Summary: {successful_runs} successful, {failed_runs} failed out of {len(all_jobs_to_create)} jobs.")
     if failed_runs > 0: print("Check experiment folders and 'error_log.txt' for details.")
 
