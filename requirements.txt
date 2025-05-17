@@ -9,3 +9,6 @@ opencv-python
 scikit-image
 matplotlib
 tifffile
+pandas
+scipy
+pyarrow
