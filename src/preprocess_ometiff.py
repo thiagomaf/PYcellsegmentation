@@ -7,18 +7,6 @@ import traceback
 def get_plane_from_multidim_data(image_data, axes_order, target_channel=None, target_z=None, target_time=None):
     """
     Extracts a 2D plane (Y, X) from multi-dimensional image data based on axes order.
-    This is a helper function. For complex OME-TIFFs, using libraries like aicsimageio
-    that handle dimension parsing more abstractly might be beneficial.
-    
-    Args:
-        image_data (np.ndarray): The raw multi-dimensional array.
-        axes_order (str): String describing the axes order (e.g., 'ZYX', 'CZYX', 'XYZCT'). Case-insensitive.
-        target_channel (int, optional): Index of the channel to extract.
-        target_z (int, optional): Index of the Z-plane to extract.
-        target_time (int, optional): Index of the time point to extract.
-
-    Returns:
-        np.ndarray: A 2D NumPy array (Y, X) or None if extraction fails.
     """
     axes = axes_order.upper()
     shape = image_data.shape
@@ -41,7 +29,7 @@ def get_plane_from_multidim_data(image_data, axes_order, target_channel=None, ta
         print(f"Warning: Target time point {target_time} specified, but 'T' not in axes '{axes}'. Ignoring target_time.")
         target_time = None
 
-    slicing_ G = [slice(None)] * ndim 
+    slicing_tuple = [slice(None)] * ndim # CORRECTED VARIABLE NAME
 
     idx_y = -1
     idx_x = -1
@@ -54,21 +42,21 @@ def get_plane_from_multidim_data(image_data, axes_order, target_channel=None, ta
 
     for i, axis_char in enumerate(axes):
         if axis_char == 'C':
-            slicing_ G[i] = target_channel if target_channel is not None else 0 
+            slicing_tuple[i] = target_channel if target_channel is not None else 0 
         elif axis_char == 'Z':
-            slicing_ G[i] = target_z if target_z is not None else 0 
+            slicing_tuple[i] = target_z if target_z is not None else 0 
         elif axis_char == 'T':
-            slicing_ G[i] = target_time if target_time is not None else 0 
+            slicing_tuple[i] = target_time if target_time is not None else 0 
         elif axis_char in ('Y', 'X'):
-            slicing_ G[i] = slice(None) 
+            slicing_tuple[i] = slice(None) 
         else: 
             print(f"Warning: Unknown axis '{axis_char}' in '{axes}'. Taking first slice for this dimension.")
-            slicing_ G[i] = 0
+            slicing_tuple[i] = 0
             
     try:
-        selected_plane = image_data[tuple(slicing_ G)]
+        selected_plane = image_data[tuple(slicing_tuple)] # CORRECTED VARIABLE NAME
     except IndexError as e:
-        print(f"Error during slicing with {tuple(slicing_ G)}: {e}")
+        print(f"Error during slicing with {tuple(slicing_tuple)}: {e}") # CORRECTED VARIABLE NAME
         return None
     
     squeezed_plane = selected_plane.squeeze()
@@ -78,16 +66,13 @@ def get_plane_from_multidim_data(image_data, axes_order, target_channel=None, ta
     else:
         print(f"Error: Extracted plane is not 2D after slicing and squeezing. Final shape: {squeezed_plane.shape}")
         print("  Original selected_plane shape before squeeze:", selected_plane.shape)
-        print("  Slicing tuple used:", tuple(slicing_ G))
+        print("  Slicing tuple used:", tuple(slicing_tuple)) # CORRECTED VARIABLE NAME
         return None
 
 
 def process_ome_tiff(ome_tiff_path, output_dir, series_index=0, 
                      channel_index=None, z_index=None, time_index=None, 
                      output_prefix="processed"): 
-    """
-    Processes an OME-TIFF file to extract and save a specific 2D plane.
-    """
     if not os.path.exists(ome_tiff_path):
         print(f"Error: Input OME-TIFF file not found: {ome_tiff_path}")
         return
