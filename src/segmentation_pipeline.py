@@ -66,7 +66,7 @@ def segment_image(image_path, output_dir):
     with open(coord_filename, 'w') as f:
         for i, (x, y) in enumerate(coordinates):
             f.write(f"Cell_{i+1},{x:.2f},{y:.2f}
-")
+") # Corrected line
     print(f"Cell coordinates saved to: {coord_filename}")
 
     return masks, coordinates
