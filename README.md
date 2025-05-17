@@ -41,6 +41,8 @@ This project provides a Python-based pipeline for segmenting cells in microscopy
     ```
 
 3.  **Activate the Virtual Environment:**
+    `Set-ExecutionPolicy Unrestricted -Scope Process`
+    
     *   Windows (CMD): `.venv\Scripts\activate`
     *   Windows (PowerShell): `.venv\Scripts\Activate.ps1`
     *   Linux/macOS: `source .venv/bin/activate`
