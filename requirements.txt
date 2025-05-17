@@ -7,3 +7,4 @@ flask
 cellpose
 opencv-python
 scikit-image
+matplotlib
