@@ -35,8 +35,7 @@ def segment_image_worker(params_dict):
             print(error_msg)
             return experiment_id, False, error_msg
     
-    print(f"
---- [{experiment_id}] Starting ---")
+    print(f"--- [{experiment_id}] Starting ---")
     print(f"[{experiment_id}] Image: {image_path}")
     print(f"[{experiment_id}] Parameters: Model={model_choice}, GPU={use_gpu_flag}, Grayscale={force_grayscale_flag}, "
           f"CellProb={cellprob_thresh}, Diameter={diameter_val if diameter_val is not None else 'auto'}, "
@@ -161,8 +160,7 @@ def segment_image_worker(params_dict):
         return experiment_id, True, f"Successfully processed. Found {num_cells} cells."
 
     except Exception as e:
-        error_full_msg = f"Error during experiment {experiment_id}: {e}
-{traceback.format_exc()}"
+        error_full_msg = f"Error during experiment {experiment_id}: {e}{traceback.format_exc()}"
         print(error_full_msg)
         if not os.path.exists(output_dir_experiment):
             try: os.makedirs(output_dir_experiment)
@@ -195,9 +193,7 @@ if __name__ == "__main__":
     num_processes_to_use = MAX_PARALLEL_PROCESSES
     any_gpu_run = any(params.get("USE_GPU", False) for params in parameter_sets)
     if any_gpu_run and MAX_PARALLEL_PROCESSES > 1:
-        print("
-WARNING: GPU usage detected with MAX_PARALLEL_PROCESSES > 1. Consider setting to 1 for stability on single GPU.
-")
+        print("WARNING: GPU usage detected with MAX_PARALLEL_PROCESSES > 1. Consider setting to 1 for stability on single GPU.")
 
     print(f"Using up to {num_processes_to_use} parallel processes.")
     start_time_all = time.time()
@@ -211,8 +207,7 @@ WARNING: GPU usage detected with MAX_PARALLEL_PROCESSES > 1. Consider setting to
         for params in parameter_sets: results_summary.append(segment_image_worker(params))
 
     end_time_all = time.time()
-    print(f"
---- All Experiments Finished ---")
+    print(f"--- All Experiments Finished ---")
     total_duration = end_time_all - start_time_all
     print(f"Total processing time for {len(parameter_sets)} experiments: {total_duration:.2f} seconds.")
     successful_runs = 0; failed_runs = 0
@@ -221,7 +216,6 @@ WARNING: GPU usage detected with MAX_PARALLEL_PROCESSES > 1. Consider setting to
         exp_id, success, message = res_tuple
         if success: print(f"Experiment {exp_id}: Succeeded. {message}"); successful_runs +=1
         else: print(f"Experiment {exp_id}: Failed. {message.splitlines()[0]}"); failed_runs +=1
-    print(f"
-Summary: {successful_runs} successful, {failed_runs} failed.")
+    print(f"Summary: {successful_runs} successful, {failed_runs} failed.")
     if failed_runs > 0: print("Check experiment folders and 'error_log.txt' for details.")
 
