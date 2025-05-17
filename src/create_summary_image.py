@@ -1,19 +1,24 @@
 import os
 import json
-import cv2
+import cv2 # For image loading and color conversion if needed
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.colors
 import math
+from cellpose import io # For loading masks consistently with how they were saved
 
 # --- Configuration ---
 PARAMETER_SETS_FILE = "parameter_sets.json"
+IMAGE_DIR_BASE = "images" # Base directory for original images
 RESULTS_DIR_BASE = "results"
-SUMMARY_IMAGE_FILENAME = "segmentation_summary_with_scores.png" # New filename
+SUMMARY_IMAGE_FILENAME = "segmentation_summary_consistency.png"
 IMAGES_PER_ROW = 3
-CONSENSUS_THRESHOLD = 0.5 # Pixels included in >50% of segmentations form the consensus
+CONSENSUS_THRESHOLD_FOR_DICE = 0.5 # Threshold for binarizing consensus map for Dice score calculation
+COLORMAP_NAME = 'RdYlGn' # Red (low consistency) to Yellow (mid) to Green (high consistency)
 
-PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) # This script is in src/
 PARAMETER_SETS_FILE_PATH = os.path.join(PROJECT_ROOT, PARAMETER_SETS_FILE)
+IMAGE_DIR_PATH = os.path.join(PROJECT_ROOT, IMAGE_DIR_BASE)
 RESULTS_DIR_PATH = os.path.join(PROJECT_ROOT, RESULTS_DIR_BASE)
 SUMMARY_IMAGE_SAVE_PATH = os.path.join(RESULTS_DIR_PATH, SUMMARY_IMAGE_FILENAME)
 
@@ -30,148 +35,213 @@ def load_parameter_sets(json_file_path):
         return None
 
 def calculate_dice_coefficient(mask1_binary, mask2_binary):
-    """Calculates the Dice coefficient between two binary masks."""
     intersection = np.sum(mask1_binary & mask2_binary)
     sum_masks = np.sum(mask1_binary) + np.sum(mask2_binary)
-    if sum_masks == 0: # Both masks are empty
-        return 1.0 if intersection == 0 else 0.0 # Perfect match if both empty, else 0
+    if sum_masks == 0: return 1.0 if intersection == 0 else 0.0
     return (2.0 * intersection) / sum_masks
 
-def create_summary_image(parameter_sets):
+def normalize_to_8bit(img_array):
+    """Normalizes an image array to 8-bit (0-255) for display."""
+    if img_array.dtype == np.uint8:
+        return img_array
+    
+    if np.issubdtype(img_array.dtype, np.floating):
+        img_min, img_max = np.min(img_array), np.max(img_array)
+        if img_max > img_min:
+            img_array = ((img_array - img_min) / (img_max - img_min) * 255.0)
+        else: # Flat float image
+            img_array = np.zeros_like(img_array) + 128 # Mid-gray
+    elif img_array.dtype == np.uint16:
+        # Scale based on max value of uint16 for consistent scaling across images if needed,
+        # or scale by actual max in image for better contrast of a single image.
+        # Using actual max for better individual image display.
+        img_actual_max = np.max(img_array)
+        if img_actual_max > 0:
+            img_array = (img_array / img_actual_max * 255.0)
+        else: # All zero
+            img_array = np.zeros_like(img_array)
+    else: # Other integer types
+        img_actual_max = np.max(img_array)
+        if img_actual_max > 0:
+            img_array = (img_array / img_actual_max * 255.0)
+        else: # All zero
+            img_array = np.zeros_like(img_array)
+            
+    return img_array.astype(np.uint8)
+
+
+def get_consistency_colors_for_mask(instance_mask, consensus_prob_map, colormap):
+    """
+    Generates an array of colors for each cell instance in instance_mask
+    based on its average consistency with the consensus_prob_map.
+    """
+    num_cells = instance_mask.max()
+    cell_colors_rgb = np.zeros((num_cells + 1, 3), dtype=np.uint8) # +1 for background color at index 0
+
+    if num_cells == 0:
+        return cell_colors_rgb # Return array of zeros if no cells
+
+    for i in range(1, num_cells + 1):
+        cell_pixels = (instance_mask == i)
+        if np.any(cell_pixels):
+            avg_consistency = np.mean(consensus_prob_map[cell_pixels]) # Score from 0 to 1
+            # Get RGBA color from colormap, convert to RGB 0-255
+            rgba_color = colormap(avg_consistency) 
+            cell_colors_rgb[i] = (np.array(rgba_color[:3]) * 255).astype(np.uint8)
+        # else, color remains black (0,0,0)
+    return cell_colors_rgb
+
+
+def create_summary_image_with_consistency_coloring(parameter_sets):
     if not parameter_sets:
         print("No parameter sets to process.")
         return
 
-    print("Loading all segmentation masks for consensus calculation...")
+    print("Loading all segmentation masks and original images...")
     all_masks_data = []
+    original_images_cache = {} # Cache for original images {image_filename: np.array}
     mask_shape = None
+    base_image_filename_for_consensus_display = None # To pick one original image for displaying consensus
 
     for i, params in enumerate(parameter_sets):
         experiment_id = params.get("experiment_id", f"unknown_exp_{i}")
-        image_filename_base = params.get("image_filename", "unknown_image.tif")
-        mask_filename = os.path.splitext(image_filename_base)[0] + "_mask.tif"
-        mask_path = os.path.join(RESULTS_DIR_PATH, experiment_id, mask_filename)
+        image_filename = params.get("image_filename", "unknown_image.tif")
+        
+        if base_image_filename_for_consensus_display is None:
+            base_image_filename_for_consensus_display = image_filename # Pick the first one
 
-        if os.path.exists(mask_path):
+        mask_filepath = os.path.join(RESULTS_DIR_PATH, experiment_id, os.path.splitext(image_filename)[0] + "_mask.tif")
+        original_image_path = os.path.join(IMAGE_DIR_PATH, image_filename)
+
+        # Load original image if not cached
+        if image_filename not in original_images_cache:
+            if os.path.exists(original_image_path):
+                try:
+                    orig_img_cv = cv2.imread(original_image_path, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
+                    if orig_img_cv is None: raise ValueError("cv2.imread returned None")
+                    original_images_cache[image_filename] = normalize_to_8bit(orig_img_cv)
+                    print(f"Loaded and normalized original image: {image_filename}")
+                except Exception as e:
+                    print(f"Error loading original image {original_image_path}: {e}. Skipping experiment {experiment_id}.")
+                    continue
+            else:
+                print(f"Original image {original_image_path} not found. Skipping experiment {experiment_id}.")
+                continue
+        
+        # Load mask
+        if os.path.exists(mask_filepath):
             try:
-                # Use cv2.imread for TIFF masks, ensuring it's loaded as is
-                mask = cv2.imread(mask_path, cv2.IMREAD_UNCHANGED) 
-                if mask is None:
-                    print(f"Warning: cv2.imread failed to load mask {mask_path}. Skipping.")
-                    continue
-                if mask_shape is None:
-                    mask_shape = mask.shape
+                mask = io.imread(mask_filepath) # Using cellpose.io for consistency
+                if mask_shape is None: mask_shape = mask.shape
                 elif mask.shape != mask_shape:
-                    print(f"Warning: Mask shape mismatch for {experiment_id} ({mask.shape}) vs expected ({mask_shape}). Skipping.")
+                    print(f"Shape mismatch for mask {experiment_id}. Skipping.")
                     continue
-                all_masks_data.append({"id": experiment_id, "mask": mask, "params": params})
+                all_masks_data.append({"id": experiment_id, "mask": mask, "image_filename": image_filename, "params": params})
             except Exception as e:
-                print(f"Error loading mask {mask_path}: {e}")
+                print(f"Error loading mask {mask_filepath} for {experiment_id}: {e}")
         else:
-            print(f"Warning: Mask file not found for {experiment_id} at {mask_path}. Skipping.")
+            print(f"Mask file not found for {experiment_id} at {mask_filepath}. Skipping.")
 
     if not all_masks_data:
-        print("No valid segmentation masks found to create a consensus or summary.")
+        print("No valid segmentation masks found.")
         return
-    
-    print(f"Loaded {len(all_masks_data)} segmentation masks.")
+    print(f"Loaded {len(all_masks_data)} segmentation masks for processing.")
 
-    # Create Consensus Mask
-    print("Generating consensus mask...")
+    # --- Create Consensus Probability Map ---
+    print("Generating consensus probability map...")
     consensus_accumulator = np.zeros(mask_shape, dtype=np.float32)
-    valid_masks_for_consensus = 0
-    for mask_data in all_masks_data:
-        binary_mask = (mask_data["mask"] > 0).astype(np.float32)
-        consensus_accumulator += binary_mask
-        valid_masks_for_consensus += 1
+    for data in all_masks_data:
+        consensus_accumulator += (data["mask"] > 0).astype(np.float32)
+    consensus_probability_map = consensus_accumulator / len(all_masks_data)
+    binary_consensus_for_dice = (consensus_probability_map > CONSENSUS_THRESHOLD_FOR_DICE).astype(np.uint8)
+    print("Consensus probability map generated.")
+
+    # --- Calculate Dice scores and prepare plot data ---
+    plot_data = []
+    for data in all_masks_data:
+        exp_id = data["id"]
+        individual_binary_mask = (data["mask"] > 0).astype(np.uint8)
+        dice_score = calculate_dice_coefficient(individual_binary_mask, binary_consensus_for_dice)
+        plot_data.append({
+            "id": exp_id,
+            "mask": data["mask"],
+            "image_filename": data["image_filename"],
+            "dice": dice_score
+        })
+        print(f"Experiment {exp_id}: Dice against consensus = {dice_score:.4f}")
     
-    if valid_masks_for_consensus == 0:
-        print("No masks were valid for consensus generation.")
-        return
-
-    consensus_probability_map = consensus_accumulator / valid_masks_for_consensus
-    binary_consensus_mask = (consensus_probability_map > CONSENSUS_THRESHOLD).astype(np.uint8)
-    print(f"Consensus mask generated using threshold > {CONSENSUS_THRESHOLD}.")
-
-    # Calculate Dice scores for each mask against the consensus
-    experiment_scores = {}
-    for mask_data in all_masks_data:
-        individual_binary_mask = (mask_data["mask"] > 0).astype(np.uint8)
-        dice_score = calculate_dice_coefficient(individual_binary_mask, binary_consensus_mask)
-        experiment_scores[mask_data["id"]] = dice_score
-        print(f"Experiment {mask_data['id']}: Dice score against consensus = {dice_score:.4f}")
-
-    # Plotting
-    num_experiments_to_plot = len(all_masks_data)
+    # --- Plotting ---
+    # Optionally add consensus probability map to the plot items
+    num_plots = len(plot_data) # +1 if plotting consensus map
     cols = IMAGES_PER_ROW
-    rows = math.ceil(num_experiments_to_plot / cols) 
+    rows = math.ceil(num_plots / cols)
 
-    fig, axes = plt.subplots(rows, cols, figsize=(cols * 6, rows * 6))
-    if num_experiments_to_plot == 0 : # Should be caught by earlier checks but defensive
-        print("No experiments to plot.")
-        if isinstance(axes, plt.Axes) : fig.delaxes(axes) # Delete single axis if it exists
-        plt.close(fig)
-        return
-        
-    if num_experiments_to_plot == 1 and not isinstance(axes, np.ndarray): # Single subplot case
-        axes = np.array([axes])
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * 5.5, rows * 5.5)) # Adjusted figsize
+    if num_plots == 0 : print("No data to plot."); plt.close(fig); return
+    if num_plots == 1 and not isinstance(axes, np.ndarray): axes = np.array([axes])
     axes = axes.flatten()
 
-    for i, mask_data in enumerate(all_masks_data):
-        experiment_id = mask_data["id"]
-        params = mask_data["params"]
-        image_filename_base = params.get("image_filename", "unknown_image.tif")
-        
-        overlay_filename = os.path.splitext(image_filename_base)[0] + "_overlay.png"
-        overlay_path = os.path.join(RESULTS_DIR_PATH, experiment_id, overlay_filename)
-        
-        score = experiment_scores.get(experiment_id, "N/A")
-        title = f"{experiment_id}Dice: {score:.3f}" if isinstance(score, float) else f"{experiment_id}Dice: N/A"
+    colormap = plt.cm.get_cmap(COLORMAP_NAME)
 
+    for i, data in enumerate(plot_data):
         ax = axes[i]
-        ax.set_title(title, fontsize=9)
+        original_img_8bit = original_images_cache[data["image_filename"]]
+        
+        # Ensure original_img_8bit is 2D for grayscale or 3D (RGB) for color before passing to mask_overlay
+        # For consistency coloring, we need to prepare the base image correctly.
+        # cellpose.plot.mask_overlay expects a 2D image (grayscale) or a 3D image (RGB)
+        # If original_img_8bit is BGR from cv2, convert to RGB or Grayscale
+        
+        img_display_for_overlay = original_img_8bit.copy()
+        if img_display_for_overlay.ndim == 3 and img_display_for_overlay.shape[-1] == 3: # BGR
+            img_display_for_overlay = cv2.cvtColor(img_display_for_overlay, cv2.COLOR_BGR2RGB)
+        elif img_display_for_overlay.ndim == 2: # Already Grayscale
+            pass # Good for mask_overlay
+        else: # Unexpected format, try to make it grayscale
+            print(f"Warning: Unexpected image format for overlay for {data['id']}. Shape: {img_display_for_overlay.shape}. Attempting grayscale.")
+            if img_display_for_overlay.ndim > 2: img_display_for_overlay = img_display_for_overlay[:,:,0]
+            # ensure it's uint8
+            if img_display_for_overlay.dtype != np.uint8 : img_display_for_overlay = normalize_to_8bit(img_display_for_overlay)
+
+
+        cell_specific_colors = get_consistency_colors_for_mask(data["mask"], consensus_probability_map, colormap)
+        
+        # plot.mask_overlay will apply these colors to the outlines or filled masks
+        # Ensure the number of colors matches the number of cells in data["mask"]
+        # The colors array should be (max_mask_id + 1, 3)
+        
+        overlay_img_rgb = plot.mask_overlay(img_display_for_overlay, data["mask"], colors=cell_specific_colors)
+        
+        ax.imshow(overlay_img_rgb)
+        ax.set_title(f"{data['id']}\nDice: {data['dice']:.3f}", fontsize=9)
         ax.axis('off')
 
-        if os.path.exists(overlay_path):
-            try:
-                img_bgr = cv2.imread(overlay_path)
-                if img_bgr is not None:
-                    img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
-                    ax.imshow(img_rgb)
-                else:
-                    ax.text(0.5, 0.5, 'Overlay Not Loaded', ha='center', va='center', transform=ax.transAxes, fontsize=8)
-            except Exception as e:
-                ax.text(0.5, 0.5, 'Error Loading Overlay', ha='center', va='center', transform=ax.transAxes, fontsize=8)
-                print(f"Error loading or displaying overlay {overlay_path} for {experiment_id}: {e}")
-        else:
-            ax.text(0.5, 0.5, 'Overlay Not Found', ha='center', va='center', transform=ax.transAxes, fontsize=8)
-            print(f"Warning: Overlay image not found for {experiment_id} at {overlay_path}")
-
-    for j in range(num_experiments_to_plot, len(axes)):
+    # Hide unused subplots
+    for j in range(num_plots, len(axes)):
         fig.delaxes(axes[j])
 
-    plt.tight_layout(pad=3.0, h_pad=3.0, w_pad=2.0)
+    plt.tight_layout(pad=2.5, h_pad=2.5, w_pad=1.5) # Adjusted padding
     
     if not os.path.exists(RESULTS_DIR_PATH):
         try: os.makedirs(RESULTS_DIR_PATH)
         except OSError as e: print(f"Error creating base results dir for summary: {RESULTS_DIR_PATH}: {e}"); return
 
     try:
-        plt.savefig(SUMMARY_IMAGE_SAVE_PATH, dpi=150)
-        print(f"Summary image with scores saved to: {SUMMARY_IMAGE_SAVE_PATH}")
+        plt.savefig(SUMMARY_IMAGE_SAVE_PATH, dpi=120) # Adjusted DPI
+        print(f"Summary image with consistency colors saved to: {SUMMARY_IMAGE_SAVE_PATH}")
     except Exception as e:
         print(f"Error saving summary image: {e}")
     
     plt.close(fig)
 
+
 if __name__ == "__main__":
-    print("Creating summary image with consensus scores...")
+    print("Creating summary image with consistency-colored overlays and Dice scores...")
     print(f"Looking for parameter sets file at: {PARAMETER_SETS_FILE_PATH}")
     print(f"Base results directory is: {RESULTS_DIR_PATH}")
 
     loaded_params = load_parameter_sets(PARAMETER_SETS_FILE_PATH)
     if loaded_params:
-        create_summary_image(loaded_params)
+        create_summary_image_with_consistency_coloring(loaded_params)
     else:
         print("Could not load parameter sets. Exiting summary creation.")
-

@@ -1,8 +1,8 @@
 import os
 os.environ['KMP_DUPLICATE_LIB_OK']='True' # Must be before other imports that might use OpenMP
-import cv2
+# cv2 is not directly needed here anymore if not creating overlays
 import numpy as np
-from cellpose import models, io, plot
+from cellpose import models, io # cellpose.plot is removed
 import json
 import traceback # For detailed error printing
 import time
@@ -35,7 +35,7 @@ def segment_image_worker(params_dict):
             print(error_msg)
             return experiment_id, False, error_msg
     
-    print(f"--- [{experiment_id}] Starting ---")
+    print(f"\n--- [{experiment_id}] Starting ---")
     print(f"[{experiment_id}] Image: {image_path}")
     print(f"[{experiment_id}] Parameters: Model={model_choice}, GPU={use_gpu_flag}, Grayscale={force_grayscale_flag}, "
           f"CellProb={cellprob_thresh}, Diameter={diameter_val if diameter_val is not None else 'auto'}, "
@@ -75,12 +75,10 @@ def segment_image_worker(params_dict):
         if force_grayscale_flag:
             eval_params["channels"] = [0,0]
 
-        # Corrected f-string for current_params_info
         diam_log = 'auto' if 'diameter' not in eval_params else eval_params['diameter']
         flow_log = 'default' if 'flow_threshold' not in eval_params else eval_params['flow_threshold']
         min_size_log = 'default' if 'min_size' not in eval_params else eval_params['min_size']
         channels_log = '[0,0]' if 'channels' in eval_params else 'Cellpose default'
-        
         current_params_info = (
             f"cellprob={eval_params['cellprob_threshold']}, "
             f"diam={diam_log}, flow={flow_log}, "
@@ -97,48 +95,12 @@ def segment_image_worker(params_dict):
              elif hasattr(model, 'diam_mean'):
                  print(f"[{experiment_id}] Model's mean training diameter (model.diam_mean): {model.diam_mean:.2f}")
 
+        # Save segmentation mask (integer labels)
         mask_filename = os.path.join(output_dir_experiment, os.path.splitext(image_filename)[0] + "_mask.tif")
         io.imsave(mask_filename, masks.astype(np.uint16))
         print(f"[{experiment_id}] Segmentation mask saved to: {mask_filename}")
 
-        overlay_filename_rel = os.path.splitext(image_filename)[0] + "_overlay.png"
-        overlay_filename_abs = os.path.join(output_dir_experiment, overlay_filename_rel)
-        print(f"[{experiment_id}] Attempting to create overlay for: {image_path}")
-        
-        img_for_display_cv = cv2.imread(image_path, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
-        img_for_display_normalized = img_for_display_cv.copy() if img_for_display_cv is not None else img_for_cellpose.copy()
-        
-        if img_for_display_normalized.dtype == np.uint16:
-            img_max_val = np.iinfo(np.uint16).max
-            img_for_display_normalized = (img_for_display_normalized / img_max_val * 255.0).astype(np.uint8) if img_max_val > 0 else img_for_display_normalized.astype(np.uint8)
-        elif img_for_display_normalized.dtype not in [np.uint8, np.float32, np.float64]:
-             img_actual_max = np.max(img_for_display_normalized)
-             img_for_display_normalized = (img_for_display_normalized / img_actual_max * 255.0).astype(np.uint8) if img_actual_max > 0 else np.zeros_like(img_for_display_normalized, dtype=np.uint8)
-        elif np.issubdtype(img_for_display_normalized.dtype, np.floating):
-            img_min, img_max = np.min(img_for_display_normalized), np.max(img_for_display_normalized)
-            img_for_display_normalized = ((img_for_display_normalized - img_min) / (img_max - img_min) * 255.0).astype(np.uint8) if img_max > img_min else (np.zeros_like(img_for_display_normalized) + 128).astype(np.uint8)
-        
-        img_to_plot_for_overlay = None
-        if force_grayscale_flag:
-            img_to_plot_for_overlay = cv2.cvtColor(img_for_display_normalized, cv2.COLOR_BGR2GRAY) if img_for_display_normalized.ndim == 3 and img_for_display_normalized.shape[-1] >= 3 else img_for_display_normalized
-        else:
-            if img_for_display_normalized.ndim == 2: img_to_plot_for_overlay = cv2.cvtColor(img_for_display_normalized, cv2.COLOR_GRAY2BGR)
-            elif img_for_display_normalized.ndim == 3 and img_for_display_normalized.shape[-1] == 4: img_to_plot_for_overlay = cv2.cvtColor(img_for_display_normalized, cv2.COLOR_BGRA2BGR)
-            elif img_for_display_normalized.ndim == 3 and img_for_display_normalized.shape[-1] == 3: img_to_plot_for_overlay = img_for_display_normalized
-            else:
-                current_img = img_for_display_normalized
-                if current_img.ndim > 2 : img_to_plot_for_overlay = current_img[:,:,0]
-                else : img_to_plot_for_overlay = current_img
-                if img_to_plot_for_overlay.ndim == 3: img_to_plot_for_overlay = cv2.cvtColor(img_to_plot_for_overlay, cv2.COLOR_BGR2GRAY)
-        
-        if img_to_plot_for_overlay is not None:
-            overlay_input_img_rgb = cv2.cvtColor(img_to_plot_for_overlay, cv2.COLOR_BGR2RGB) if img_to_plot_for_overlay.ndim == 3 and img_to_plot_for_overlay.shape[-1] == 3 else img_to_plot_for_overlay
-            overlay_rgb_output = plot.mask_overlay(overlay_input_img_rgb, masks)
-            overlay_bgr_to_save = cv2.cvtColor(overlay_rgb_output, cv2.COLOR_RGB2BGR)
-            cv2.imwrite(overlay_filename_abs, overlay_bgr_to_save)
-            print(f"[{experiment_id}] Overlay image saved to: {overlay_filename_abs}")
-        else:
-            print(f"[{experiment_id}] Error: Image for overlay plotting is None. Skipping overlay.")
+        # OVERLAY LOGIC REMOVED FROM HERE
 
         num_cells = masks.max()
         print(f"[{experiment_id}] Found {num_cells} cells.")
@@ -160,62 +122,90 @@ def segment_image_worker(params_dict):
         return experiment_id, True, f"Successfully processed. Found {num_cells} cells."
 
     except Exception as e:
-        error_full_msg = f"Error during experiment {experiment_id}: {e}{traceback.format_exc()}"
+        error_full_msg = f"Error during experiment {experiment_id}: {e}\n{traceback.format_exc()}"
         print(error_full_msg)
         if not os.path.exists(output_dir_experiment):
             try: os.makedirs(output_dir_experiment)
-            except OSError: pass
-        if os.path.exists(output_dir_experiment):
+            except OSError: pass # Silently ignore if dir creation fails here, error is already logged
+        if os.path.exists(output_dir_experiment): # Check again before writing error log
             error_log_file = os.path.join(output_dir_experiment, "error_log.txt")
             with open(error_log_file, "w") as f_err: f_err.write(error_full_msg)
             print(f"[{experiment_id}] Detailed error saved to {error_log_file}")
         return experiment_id, False, error_full_msg
 
+
 if __name__ == "__main__":
-    freeze_support()
+    freeze_support() # Recommended for multiprocessing on Windows when bundled
+
     if not os.path.exists(IMAGE_DIR_BASE):
         try: os.makedirs(IMAGE_DIR_BASE); print(f"Created base image directory: {IMAGE_DIR_BASE}.")
-        except OSError as e: print(f"Fatal: Could not create {IMAGE_DIR_BASE}: {e}"); exit()
+        except OSError as e: print(f"Fatal: Could not create base image directory {IMAGE_DIR_BASE}: {e}"); exit()
+    
     if not os.path.exists(RESULTS_DIR_BASE):
         try: os.makedirs(RESULTS_DIR_BASE); print(f"Created base results directory: {RESULTS_DIR_BASE}.")
-        except OSError as e: print(f"Fatal: Could not create {RESULTS_DIR_BASE}: {e}"); exit()
+        except OSError as e: print(f"Fatal: Could not create base results directory {RESULTS_DIR_BASE}: {e}"); exit()
 
     param_file = "parameter_sets.json"
-    if not os.path.exists(param_file): print(f"Error: Parameter file '{param_file}' not found."); exit()
+    if not os.path.exists(param_file):
+        print(f"Error: Parameter configuration file '{param_file}' not found in project root.")
+        exit()
+
     parameter_sets = []
     try:
-        with open(param_file, 'r') as f: parameter_sets = json.load(f)
-    except Exception as e: print(f"Error reading/parsing {param_file}: {e}"); exit()
+        with open(param_file, 'r') as f:
+            parameter_sets = json.load(f)
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON from {param_file}: {e}")
+        exit()
+    except Exception as e:
+        print(f"Error reading {param_file}: {e}")
+        exit()
 
-    if not parameter_sets: print("No parameter sets found in JSON file."); exit()
+    if not parameter_sets:
+        print("No parameter sets found in JSON file or file is empty.")
+        exit()
+
     print(f"Found {len(parameter_sets)} parameter sets to process.")
     
     num_processes_to_use = MAX_PARALLEL_PROCESSES
+    
     any_gpu_run = any(params.get("USE_GPU", False) for params in parameter_sets)
     if any_gpu_run and MAX_PARALLEL_PROCESSES > 1:
-        print("WARNING: GPU usage detected with MAX_PARALLEL_PROCESSES > 1. Consider setting to 1 for stability on single GPU.")
+        print("\nWARNING: GPU usage detected with MAX_PARALLEL_PROCESSES > 1. Consider setting to 1 for stability on single GPU.\n")
+        # num_processes_to_use = 1 # Uncomment to force sequential if GPU is used
 
     print(f"Using up to {num_processes_to_use} parallel processes.")
     start_time_all = time.time()
-    results_summary = []
 
+    results_summary = []
     if num_processes_to_use > 1 and len(parameter_sets) > 1 :
         with Pool(processes=num_processes_to_use) as pool:
             results_summary = pool.map(segment_image_worker, parameter_sets)
     else:
-        print("Running experiments sequentially.")
-        for params in parameter_sets: results_summary.append(segment_image_worker(params))
+        print("Running experiments sequentially (MAX_PARALLEL_PROCESSES=1 or only 1 experiment).")
+        for params in parameter_sets:
+            results_summary.append(segment_image_worker(params))
 
     end_time_all = time.time()
-    print(f"--- All Experiments Finished ---")
+    print(f"\n--- All Experiments Finished ---")
     total_duration = end_time_all - start_time_all
     print(f"Total processing time for {len(parameter_sets)} experiments: {total_duration:.2f} seconds.")
-    successful_runs = 0; failed_runs = 0
-    for res_tuple in results_summary:
-        if res_tuple is None: failed_runs +=1; print("Error: Worker returned None."); continue
-        exp_id, success, message = res_tuple
-        if success: print(f"Experiment {exp_id}: Succeeded. {message}"); successful_runs +=1
-        else: print(f"Experiment {exp_id}: Failed. {message.splitlines()[0]}"); failed_runs +=1
-    print(f"Summary: {successful_runs} successful, {failed_runs} failed.")
-    if failed_runs > 0: print("Check experiment folders and 'error_log.txt' for details.")
 
+    successful_runs = 0
+    failed_runs = 0
+    for res_tuple in results_summary:
+        if res_tuple is None: 
+            print("Error: A worker returned None (unexpected).")
+            failed_runs +=1
+            continue
+        exp_id, success, message = res_tuple
+        if success:
+            print(f"Experiment {exp_id}: Succeeded. {message}")
+            successful_runs +=1
+        else:
+            print(f"Experiment {exp_id}: Failed. {message.splitlines()[0]}") # Print first line of error
+            failed_runs +=1
+    
+    print(f"\nSummary: {successful_runs} successful, {failed_runs} failed.")
+    if failed_runs > 0:
+        print("Check individual experiment folders and 'error_log.txt' files for details on failures.")
