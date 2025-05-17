@@ -1,5 +1,6 @@
 import os
-import cv2
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
+import cv2 # Will be imported if opencv-python is installed
 import numpy as np
 from cellpose import models, io
 
@@ -19,19 +20,25 @@ def segment_image(image_path, output_dir):
     """
     if not os.path.exists(image_path):
         print(f"Error: Image not found at {image_path}")
-        return
+        return None, None
 
     print(f"Loading image: {image_path}")
-    # Load image using OpenCV, then Cellpose's io.imread
-    # OpenCV is good for general image reading, Cellpose's io might have specific optimizations
-    img = io.imread(image_path)
+    try:
+        img = io.imread(image_path)
+    except Exception as e:
+        print(f"Error loading image with cellpose.io.imread: {e}")
+        return None, None
 
     # Initialize Cellpose model
     # model_type='cyto' or model_type='nuclei'
     # 'cyto' is for cytoplasm segmentation, 'nuclei' for nuclei
     # You can also specify a pre-trained model path
     print("Initializing Cellpose model (cyto)...")
-    model = models.Cellpose(gpu=False, model_type='cyto') # Set gpu=True if you have a compatible GPU
+    try:
+        model = models.Cellpose(gpu=False, model_type='cyto') # Set gpu=True if you have a compatible GPU
+    except Exception as e:
+        print(f"Error initializing Cellpose model: {e}")
+        return None, None
 
     # Run segmentation
     # channels: [0,0] for grayscale, [1,2] for R=cytoplasm, G=nucleus, [2,1] for R=nucleus, G=cytoplasm
@@ -39,35 +46,45 @@ def segment_image(image_path, output_dir):
     # For a typical grayscale TIFF, channels=[0,0] should work.
     # If your TIFF has a specific channel for cell signal, adjust accordingly.
     print("Running Cellpose segmentation...")
-    masks, flows, styles, diams = model.eval(img, diameter=None, channels=[0,0], flow_threshold=None, cellprob_threshold=0.0)
-    # diameter=None lets Cellpose estimate the diameter.
-    # flow_threshold and cellprob_threshold can be tuned for sensitivity.
+    try:
+        masks, flows, styles, diams = model.eval(img, diameter=None, channels=[0,0], flow_threshold=None, cellprob_threshold=0.0)
+        # diameter=None lets Cellpose estimate the diameter.
+        # flow_threshold and cellprob_threshold can be tuned for sensitivity.
+    except Exception as e:
+        print(f"Error during Cellpose model evaluation: {e}")
+        return None, None
 
     # Save segmentation mask
     mask_filename = os.path.join(output_dir, os.path.splitext(os.path.basename(image_path))[0] + "_mask.tif")
-    io.imsave(mask_filename, masks)
-    print(f"Segmentation mask saved to: {mask_filename}")
+    try:
+        io.imsave(mask_filename, masks)
+        print(f"Segmentation mask saved to: {mask_filename}")
+    except Exception as e:
+        print(f"Error saving mask: {e}")
 
     # Extract and print coordinates (centroids) of segmented cells
     num_cells = masks.max()
     print(f"Found {num_cells} cells.")
     coordinates = []
-    for i in range(1, num_cells + 1):
-        cell_mask = (masks == i)
-        if np.any(cell_mask):
-            # Calculate centroid
-            y, x = np.where(cell_mask)
-            centroid_y, centroid_x = np.mean(y), np.mean(x)
-            coordinates.append((centroid_x, centroid_y))
-            # print(f"Cell {i}: Centroid (X, Y) = ({centroid_x:.2f}, {centroid_y:.2f})")
+    if num_cells > 0:
+        for i in range(1, num_cells + 1):
+            cell_mask_pixels = (masks == i)
+            if np.any(cell_mask_pixels):
+                # Calculate centroid
+                y, x = np.where(cell_mask_pixels)
+                centroid_y, centroid_x = np.mean(y), np.mean(x)
+                coordinates.append((centroid_x, centroid_y))
+                # print(f"Cell {i}: Centroid (X, Y) = ({centroid_x:.2f}, {centroid_y:.2f})")
     
-    # Save coordinates to a file (optional)
+    # Save coordinates to a file
     coord_filename = os.path.join(output_dir, os.path.splitext(os.path.basename(image_path))[0] + "_coords.txt")
-    with open(coord_filename, 'w') as f:
-        for i, (x, y) in enumerate(coordinates):
-            f.write(f"Cell_{i+1},{x:.2f},{y:.2f}
-") # Corrected line
-    print(f"Cell coordinates saved to: {coord_filename}")
+    try:
+        with open(coord_filename, 'w') as f:
+            for i, (x_coord, y_coord) in enumerate(coordinates):
+                f.write(f"Cell_{i+1},{x_coord:.2f},{y_coord:.2f}") # Corrected f-string
+        print(f"Cell coordinates saved to: {coord_filename}")
+    except Exception as e:
+        print(f"Error saving coordinates: {e}")
 
     return masks, coordinates
 
@@ -87,7 +104,12 @@ if __name__ == "__main__":
     # Check if the default image exists
     if not os.path.exists(image_file_path):
         print(f"Default image '{DEFAULT_IMAGE_NAME}' not found in '{IMAGE_DIR}'.")
-        print("Please add a TIFF image to the 'images' folder and update DEFAULT_IMAGE_NAME if needed, or provide an image path.")
+        print(f"Please add a TIFF image (e.g., {DEFAULT_IMAGE_NAME}) to the '{IMAGE_DIR}' folder,")
+        print("or update the DEFAULT_IMAGE_NAME variable in the script.")
     else:
-        segment_image(image_file_path, RESULTS_DIR)
-        print("Processing complete.")
+        print("Starting segmentation process...")
+        masks, coords = segment_image(image_file_path, RESULTS_DIR)
+        if masks is not None and coords is not None:
+            print("Processing complete.")
+        else:
+            print("Processing encountered errors.")
