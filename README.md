@@ -1,17 +1,24 @@
 # Cell Segmentation Pipeline using Cellpose
 
-This project provides a Python-based pipeline for segmenting cells in microscopy images using the Cellpose library. It's designed to be configurable and outputs raw segmentation masks, cell coordinates, and visual overlay images.
+This project provides a Python-based pipeline for segmenting cells in microscopy images using the Cellpose library. It supports batch processing of multiple parameter combinations, configurable GPU usage, and outputs raw segmentation masks, cell coordinates, and visual overlay images.
 
 ## Features
 
 *   Cell segmentation using pre-trained Cellpose models.
-*   Configurable GPU usage.
+*   Batch processing of multiple experiments with different parameter combinations via a JSON configuration file.
+*   Configurable GPU usage per experiment.
 *   Option to force grayscale processing for multi-channel images.
-*   Adjustable cell probability threshold for tuning segmentation sensitivity.
-*   Outputs:
+*   Adjustable parameters for optimizing segmentation:
+    *   Cell probability threshold (`CELLPROB_THRESHOLD`)
+    *   Cell diameter (`DIAMETER`)
+    *   Flow threshold (`FLOW_THRESHOLD`)
+    *   Minimum mask size (`MIN_SIZE`)
+    *   Choice of Cellpose model (`MODEL_CHOICE`)
+*   Outputs for each experiment (saved in a unique subfolder):
     *   Integer-labeled segmentation mask (`_mask.tif`).
     *   Cell coordinates (centroids) in JSON format (`_coords.json`).
     *   Visual overlay of segmentations on the original image (`_overlay.png`).
+*   Basic CPU-based parallel processing for running multiple experiments.
 
 ## Installation
 
@@ -19,83 +26,97 @@ This project provides a Python-based pipeline for segmenting cells in microscopy
     If this code is in a repository, clone it first.
 
 2.  **Create a Python Virtual Environment:**
-    It's highly recommended to use a virtual environment to manage dependencies.
-    Open your terminal in the project's root directory and run:
+    It's highly recommended to use a virtual environment. In the project's root directory:
     ```bash
     python -m venv .venv
     ```
 
 3.  **Activate the Virtual Environment:**
-    *   **Windows (Command Prompt):**
-        ```cmd
-        .venv\Scripts\activate
-        ```
-    *   **Windows (PowerShell):**
-        ```powershell
-        .venv\Scripts\Activate.ps1
-        ```
-        (If you encounter issues, you might need to run: `Set-ExecutionPolicy Unrestricted -Scope Process` in PowerShell first.)
-    *   **Linux/macOS:**
-        ```bash
-        source .venv/bin/activate
-        ```
-    Your terminal prompt should change to indicate the active environment (e.g., `(.venv)`).
+    *   Windows (CMD): `.venv\Scripts\activate`
+    *   Windows (PowerShell): `.venv\Scripts\Activate.ps1` (May require `Set-ExecutionPolicy Unrestricted -Scope Process`)
+    *   Linux/macOS: `source .venv/bin/activate`
+    Your terminal prompt should change (e.g., `(.venv)`).
 
 4.  **Install Dependencies:**
-    Install the required Python packages using the `requirements.txt` file:
     ```bash
     pip install -r requirements.txt
     ```
-    This will install `cellpose`, `opencv-python`, `numpy`, and other necessary libraries.
+    This installs `cellpose`, `opencv-python`, `numpy`, etc.
 
 5.  **Handling Potential OpenMP Errors (Windows):**
-    If you encounter an error like `OMP: Error #15: Initializing libiomp5md.dll...`, it means multiple OpenMP runtimes are conflicting. The script `src/segmentation_pipeline.py` includes a line at the very beginning to help mitigate this:
-    ```python
-    os.environ['KMP_DUPLICATE_LIB_OK']='True'
-    ```
-    This line should generally handle the issue. If problems persist, ensure it's the first effective line of code executed.
+    The script `src/segmentation_pipeline.py` includes `os.environ['KMP_DUPLICATE_LIB_OK']='True'` at the top to help mitigate OpenMP runtime conflicts on Windows.
 
 ## Usage
 
 1.  **Place Input Images:**
-    *   Create an `images` folder in the project's root directory (if it doesn't exist).
-    *   Place your input TIFF images into this `images` folder.
-    *   By default, the script looks for an image named `test_image.tif`. You can change this in the script.
+    *   The script looks for images in the `images/` folder in the project root.
+    *   Ensure the image filenames specified in your `parameter_sets.json` exist in this folder.
 
-2.  **Configure the Pipeline (Optional):**
-    Open `src/segmentation_pipeline.py` and modify the configuration variables at the top as needed:
-    *   `USE_GPU = False`: Set to `True` if you have a compatible NVIDIA GPU with CUDA installed and want to use it for faster processing.
-    *   `FORCE_GRAYSCALE = True`:
-        *   Set to `True` if your images are grayscale or if you want to process only the first channel of a multi-channel image as grayscale.
-        *   Set to `False` to let Cellpose 4.x use its default channel handling (e.g., for RGB images).
-    *   `CELLPROB_THRESHOLD = 0.0`: Adjust this to control segmentation sensitivity.
-        *   Lower values (e.g., -1.0, -2.0) detect more, potentially fainter, cells.
-        *   Higher values make segmentation more conservative.
-    *   `DEFAULT_IMAGE_NAME = "test_image.tif"`: Change this to the filename of the image you want to process if it's different.
+2.  **Configure Experiments in `parameter_sets.json`:**
+    *   A `parameter_sets.json` file in the project root defines the batch of experiments to run. If it doesn't exist, create one based on the example below.
+    *   Each object in the JSON array represents one segmentation experiment with its own set of parameters.
+    *   **Key parameters per experiment:**
+        *   `"experiment_id"`: (String) A unique name for the experiment. Output files will be saved in `results/<experiment_id>/`.
+        *   `"image_filename"`: (String) Filename of the image in the `images/` folder to process for this experiment.
+        *   `"MODEL_CHOICE"`: (String) Cellpose model to use (e.g., `"cyto3"`, `"cyto2"`, `"cyto"`, or a path to a custom model). Defaults to `"cyto3"` if omitted.
+        *   `"DIAMETER"`: (Number or `null`) Approximate cell diameter in pixels. Set to `null` or `0` for auto-estimation by Cellpose. Example: `30`.
+        *   `"FLOW_THRESHOLD"`: (Number or `null`) Cellpose flow threshold. Cellpose default (e.g., 0.4) is used if `null`. Lower values (e.g., `0.2`) might detect more cells with weaker flows.
+        *   `"MIN_SIZE"`: (Number or `null`) Minimum number of pixels for a mask. Cellpose default (e.g., 15) is used if `null`.
+        *   `"CELLPROB_THRESHOLD"`: (Number) Threshold for cell probability. Lower values (e.g., `-1.0`, `-2.0`) detect more/fainter cells. Defaults to `0.0`.
+        *   `"FORCE_GRAYSCALE"`: (Boolean) `true` to force grayscale processing (uses first channel); `false` to let Cellpose handle multi-channel images. Defaults to `true`.
+        *   `"USE_GPU"`: (Boolean) `true` to use GPU for this experiment; `false` to use CPU. Defaults to `false`.
+            *   **Important for GPU Users:** If any experiment has `"USE_GPU": true` and you have only one GPU, it is **highly recommended** to set `MAX_PARALLEL_PROCESSES = 1` at the top of `src/segmentation_pipeline.py` to run experiments sequentially and avoid GPU memory issues.
 
-3.  **Run the Segmentation Script:**
+    *   **Example `parameter_sets.json` entry:**
+        ```json
+        {
+          "experiment_id": "my_gpu_experiment",
+          "image_filename": "sample_image.tif",
+          "MODEL_CHOICE": "cyto2",
+          "DIAMETER": 35,
+          "FLOW_THRESHOLD": 0.3,
+          "MIN_SIZE": 20,
+          "CELLPROB_THRESHOLD": -0.5,
+          "FORCE_GRAYSCALE": true,
+          "USE_GPU": true
+        }
+        ```
+        (Your `parameter_sets.json` will be a list `[` ... `]` of such objects).
+
+3.  **Configure Parallel Processing (Optional):**
+    *   Open `src/segmentation_pipeline.py`.
+    *   At the top, you can adjust `MAX_PARALLEL_PROCESSES`. It defaults to half your CPU cores.
+    *   **If using GPU for any experiment, set `MAX_PARALLEL_PROCESSES = 1` for stability on single-GPU systems.**
+
+4.  **Run the Segmentation Pipeline:**
     *   Ensure your virtual environment is activated.
-    *   Navigate to the project's root directory in your terminal.
+    *   Navigate to the project's root directory.
     *   Execute the script:
         ```bash
         python src/segmentation_pipeline.py
         ```
+    The script will process each set of parameters defined in `parameter_sets.json`.
 
-4.  **Outputs:**
-    The script will create a `results` folder (if it doesn't exist) and save the following files in it, prefixed with the original image name:
-    *   **`_mask.tif`**: An integer-labeled segmentation mask. Each cell is assigned a unique integer ID.
-        *   *Note:* This image might appear black in standard image viewers due to its bit depth and value range. Use software like ImageJ/Fiji or QuPath for proper visualization.
-    *   **`_coords.json`**: A JSON file containing the `cell_id` and `x`, `y` coordinates of the centroid for each detected cell.
-    *   **`_overlay.png`**: A PNG image showing the segmentation outlines drawn on top of the original image, providing direct visual feedback.
+5.  **Outputs:**
+    *   A base `results/` folder will be created.
+    *   Inside `results/`, a subfolder for each `experiment_id` will contain:
+        *   `image_filename_mask.tif`: Integer-labeled segmentation mask. (View with ImageJ/Fiji).
+        *   `image_filename_coords.json`: Cell coordinates.
+        *   `image_filename_overlay.png`: Visual overlay for quick feedback.
+        *   `error_log.txt` (only if an error occurred for that specific experiment).
 
 ## Troubleshooting
 
-*   **No cells segmented / Black mask:**
-    *   Try adjusting `CELLPROB_THRESHOLD` to a lower value (e.g., -1.0, -2.0).
-    *   Experiment with the `FORCE_GRAYSCALE` setting based on your image type. If `True`, ensure the primary cell signal is in the first channel.
-    *   Check the contrast and quality of your input image.
-    *   For the `_mask.tif`, use appropriate software like ImageJ/Fiji to view it correctly.
+*   **No cells segmented / Black mask output:**
+    *   Adjust `CELLPROB_THRESHOLD`, `DIAMETER`, `FLOW_THRESHOLD`, and `MIN_SIZE` in `parameter_sets.json`.
+    *   Experiment with `MODEL_CHOICE`.
+    *   Toggle `FORCE_GRAYSCALE`.
+    *   Check image quality and contrast.
+    *   Use ImageJ/Fiji for `_mask.tif` files.
+*   **GPU errors / Out of memory:**
+    *   If using GPU (`"USE_GPU": true`), ensure `MAX_PARALLEL_PROCESSES = 1` in `src/segmentation_pipeline.py` if you have a single GPU.
+    *   Ensure CUDA drivers and PyTorch with GPU support are correctly installed in your environment.
 *   **Errors during execution:**
-    *   Ensure all dependencies are installed correctly in the active virtual environment.
-    *   Check the console output for specific error messages from Cellpose or other libraries.
+    *   Check console output and any `error_log.txt` files in experiment subfolders.
+    *   Ensure dependencies are installed.
 

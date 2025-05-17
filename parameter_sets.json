@@ -1,0 +1,57 @@
+[
+  {
+    "experiment_id": "run01_current_good",
+    "MODEL_CHOICE": "cyto3",
+    "DIAMETER": null,
+    "FLOW_THRESHOLD": null,
+    "MIN_SIZE": null,
+    "CELLPROB_THRESHOLD": 0.0,
+    "FORCE_GRAYSCALE": true,
+    "USE_GPU": false,
+    "image_filename": "test_image.tif"
+  },
+  {
+    "experiment_id": "run02_lower_cellprob",
+    "MODEL_CHOICE": "cyto3",
+    "DIAMETER": null,
+    "FLOW_THRESHOLD": null,
+    "MIN_SIZE": null,
+    "CELLPROB_THRESHOLD": -1.0,
+    "FORCE_GRAYSCALE": true,
+    "USE_GPU": false,
+    "image_filename": "test_image.tif"
+  },
+  {
+    "experiment_id": "run03_lower_cellprob_flow",
+    "MODEL_CHOICE": "cyto3",
+    "DIAMETER": null,
+    "FLOW_THRESHOLD": 0.2,
+    "MIN_SIZE": null,
+    "CELLPROB_THRESHOLD": -1.0,
+    "FORCE_GRAYSCALE": true,
+    "USE_GPU": false,
+    "image_filename": "test_image.tif"
+  },
+  {
+    "experiment_id": "run04_set_diameter_low_cellprob",
+    "MODEL_CHOICE": "cyto3",
+    "DIAMETER": 30,
+    "FLOW_THRESHOLD": null,
+    "MIN_SIZE": null,
+    "CELLPROB_THRESHOLD": -0.5,
+    "FORCE_GRAYSCALE": true,
+    "USE_GPU": false,
+    "image_filename": "test_image.tif"
+  },
+  {
+    "experiment_id": "run05_cyto2_low_cellprob",
+    "MODEL_CHOICE": "cyto2",
+    "DIAMETER": null,
+    "FLOW_THRESHOLD": null,
+    "MIN_SIZE": null,
+    "CELLPROB_THRESHOLD": -1.0,
+    "FORCE_GRAYSCALE": true,
+    "USE_GPU": false,
+    "image_filename": "test_image.tif"
+  }
+]
