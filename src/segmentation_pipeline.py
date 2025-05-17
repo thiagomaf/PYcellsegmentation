@@ -1,5 +1,5 @@
 import os
-os.environ['KMP_DUPLICATE_LIB_OK']='True'
+os.environ['KMP_DUPLICATE_LIB_OK']='True' # Must be before other imports that might use OpenMP
 import cv2 # Will be imported if opencv-python is installed
 import numpy as np
 from cellpose import models, io
@@ -35,10 +35,20 @@ def segment_image(image_path, output_dir):
     # You can also specify a pre-trained model path
     print("Initializing Cellpose model (cyto)...")
     try:
-        model = models.Cellpose(gpu=False, model_type='cyto') # Set gpu=True if you have a compatible GPU
+        # *** Changed models.Cellpose to models.CellposeModel ***
+        model = models.CellposeModel(gpu=False, model_type='cyto') # Set gpu=True if you have a compatible GPU
+    except AttributeError:
+        # Fallback for older versions or different naming conventions if CellposeModel is not found
+        try:
+            print("AttributeError with CellposeModel, trying models.Cellpose...")
+            model = models.Cellpose(gpu=False, model_type='cyto')
+        except Exception as e_fallback:
+            print(f"Error initializing Cellpose model (Cellpose or CellposeModel): {e_fallback}")
+            return None, None
     except Exception as e:
         print(f"Error initializing Cellpose model: {e}")
         return None, None
+
 
     # Run segmentation
     # channels: [0,0] for grayscale, [1,2] for R=cytoplasm, G=nucleus, [2,1] for R=nucleus, G=cytoplasm
@@ -81,7 +91,9 @@ def segment_image(image_path, output_dir):
     try:
         with open(coord_filename, 'w') as f:
             for i, (x_coord, y_coord) in enumerate(coordinates):
-                f.write(f"Cell_{i+1},{x_coord:.2f},{y_coord:.2f}") # Corrected f-string
+                # *** Corrected f-string with newline ***
+                f.write(f"Cell_{i+1},{x_coord:.2f},{y_coord:.2f}
+")
         print(f"Cell coordinates saved to: {coord_filename}")
     except Exception as e:
         print(f"Error saving coordinates: {e}")
