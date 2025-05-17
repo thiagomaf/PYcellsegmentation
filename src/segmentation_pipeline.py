@@ -42,8 +42,7 @@ def segment_image_worker(job_params_dict):
             error_msg = f"[{experiment_id_final}] Error creating output dir {output_dir_job}: {e}"
             print(error_msg); return {**job_params_dict, "status": "failed", "error_message": error_msg}
 
-    print(f"
---- [{experiment_id_final}] Starting (Processing Unit: {processing_unit_name}) ---")
+    print(f"--- [{experiment_id_final}] Starting (Processing Unit: {processing_unit_name}) ---")
     log_diameter_eff = 0 if diameter_val is None else diameter_val
     log_flow_eff = 'Cellpose default' if flow_thresh_val is None else flow_thresh_val
     log_min_size_eff = 15 if min_size_val is None else min_size_val
@@ -103,8 +102,7 @@ def segment_image_worker(job_params_dict):
         return {**job_params_dict, "status": "succeeded", "num_cells": int(num_cells), "output_mask_path": mask_filename}
 
     except Exception as e:
-        error_full_msg = f"Error in {experiment_id_final} (Unit: {processing_unit_name}): {e}
-{traceback.format_exc()}"
+        error_full_msg = f"Error in {experiment_id_final} (Unit: {processing_unit_name}): {e} {traceback.format_exc()}"
         print(error_full_msg)
         if os.path.exists(output_dir_job):
             with open(os.path.join(output_dir_job, "error_log.txt"), "w") as f_err: f_err.write(error_full_msg)
@@ -235,9 +233,7 @@ if __name__ == "__main__":
     num_processes_to_use = MAX_PARALLEL_PROCESSES
     any_gpu_run = any(job.get("USE_GPU", False) for job in all_jobs_to_create)
     if any_gpu_run and MAX_PARALLEL_PROCESSES > 1:
-        print("
-WARNING: GPU usage with MAX_PARALLEL_PROCESSES > 1. Consider setting to 1 for stability.
-")
+        print("WARNING: GPU usage with MAX_PARALLEL_PROCESSES > 1. Consider setting to 1 for stability.")
 
     print(f"Using up to {num_processes_to_use} parallel processes.")
     start_time_all = time.time()
@@ -252,14 +248,11 @@ WARNING: GPU usage with MAX_PARALLEL_PROCESSES > 1. Consider setting to 1 for st
 
     try:
         with open(RUN_LOG_FILE, 'w') as f_log: json.dump(job_results, f_log, indent=4)
-        print(f"
-Run log saved to: {RUN_LOG_FILE}")
-    except Exception as e: print(f"
-Error saving run log: {e}")
+        print(f"Run log saved to: {RUN_LOG_FILE}")
+    except Exception as e: print(f"Error saving run log: {e}")
 
     end_time_all = time.time()
-    print(f"
---- All Jobs Finished ---")
+    print(f"--- All Jobs Finished ---")
     total_duration = end_time_all - start_time_all
     print(f"Total processing time for {len(all_jobs_to_create)} jobs: {total_duration:.2f} seconds.")
 
@@ -267,7 +260,6 @@ Error saving run log: {e}")
     for result in job_results:
         if result.get("status") == "succeeded": successful_runs += 1
         else: failed_runs += 1
-    print(f"
-Summary: {successful_runs} successful, {failed_runs} failed out of {len(all_jobs_to_create)} jobs.")
+    print(f"Summary: {successful_runs} successful, {failed_runs} failed out of {len(all_jobs_to_create)} jobs.")
     if failed_runs > 0: print("Check experiment folders and 'error_log.txt' for details.")
 
