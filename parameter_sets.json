@@ -3,7 +3,7 @@
     {
       "image_id": "XeniumImage1_FullRes",
       "original_image_filename": "my_large_xenium_image.tif",
-      "is_active": true,
+      "is_active": false,
       "tiling_config": {
         "tile_size": 2048,
         "overlap": 200,
@@ -11,23 +11,23 @@
       }
     },
     {
-      "image_id": "XeniumImage1_Scaled50", 
-      "original_image_filename": "my_large_xenium_image.tif", 
+      "image_id": "processed_plane_s0", 
+      "original_image_filename": "processed_plane_s0.tif", 
       "is_active": true,
       "rescaling_config": { 
-        "scale_factor": 0.5,
+        "scale_factor": 0.01,
         "interpolation": "INTER_AREA"
       },
       "tiling_config": { 
         "tile_size": 1024, 
         "overlap": 100,
-        "tile_output_prefix_base": "xenium1_scaled50_tiles"
+        "tile_output_prefix_base": "processed_plane_s0_tiles"
       }
     },
     {
       "image_id": "SmallTestImage_NoTile_NoScale",
       "original_image_filename": "test_image.tif",
-      "is_active": true
+      "is_active": false
     }
   ],
   "cellpose_parameter_configurations": [
@@ -42,14 +42,70 @@
       "USE_GPU": false
     },
     {
-      "param_set_id": "Cellpose_ManualDiamOrig30",
-      "is_active": true,
+      "param_set_id": "run02_lower_cellprob",
       "MODEL_CHOICE": "cyto3",
-      "DIAMETER": 30, 
-      "MIN_SIZE": 10,
+      "DIAMETER": null,
+      "FLOW_THRESHOLD": null,
+      "MIN_SIZE": null,
+      "CELLPROB_THRESHOLD": -1.0,
+      "FORCE_GRAYSCALE": true,
+      "USE_GPU": false,
+      "is_active": false
+    },
+    {
+      "param_set_id": "run04_set_diameter_low_cellprob",
+      "MODEL_CHOICE": "cyto3",
+      "DIAMETER": 30,
+      "FLOW_THRESHOLD": null,
+      "MIN_SIZE": null,
       "CELLPROB_THRESHOLD": -0.5,
       "FORCE_GRAYSCALE": true,
-      "USE_GPU": false
+      "USE_GPU": false,
+      "is_active": false
+    },
+    {
+      "param_set_id": "run06_small_cells_diam15_lowprob",
+      "MODEL_CHOICE": "cyto3",
+      "DIAMETER": 15,
+      "FLOW_THRESHOLD": 0.4,
+      "MIN_SIZE": 5,
+      "CELLPROB_THRESHOLD": -2.0,
+      "FORCE_GRAYSCALE": true,
+      "USE_GPU": false,
+      "is_active": false
+    },
+    {
+      "param_set_id": "run07_small_cells_diam15_vlowprob",
+      "MODEL_CHOICE": "cyto3",
+      "DIAMETER": 15,
+      "FLOW_THRESHOLD": 0.4,
+      "MIN_SIZE": 5,
+      "CELLPROB_THRESHOLD": -3.0,
+      "FORCE_GRAYSCALE": true,
+      "USE_GPU": false,
+      "is_active": false
+    },
+    {
+      "param_set_id": "run08_small_cells_diam10_lowprob_lowflow",
+      "MODEL_CHOICE": "cyto3",
+      "DIAMETER": 10,
+      "FLOW_THRESHOLD": 0.2,
+      "MIN_SIZE": 3,
+      "CELLPROB_THRESHOLD": -2.5,
+      "FORCE_GRAYSCALE": true,
+      "USE_GPU": false,
+      "is_active": false
+    },
+    {
+      "param_set_id": "run09_cyto2_small_cells_diam15_lowprob",
+      "MODEL_CHOICE": "cyto2",
+      "DIAMETER": 15,
+      "FLOW_THRESHOLD": 0.4,
+      "MIN_SIZE": 5,
+      "CELLPROB_THRESHOLD": -2.0,
+      "FORCE_GRAYSCALE": true,
+      "USE_GPU": false,
+      "is_active": true
     }
   ]
 }
