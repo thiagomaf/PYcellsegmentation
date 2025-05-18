@@ -18,6 +18,7 @@ UNASSIGNED_CELL_ID = -1
 DEFAULT_BACKGROUND_COLOR_FOR_CELLS_NO_EXPRESSION = np.array([200, 200, 200], dtype=np.uint8)
 TRANSCRIPT_DOT_COLOR = (255, 0, 255) 
 TRANSCRIPT_DOT_SIZE = 1
+MAX_FILENAME_LEN = 240 # Max length for the filename part, leaving room for path and extension.
 
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IMAGE_DIR_BASE = os.path.join(PROJECT_ROOT, "images")
@@ -167,7 +168,7 @@ def visualize_gene_expression_for_job(
         cv2.imwrite(output_png_path, cv2.cvtColor(overlay_img_rgb, cv2.COLOR_RGB2BGR))
         print(f"  Expression overlay for '{gene_of_interest}' saved to: {output_png_path}")
     except Exception as e:
-        print(f"  Error saving expression overlay for '{gene_of_interest}': {e}")
+        print(f"  Error saving expression overlay for '{gene_of_interest}': {e} (Path: {output_png_path})") # Added path to error message
 
 def get_job_info_and_paths(param_sets_path, target_image_id, target_param_set_id, target_processing_unit_name):
     """
@@ -358,11 +359,29 @@ if __name__ == "__main__":
         print(f"  Background image path used: {background_image_to_display_path}")
         exit(1)
 
+    file_suffix = "_expression_overlay.png"
+
     for gene in args.genes:
-        # Use the new sanitize_identifier_for_filename function
         sane_experiment_id_prefix = sanitize_identifier_for_filename(experiment_folder_id)
         sane_gene_name = sanitize_identifier_for_filename(gene)
-        output_filename = f"{sane_experiment_id_prefix}_{sane_gene_name}_expression_overlay.png"
+
+        output_filename = f"{sane_experiment_id_prefix}_{sane_gene_name}{file_suffix}"
+
+        if len(output_filename) > MAX_FILENAME_LEN:
+            print(f"Warning: Proposed filename is too long: {output_filename}")
+            # Try with only gene name
+            shorter_filename = f"{sane_gene_name}{file_suffix}"
+            if len(shorter_filename) > MAX_FILENAME_LEN:
+                print(f"Warning: Shorter filename with only gene name is still too long: {shorter_filename}")
+                # Truncate the gene name part
+                available_len_for_gene = MAX_FILENAME_LEN - len(file_suffix)
+                truncated_gene_name = sane_gene_name[:available_len_for_gene]
+                output_filename = f"{truncated_gene_name}{file_suffix}"
+                print(f"Using truncated filename: {output_filename}")
+            else:
+                output_filename = shorter_filename
+                print(f"Using shorter filename: {output_filename}")
+        
         output_png_path = os.path.join(args.output_dir, output_filename)
         
         visualize_gene_expression_for_job(
