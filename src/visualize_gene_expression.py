@@ -107,8 +107,7 @@ def visualize_gene_expression_for_job(
     colormap_name='viridis'
     ):
 
-    print(f"
---- Visualizing expression for gene: {gene_of_interest} ---")
+    print(f"--- Visualizing expression for gene: {gene_of_interest} ---")
     gene_transcripts_df = mapped_transcripts_df[mapped_transcripts_df['feature_name'] == gene_of_interest]
     total_gene_transcripts = len(gene_transcripts_df)
     if total_gene_transcripts == 0:
@@ -329,6 +328,5 @@ if __name__ == "__main__":
             colormap_name=args.colormap
         )
     
-    print("
-Gene expression visualization process finished.")
+    print("Gene expression visualization process finished.")
 
