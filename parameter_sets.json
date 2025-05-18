@@ -1,19 +1,18 @@
 {
   "image_configurations": [
     {
-      "image_id": "XeniumImage1_FullRes",
-      "original_image_filename": "my_large_xenium_image.tif",
-      "is_active": false,
-      "tiling_config": {
-        "tile_size": 2048,
-        "overlap": 200,
-        "tile_output_prefix_base": "xenium1_fullres_tiles"
+      "image_id": "processed_plane_s0",
+      "original_image_filename": "processed_plane_s0.tif",
+      "is_active": true,
+      "rescaling_config": { 
+        "scale_factor": 0.1,
+        "interpolation": "INTER_AREA"
       }
     },
     {
       "image_id": "processed_plane_s0", 
       "original_image_filename": "processed_plane_s0.tif", 
-      "is_active": true,
+      "is_active": false,
       "rescaling_config": { 
         "scale_factor": 0.01,
         "interpolation": "INTER_AREA"
@@ -33,7 +32,7 @@
   "cellpose_parameter_configurations": [
     {
       "param_set_id": "Cellpose_DefaultDiam",
-      "is_active": true,
+      "is_active": false,
       "MODEL_CHOICE": "cyto3",
       "DIAMETER": null,
       "MIN_SIZE": 15,
@@ -104,7 +103,7 @@
       "MIN_SIZE": 5,
       "CELLPROB_THRESHOLD": -2.0,
       "FORCE_GRAYSCALE": true,
-      "USE_GPU": true,
+      "USE_GPU": false,
       "is_active": true
     }
   ]
