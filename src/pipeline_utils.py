@@ -89,3 +89,68 @@ def rescale_image_and_save(original_image_path, image_id_for_cache, rescaling_co
         print(f"  Error during rescaling or saving {original_image_path}: {e}")
         traceback.print_exc()
         return original_image_path, 1.0
+
+def determine_image_unit_for_segmentation_and_mask_path(config, RESULTS_DIR_BASE, TILED_IMAGE_DIR_BASE, original_source_image_full_path, target_image_id, target_processing_unit_name, is_tiled_job, tile_job_params=None, rescaling_config_for_image=None):
+    """
+    Determines the actual image path to be used for segmentation (could be original, rescaled, or a tile)
+    and the corresponding mask path where segmentation results should be stored or found.
+
+    Args:
+        config: The pipeline configuration.
+        RESULTS_DIR_BASE: Base directory for storing results.
+        TILED_IMAGE_DIR_BASE: Base directory where tiled images are stored.
+        original_source_image_full_path (str): Full path to the original (non-tiled, non-rescaled) source image.
+        target_image_id (str): Unique ID for the image being processed (e.g., derived from its filename).
+        target_processing_unit_name (str): The filename of the specific unit being processed (e.g., original image filename or tile filename).
+        is_tiled_job (bool): True if processing a tile from a larger image.
+        tile_job_params (dict, optional): Parameters related to the tiling job, if applicable.
+        rescaling_config_for_image (dict, optional): Rescaling parameters for the specific image.
+
+    Returns:
+        tuple: (
+            path_of_image_unit_for_segmentation (str): Path to the image file to be segmented.
+            mask_path (str): Path where the segmentation mask should be/is saved.
+            applied_scale_factor (float): The scale factor that was applied to the image unit. 1.0 if no scaling.
+            original_source_image_full_path (str): Path to the original, non-rescaled, non-tiled source image.
+        )
+    """
+    applied_scale_factor = 1.0
+    path_of_image_unit_for_segmentation = original_source_image_full_path # Default to original
+
+    # 1. Handle potential rescaling
+    if rescaling_config_for_image and rescaling_config_for_image.get("scale_factor") != 1.0:
+        print(f"  Rescaling config found for {target_image_id}: factor {rescaling_config_for_image.get('scale_factor')}")
+        
+        image_path_for_potential_rescaling = original_source_image_full_path
+        
+        rescaled_path, actual_sf = rescale_image_and_save(
+            image_path_for_potential_rescaling,
+            target_image_id, 
+            rescaling_config_for_image
+        )
+        if actual_sf != 1.0 and os.path.exists(rescaled_path):
+            path_of_image_unit_for_segmentation = rescaled_path
+            applied_scale_factor = actual_sf
+            print(f"  Path after (potential) rescaling: {path_of_image_unit_for_segmentation}, Scale factor: {applied_scale_factor}")
+        else:
+            print(f"  Rescaling did not change path or failed. Using: {path_of_image_unit_for_segmentation}")
+
+    # 2. Handle tiling
+    if is_tiled_job and tile_job_params:
+        tile_parent_dir_name = tile_job_params.get("tile_parent_dir_name", target_image_id)
+        path_of_image_unit_for_segmentation = os.path.join(TILED_IMAGE_DIR_BASE, tile_parent_dir_name, target_processing_unit_name)
+        print(f"  This is a tiled job. Segmentation will use tile: {path_of_image_unit_for_segmentation}")
+
+    # 3. Determine the mask path
+    params_name_suffix = config.get("segmentation_params_name", "Cellpose_DefaultDiam")
+    experiment_id_final_for_mask_folder = f"{target_image_id}_{params_name_suffix}"
+
+    if applied_scale_factor != 1.0:
+        scale_factor_str = str(applied_scale_factor).replace('.', '_')
+        experiment_id_final_for_mask_folder += f"_scaled{scale_factor_str}"
+
+    mask_filename_part = os.path.splitext(target_processing_unit_name)[0] + "_mask.tif"
+    mask_path = os.path.join(RESULTS_DIR_BASE, experiment_id_final_for_mask_folder, mask_filename_part)
+            
+    return path_of_image_unit_for_segmentation, mask_path, applied_scale_factor, original_source_image_full_path
+
