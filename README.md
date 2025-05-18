@@ -50,6 +50,14 @@ The pipeline generally follows these steps:
     *   Calculates Dice similarity scores for each job's mask against the consensus.
     *   Creates `results/segmentation_summary_consistency.png` showing all processed segmentations (tiles or full images) overlaid on their respective original images, with cells colored by consistency and Dice scores displayed.
 
+## Pipeline Illustration
+
+Below is a schematic diagram illustrating the main steps and data flow of the pipeline.
+
+![Pipeline Schematic](docs/images/pipeline_schematic.png)
+
+*Schematic overview of the Cell Segmentation and Analysis Pipeline.*
+
 ## Features
 *   Flexible batch processing: multiple parameter sets across multiple images.
 *   Automatic on-the-fly image rescaling and tiling for large images, configured per image.
