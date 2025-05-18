@@ -1,13 +1,13 @@
 {
   "image_configurations": [
     {
-      "image_id": "processed_plane_s0",
-      "original_image_filename": "processed_plane_s0.tif",
+      "image_id": "5B_morphology_focus.ome_s0",
+      "original_image_filename": "5B_morphology_focus.ome_s0.tif",
       "is_active": true,
       "rescaling_config": { 
-        "scale_factor": 0.1,
+        "scale_factor": 0.25,
         "interpolation": "INTER_AREA"
-      }
+      }    
     },
     {
       "image_id": "processed_plane_s0", 
@@ -32,7 +32,7 @@
   "cellpose_parameter_configurations": [
     {
       "param_set_id": "Cellpose_DefaultDiam",
-      "is_active": false,
+      "is_active": true,
       "MODEL_CHOICE": "cyto3",
       "DIAMETER": null,
       "MIN_SIZE": 15,
@@ -103,8 +103,8 @@
       "MIN_SIZE": 5,
       "CELLPROB_THRESHOLD": -2.0,
       "FORCE_GRAYSCALE": true,
-      "USE_GPU": false,
-      "is_active": true
+      "USE_GPU": true,
+      "is_active": false
     }
   ]
 }
