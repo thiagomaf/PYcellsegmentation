@@ -58,8 +58,8 @@ def rescale_image_and_save(original_image_path, image_id_for_cache, rescaling_co
             return original_image_path, 1.0
 
     original_filename = os.path.basename(original_image_path)
-    scale_factor_str = str(scale_factor).replace('.', '_')
-    rescaled_image_filename = f"{os.path.splitext(original_filename)[0]}_scaled_{scale_factor_str}.tif"
+    scale_factor_str_file = str(scale_factor).replace('.', '_')
+    rescaled_image_filename = f"{os.path.splitext(original_filename)[0]}_scaled_{scale_factor_str_file}.tif"
     rescaled_image_path = os.path.join(rescaled_image_specific_dir, rescaled_image_filename)
 
     if os.path.exists(rescaled_image_path):
@@ -94,35 +94,14 @@ def determine_image_unit_for_segmentation_and_mask_path(config, RESULTS_DIR_BASE
     """
     Determines the actual image path to be used for segmentation (could be original, rescaled, or a tile)
     and the corresponding mask path where segmentation results should be stored or found.
-
-    Args:
-        config: The pipeline configuration.
-        RESULTS_DIR_BASE: Base directory for storing results.
-        TILED_IMAGE_DIR_BASE: Base directory where tiled images are stored.
-        original_source_image_full_path (str): Full path to the original (non-tiled, non-rescaled) source image.
-        target_image_id (str): Unique ID for the image being processed (e.g., derived from its filename).
-        target_processing_unit_name (str): The filename of the specific unit being processed (e.g., original image filename or tile filename).
-        is_tiled_job (bool): True if processing a tile from a larger image.
-        tile_job_params (dict, optional): Parameters related to the tiling job, if applicable.
-        rescaling_config_for_image (dict, optional): Rescaling parameters for the specific image.
-
-    Returns:
-        tuple: (
-            path_of_image_unit_for_segmentation (str): Path to the image file to be segmented.
-            mask_path (str): Path where the segmentation mask should be/is saved.
-            applied_scale_factor (float): The scale factor that was applied to the image unit. 1.0 if no scaling.
-            original_source_image_full_path (str): Path to the original, non-rescaled, non-tiled source image.
-        )
     """
     applied_scale_factor = 1.0
-    path_of_image_unit_for_segmentation = original_source_image_full_path # Default to original
+    path_of_image_unit_for_segmentation = original_source_image_full_path 
 
-    # 1. Handle potential rescaling
+    # 1. Handle potential rescaling (primary mechanism via rescaling_config_for_image)
     if rescaling_config_for_image and rescaling_config_for_image.get("scale_factor") != 1.0:
         print(f"  Rescaling config found for {target_image_id}: factor {rescaling_config_for_image.get('scale_factor')}")
-        
         image_path_for_potential_rescaling = original_source_image_full_path
-        
         rescaled_path, actual_sf = rescale_image_and_save(
             image_path_for_potential_rescaling,
             target_image_id, 
@@ -138,19 +117,61 @@ def determine_image_unit_for_segmentation_and_mask_path(config, RESULTS_DIR_BASE
     # 2. Handle tiling
     if is_tiled_job and tile_job_params:
         tile_parent_dir_name = tile_job_params.get("tile_parent_dir_name", target_image_id)
+        # If the original image was rescaled *before* tiling, tile_parent_dir_name should reflect that.
+        # This part assumes tile_parent_dir_name is correctly set by the tiling process.
         path_of_image_unit_for_segmentation = os.path.join(TILED_IMAGE_DIR_BASE, tile_parent_dir_name, target_processing_unit_name)
         print(f"  This is a tiled job. Segmentation will use tile: {path_of_image_unit_for_segmentation}")
+        # If tiling is active, the `applied_scale_factor` should ideally be known from the `rescaling_config_for_image`
+        # that was applied *before* tiling, or be 1.0 if no pre-tiling rescale happened.
 
-    # 3. Determine the mask path
+    # 2.5. Infer applied_scale_factor from target_processing_unit_name if not already set by rescaling_config
+    # This is a fallback, particularly useful when locating existing processed files (like in visualization scripts)
+    # where the filename itself indicates scaling.
+    if applied_scale_factor == 1.0 and "_scaled_" in target_processing_unit_name:
+        try:
+            # Attempt to extract scale factor like "0_25" from "...._scaled_0_25.tif"
+            match = re.search(r"_scaled_([0-9]+(?:_[0-9]+)?)\.[^.]+$", os.path.basename(target_processing_unit_name))
+            if match:
+                scale_str = match.group(1).replace('_', '.')
+                parsed_sf = float(scale_str)
+                if 0 < parsed_sf <= 1.0:
+                    applied_scale_factor = parsed_sf
+                    print(f"  Inferred applied_scale_factor {applied_scale_factor} from target_processing_unit_name '{target_processing_unit_name}'")
+                else:
+                    print(f"  Warning: Parsed scale factor {parsed_sf} from filename is invalid.")
+            else: # Fallback for names like "..._scaled_0_25_mask.tif" (if mask name is passed)
+                match_mask = re.search(r"_scaled_([0-9]+(?:_[0-9]+)?).*_mask\.[^.]+$", os.path.basename(target_processing_unit_name))
+                if match_mask:
+                    scale_str = match_mask.group(1).replace('_', '.')
+                    parsed_sf = float(scale_str)
+                    if 0 < parsed_sf <= 1.0:
+                        applied_scale_factor = parsed_sf
+                        print(f"  Inferred applied_scale_factor {applied_scale_factor} from target_processing_unit_name (mask pattern) '{target_processing_unit_name}'")
+                    else:
+                        print(f"  Warning: Parsed scale factor {parsed_sf} from mask filename is invalid.")
+        except ValueError:
+            print(f"  Could not parse scale factor from filename: {target_processing_unit_name}")
+
+
+    # 3. Determine the mask path folder and filename
     params_name_suffix = config.get("segmentation_params_name", "Cellpose_DefaultDiam")
     experiment_id_final_for_mask_folder = f"{target_image_id}_{params_name_suffix}"
 
+    # Append scaling factor to folder name if applicable
     if applied_scale_factor != 1.0:
-        scale_factor_str = str(applied_scale_factor).replace('.', '_')
-        experiment_id_final_for_mask_folder += f"_scaled{scale_factor_str}"
+        scale_factor_str_folder = str(applied_scale_factor).replace('.', '_')
+        experiment_id_final_for_mask_folder += f"_scaled{scale_factor_str_folder}"
 
-    mask_filename_part = os.path.splitext(target_processing_unit_name)[0] + "_mask.tif"
+    # The mask filename part is based on the specific processing unit name
+    # (e.g., "image_scaled_0_25_mask.tif" or "tile_X_Y_mask.tif")
+    mask_filename_base = os.path.splitext(os.path.basename(target_processing_unit_name))[0]
+    # Ensure we don't double-append "_mask" if it's already in target_processing_unit_name (e.g. if a mask path was passed)
+    if "_mask" not in mask_filename_base: # Check if original name had _mask
+        mask_filename_part = f"{mask_filename_base}_mask.tif"
+    else: # If target_processing_unit_name already describes a mask
+        mask_filename_part = os.path.basename(target_processing_unit_name)
+
+
     mask_path = os.path.join(RESULTS_DIR_BASE, experiment_id_final_for_mask_folder, mask_filename_part)
             
     return path_of_image_unit_for_segmentation, mask_path, applied_scale_factor, original_source_image_full_path
-
