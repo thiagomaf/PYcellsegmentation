@@ -11,23 +11,18 @@ import json
 import re
 import traceback
 
-# Assuming pipeline_utils.py is in the same directory (src)
-from .pipeline_utils import clean_filename_for_dir, rescale_image_and_save 
-# get_cv2_interpolation_method is also in pipeline_utils but rescale_image_and_save uses it
+from .pipeline_utils import clean_filename_for_dir, rescale_image_and_save
 
-# Global settings
 UNASSIGNED_CELL_ID = -1
 DEFAULT_BACKGROUND_COLOR_FOR_CELLS_NO_EXPRESSION = np.array([200, 200, 200], dtype=np.uint8)
-TRANSCRIPT_DOT_COLOR = (255, 0, 255) # Magenta (RGB)
+TRANSCRIPT_DOT_COLOR = (255, 0, 255) 
 TRANSCRIPT_DOT_SIZE = 1
 
-# Define base paths relative to the project root (where src/ is)
 PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IMAGE_DIR_BASE = os.path.join(PROJECT_ROOT, "images")
 TILED_IMAGE_OUTPUT_BASE = os.path.join(IMAGE_DIR_BASE, "tiled_outputs")
-# RESCALED_IMAGE_CACHE_DIR is handled by pipeline_utils.py, which assumes "images/rescaled_cache"
+RESCALED_IMAGE_CACHE_DIR = os.path.join(IMAGE_DIR_BASE, "rescaled_cache") 
 RESULTS_DIR_BASE = os.path.join(PROJECT_ROOT, "results")
-
 
 def load_mapped_transcripts(mapped_transcripts_csv_path):
     print(f"Loading mapped transcripts from: {mapped_transcripts_csv_path} ...")
@@ -100,19 +95,20 @@ def get_colors_for_gene_expression(instance_mask, cell_expression_counts, colorm
             cell_colors_rgb[cell_id_int] = (np.array(rgba_color[:3]) * 255).astype(np.uint8)
     return cell_colors_rgb
 
-def visualize_gene_expression_for_job( # Renamed from v2
+def visualize_gene_expression_for_job(
     mapped_transcripts_df, 
     segmentation_mask_array, 
-    background_image_for_overlay_rgb, # This is the image that matches the mask's scale
+    background_image_for_overlay_rgb, 
     gene_of_interest, 
-    output_png_path,
+    output_png_path, 
     effective_mpp_x, effective_mpp_y, 
     x_offset_microns=0, y_offset_microns=0, 
     plot_transcript_dots=False,
     colormap_name='viridis'
     ):
 
-    print(f"\n--- Visualizing expression for gene: {gene_of_interest} ---")
+    print(f"
+--- Visualizing expression for gene: {gene_of_interest} ---")
     gene_transcripts_df = mapped_transcripts_df[mapped_transcripts_df['feature_name'] == gene_of_interest]
     total_gene_transcripts = len(gene_transcripts_df)
     if total_gene_transcripts == 0:
@@ -163,19 +159,14 @@ def visualize_gene_expression_for_job( # Renamed from v2
     except Exception as e:
         print(f"  Error saving expression overlay for '{gene_of_interest}': {e}")
 
-def get_job_info_and_paths(param_sets_json_path, target_image_id, target_param_set_id, target_processing_unit_name):
-    """
-    Reads parameter_sets.json to determine paths and scale factor for a specific job unit.
-    target_processing_unit_name is the filename of the tile OR the (potentially rescaled) full image.
-    Returns: (path_to_segmented_unit, path_to_mask, applied_scale_factor_to_original, original_source_image_path)
-    """
-    if not os.path.exists(param_sets_json_path):
-        print(f"Error: Config file '{param_sets_json_path}' not found."); return None, None, 1.0, None
+def get_job_info_and_paths(param_sets_path, target_image_id, target_param_set_id, target_processing_unit_name):
+    if not os.path.exists(param_sets_path):
+        print(f"Error: Config file '{param_sets_path}' not found."); return None, None, 1.0, None
 
     try:
-        with open(param_sets_json_path, 'r') as f: config_data = json.load(f)
+        with open(param_sets_path, 'r') as f: config_data = json.load(f)
     except Exception as e:
-        print(f"Error reading/parsing {param_sets_json_path}: {e}"); return None, None, 1.0, None
+        print(f"Error reading/parsing {param_sets_path}: {e}"); return None, None, 1.0, None
 
     image_config = None
     for img_cfg in config_data.get("image_configurations", []):
@@ -188,69 +179,58 @@ def get_job_info_and_paths(param_sets_json_path, target_image_id, target_param_s
     if not original_image_filename: 
         print(f"Error: original_image_filename missing for Image ID '{target_image_id}'."); return None,None,1.0, None
     
-    # Path to the very original source image (unscaled, untiled)
     original_source_image_full_path = os.path.join(IMAGE_DIR_BASE, original_image_filename)
     if not os.path.exists(original_source_image_full_path):
         print(f"Error: Original source image not found: {original_source_image_full_path}"); return None, None, 1.0, None
 
-    # Determine path of the image unit that was actually segmented and its scale factor from original
-    path_of_segmented_unit = original_source_image_full_path 
+    path_of_image_unit_for_segmentation = original_source_image_full_path 
     applied_scale_factor = 1.0
     is_tiled_job = False 
 
     rescaling_cfg = image_config.get("rescaling_config")
-    path_after_rescaling = original_source_image_full_path # Path if no rescaling, or path of rescaled image
-    
     if rescaling_cfg and "scale_factor" in rescaling_cfg and rescaling_cfg["scale_factor"] != 1.0:
-        # rescale_image_and_save checks cache and recreates if missing
-        path_after_rescaling, applied_scale_factor = rescale_image_and_save(
+        print(f"  Rescaling config found for {target_image_id}: factor {rescaling_cfg['scale_factor']}")
+        path_of_image_unit_for_segmentation, applied_scale_factor = rescale_image_and_save(
             original_source_image_full_path,
             target_image_id, 
             rescaling_cfg
         )
-        if not os.path.exists(path_after_rescaling):
-             print(f"  FATAL: Rescaled image path determined as {path_after_rescaling}, but it does not exist (and wasn't created).")
+        if not os.path.exists(path_of_image_unit_for_segmentation):
+             print(f"  FATAL: Rescaled image path determined as {path_of_image_unit_for_segmentation}, but it does not exist (and wasn't created).")
              return None, None, 1.0, None
-    
+        print(f"  Path after (potential) rescaling: {path_of_image_unit_for_segmentation}, Scale factor: {applied_scale_factor}")
+
     tiling_cfg = image_config.get("tiling_config")
-    # target_processing_unit_name is the actual file processed by Cellpose (a tile, or a full image that might have been rescaled)
-    
-    if tiling_cfg and tiling_cfg.get("tile_size"):
-        # Check if target_processing_unit_name looks like a tile from this config
-        # This relies on naming convention from tile_large_image and pipeline_config_parser
-        tile_prefix_base = tiling_cfg.get("tile_output_prefix_base", clean_filename_for_dir(os.path.basename(path_after_rescaling)) + "_tile")
-        if target_processing_unit_name.startswith(tile_prefix_base) and "_r" in target_processing_unit_name and "_c" in target_processing_unit_name:
-            is_tiled_job = True
-            tile_storage_dir_suffix = target_image_id
-            if applied_scale_factor != 1.0:
-                scale_factor_str_suffix = str(applied_scale_factor).replace('.', '_')
-                tile_storage_dir_suffix += f"_scaled{scale_factor_str_suffix}"
-            
-            tile_dir = os.path.join(TILED_IMAGE_OUTPUT_BASE, tile_storage_dir_suffix)
-            path_of_segmented_unit = os.path.join(tile_dir, target_processing_unit_name)
-        else: # Tiling was configured, but target_processing_unit_name doesn't look like a tile from it -> assume it's the full (rescaled) image
-            path_of_segmented_unit = path_after_rescaling
-            is_tiled_job = False # It's not a tile in this case
-    else: # No tiling config, so the processed unit is the (potentially rescaled) full image
-        path_of_segmented_unit = path_after_rescaling
+    base_name_of_processed_unit = os.path.basename(path_of_image_unit_for_segmentation)
+    if tiling_cfg and tiling_cfg.get("tile_size") and target_processing_unit_name != base_name_of_processed_unit:
+        is_tiled_job = True
+        tile_storage_dir_suffix = target_image_id
+        if applied_scale_factor != 1.0:
+            scale_factor_str = str(applied_scale_factor).replace('.', '_')
+            tile_storage_dir_suffix += f"_scaled{scale_factor_str}"
+        
+        tile_dir = os.path.join(TILED_IMAGE_OUTPUT_BASE, tile_storage_dir_suffix)
+        path_of_image_unit_for_segmentation = os.path.join(tile_dir, target_processing_unit_name) 
+        if not os.path.exists(path_of_image_unit_for_segmentation):
+             print(f"  FATAL: Tile image file not found: {path_of_image_unit_for_segmentation}")
+             return None, None, 1.0, None
+    else: 
         is_tiled_job = False
 
-
-    # Construct final experiment ID for results folder (must match segmentation_pipeline.py)
-    experiment_id_final_folder = ""
+    cleaned_proc_unit_name = clean_filename_for_dir(target_processing_unit_name)
+    experiment_id_final_for_mask_folder = ""
     if is_tiled_job:
-        cleaned_tile_name = clean_filename_for_dir(target_processing_unit_name)
-        experiment_id_final_folder = f"{target_image_id}_{target_param_set_id}_{cleaned_tile_name}"
+        experiment_id_final_for_mask_folder = f"{target_image_id}_{target_param_set_id}_{cleaned_proc_unit_name}"
     else: 
-        experiment_id_final_folder = f"{target_image_id}_{target_param_set_id}"
-        if applied_scale_factor != 1.0: 
-            scale_factor_str_suffix = str(applied_scale_factor).replace('.', '_')
-            experiment_id_final_folder += f"_scaled{scale_factor_str_suffix}"
+        experiment_id_final_for_mask_folder = f"{target_image_id}_{target_param_set_id}"
+        if applied_scale_factor != 1.0 and path_of_image_unit_for_segmentation.startswith(os.path.join(RESCALED_IMAGE_CACHE_DIR,target_image_id)):
+            scale_factor_str = str(applied_scale_factor).replace('.', '_')
+            experiment_id_final_for_mask_folder += f"_scaled{scale_factor_str}"
             
-    mask_filename_base = os.path.splitext(target_processing_unit_name)[0] + "_mask.tif"
-    mask_path = os.path.join(RESULTS_DIR_BASE, experiment_id_final_folder, mask_filename_base)
+    mask_filename_part = os.path.splitext(target_processing_unit_name)[0] + "_mask.tif"
+    mask_path = os.path.join(RESULTS_DIR_BASE, experiment_id_final_for_mask_folder, mask_filename_part)
         
-    return path_of_segmented_unit, mask_path, applied_scale_factor, original_source_image_full_path
+    return path_of_image_unit_for_segmentation, mask_path, applied_scale_factor, original_source_image_full_path
 
 
 if __name__ == "__main__":
@@ -258,8 +238,8 @@ if __name__ == "__main__":
     parser.add_argument("parameter_sets_json", help="Path to the parameter_sets.json file (e.g., 'parameter_sets.json').")
     parser.add_argument("image_id", help="The 'image_id' from image_configurations in JSON.")
     parser.add_argument("param_set_id", help="The 'param_set_id' from cellpose_parameter_configurations in JSON.")
-    parser.add_argument("processing_unit_name", help="Filename of the specific image/tile that was segmented (e.g., 'tile_r0_c0.tif', or 'original_image_scaled_0_5.tif', or 'original_image.tif').")
-    parser.add_argument("mapped_transcripts_csv", help="Path to the CSV file with mapped transcripts.")
+    parser.add_argument("processing_unit_name", help="Filename of the specific image/tile that was segmented (e.g., 'tile_r0_c0.tif', 'original_image_scaled_0_5.tif', or 'original_image.tif').")
+    parser.add_argument("mapped_transcripts_csv", help="Path to the CSV with mapped transcripts.")
     parser.add_argument("output_dir", help="Directory to save visualizations.")
     parser.add_argument("--genes", nargs='+', required=True, help="List of gene names to visualize.")
     parser.add_argument("--mpp_x_original", type=float, required=True, help="Microns per pixel in X of the *original, unscaled* source image.")
@@ -274,8 +254,6 @@ if __name__ == "__main__":
         try: os.makedirs(args.output_dir); print(f"Created output directory: {args.output_dir}")
         except OSError as e: print(f"Error creating output dir {args.output_dir}: {e}"); exit(1)
 
-    # Construct full path to parameter_sets.json if it's given as a relative path to project root
-    # This assumes the script is run with python -m src.visualize_gene_expression from project root
     param_sets_full_path = os.path.join(PROJECT_ROOT, args.parameter_sets_json) if not os.path.isabs(args.parameter_sets_json) else args.parameter_sets_json
 
     background_image_to_display_path, segmentation_mask_path, scale_factor_applied, _ = get_job_info_and_paths(
@@ -322,13 +300,12 @@ if __name__ == "__main__":
         if display_background_8bit.ndim > 2 and display_background_8bit.shape[-1] > 0 :
             display_background_8bit_gray = normalize_to_8bit_for_display(display_background_8bit[:,:,0])
             display_background_8bit_rgb = cv2.cvtColor(display_background_8bit_gray, cv2.COLOR_GRAY2RGB)
-        elif display_background_8bit.ndim == 3: # Hope it's RGB compatible
+        elif display_background_8bit.ndim == 3: 
              display_background_8bit_rgb = display_background_8bit
-        else: # Truly unknown, create a blank
+        else: 
             print("Error: Cannot convert background image to RGB for display. Using blank.")
             h,w = seg_mask.shape[:2]
             display_background_8bit_rgb = np.zeros((h,w,3), dtype=np.uint8)
-
 
     if display_background_8bit_rgb.shape[:2] != seg_mask.shape[:2]:
         print(f"FATAL Error: Background image shape {display_background_8bit_rgb.shape[:2]} and mask shape {seg_mask.shape[:2]} DO NOT MATCH!")
@@ -337,9 +314,11 @@ if __name__ == "__main__":
 
     for gene in args.genes:
         cleaned_gene_name = clean_filename_for_dir(gene)
-        output_png_path = os.path.join(args.output_dir, f"{cleaned_gene_name}_expression_overlay.png")
+        unique_file_prefix = clean_filename_for_dir(args.experiment_id_final) # Use the full experiment_id_final for uniqueness
+        output_filename = f"{unique_file_prefix}_{cleaned_gene_name}_expression_overlay.png"
+        output_png_path = os.path.join(args.output_dir, output_filename)
         
-        visualize_gene_expression_for_job( # Renamed from visualize_gene_expression_on_cells_v2
+        visualize_gene_expression_for_job(
             mapped_df, seg_mask, display_background_8bit_rgb, 
             gene, output_png_path,
             effective_mpp_x=effective_mpp_x, 
@@ -350,4 +329,6 @@ if __name__ == "__main__":
             colormap_name=args.colormap
         )
     
-    print("Gene expression visualization process finished.")
+    print("
+Gene expression visualization process finished.")
+
