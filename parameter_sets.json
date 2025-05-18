@@ -104,7 +104,7 @@
       "MIN_SIZE": 5,
       "CELLPROB_THRESHOLD": -2.0,
       "FORCE_GRAYSCALE": true,
-      "USE_GPU": false,
+      "USE_GPU": true,
       "is_active": true
     }
   ]

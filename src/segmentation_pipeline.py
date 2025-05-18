@@ -16,8 +16,8 @@ RESULTS_DIR_BASE = "results"
 RUN_LOG_FILE = os.path.join(RESULTS_DIR_BASE, "run_log.json")
 PARAMETER_SETS_JSON_FILE = "parameter_sets.json" # Path relative to project root
 
-MAX_PARALLEL_PROCESSES = max(1, cpu_count() // 2)
-#MAX_PARALLEL_PROCESSES = 1 # Safer option if GPU is involved or for debugging
+#MAX_PARALLEL_PROCESSES = max(1, cpu_count() // 2)
+MAX_PARALLEL_PROCESSES = 1 # Safer option if GPU is involved or for debugging
 
 if __name__ == "__main__":
     freeze_support() # For multiprocessing on Windows
