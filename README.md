@@ -28,15 +28,20 @@ The pipeline generally follows these steps:
     *   Logs all executed jobs, their parameters, and status to `results/run_log.json`.
     *   Supports CPU-based parallel processing for these jobs.
 
-4.  **`(Optional)` Transcript Mapping (`src/map_transcripts_to_cells.py`)**:
-    *   After segmentation, choose a specific `_mask.tif` from a successful job.
+4.  **`(Optional)` Stitch Tiled Segmentations (`src/stitch_masks.py`)**:
+    *   If tiling was used in Step 3, this script combines the individual tile masks from a specific run (original image + Cellpose parameters) into a single, coherent segmentation mask for the entire original large image.
+    *   It uses the `run_log.json` to find the relevant tile masks and their original positions.
+    *   Outputs a `_stitched_mask.tif` file.
+
+5.  **`(Optional)` Transcript Mapping (`src/map_transcripts_to_cells.py`)**:
+    *   After segmentation (and optional stitching), choose a specific `_mask.tif` (either from a single job or a stitched mask).
     *   Use this script to map transcript locations (e.g., from a Xenium `transcripts.parquet` file) to the segmented cell IDs.
     *   Outputs a CSV of transcripts with assigned cell IDs and a feature-cell matrix in MTX format.
 
-5.  **`(Optional)` Summary Visualization (`src/create_summary_image.py`)**:
-    *   Reads `results/run_log.json` to find successfully processed segmentation jobs.
-    *   Generates a consensus probability map.
-    *   Calculates Dice scores for each job against the consensus.
+6.  **`(Optional)` Summary Visualization (`src/create_summary_image.py`)**:
+    *   Analyzes the segmentation results from `segmentation_pipeline.py` by reading `results/run_log.json`.
+    *   Generates a consensus probability map from all processed masks (from active jobs).
+    *   Calculates Dice similarity scores for each job's mask against the consensus.
     *   Creates `results/segmentation_summary_consistency.png` showing all processed segmentations (tiles or full images) overlaid on their respective original images, with cells colored by consistency and Dice scores displayed.
 
 ## Features
@@ -45,6 +50,7 @@ The pipeline generally follows these steps:
 *   OME-TIFF pre-processing utility.
 *   Choice of Cellpose models and detailed parameter tuning.
 *   Configurable GPU usage per Cellpose parameter set.
+*   Stitching of tiled segmentation masks.
 *   Transcript mapping and feature-cell matrix generation.
 *   Advanced summary visualization of segmentation results with cell consistency coloring and Dice scores.
 *   Comprehensive logging of all jobs in `results/run_log.json`.
@@ -79,7 +85,7 @@ The pipeline generally follows these steps:
 *   Place your primary 2D TIFF images in the `images/` folder.
 *   If using OME-TIFFs, first run `src/preprocess_ometiff.py` to extract 2D TIFFs and place them in `images/`.
     ```bash
-    python src/preprocess_ometiff.py path/to/your.ome.tif images/extracted_planes --channel X --zplane Y --prefix ome_extract
+    python -m src.preprocess_ometiff path/to/your.ome.tif images/extracted_planes --channel X --zplane Y --prefix ome_extract
     ```
     *(Ensure `images/extracted_planes` exists or adjust output path; these extracted TIFFs will be listed in `parameter_sets.json`)*
 
@@ -102,59 +108,64 @@ This is the main control file, located in the project root.
         *   `"tile_size"`: (Integer) e.g., `2048`.
         *   `"overlap"`: (Integer) e.g., `200`.
         *   `"tile_output_prefix_base"`: (String) Base for naming generated tile files and their manifest. Tiles will be stored in `images/tiled_outputs/<image_id>/`.
+    *   `"rescaling_config"`: (Object, Optional) If present, image (before tiling) will be rescaled.
+        *   `"scale_factor"`: (Float) e.g., `0.5` for 50%. Values > 0 and <= 1.0.
+        *   `"interpolation"`: (String, Optional) OpenCV interpolation: "INTER_NEAREST", "INTER_LINEAR", "INTER_AREA" (default), "INTER_CUBIC", "INTER_LANCZOS4".
 
 *   **`cellpose_parameter_configurations` (List of Objects):**
     *   `"param_set_id"`: (String) Unique identifier for this set of Cellpose parameters (e.g., "DefaultCyto3", "AggressiveSmallCells"). Used in output folder naming.
     *   `"is_active"`: (Boolean, Optional) `true` (or omitted) to use this parameter set; `false` to skip.
-    *   `"MODEL_CHOICE"`: (String) e.g., `"cyto3"`.
-    *   `"DIAMETER"`: (Number or `null`).
-    *   `"FLOW_THRESHOLD"`: (Number or `null`).
-    *   `"MIN_SIZE"`: (Number or `null`, will default to 15 in script if `null`).
-    *   `"CELLPROB_THRESHOLD"`: (Number).
-    *   `"FORCE_GRAYSCALE"`: (Boolean).
-    *   `"USE_GPU"`: (Boolean).
+    *   `"MODEL_CHOICE"`, `"DIAMETER"`, `"FLOW_THRESHOLD"`, `"MIN_SIZE"`, `"CELLPROB_THRESHOLD"`, `"FORCE_GRAYSCALE"`, `"USE_GPU"`.
 
 ### Step 2: Run Segmentation Pipeline
 1.  **Configure Parallel Processing:** Edit `MAX_PARALLEL_PROCESSES` at the top of `src/segmentation_pipeline.py`.
     *   **GPU Users:** If any active Cellpose parameter configuration uses GPU, set `MAX_PARALLEL_PROCESSES = 1` for stability on single-GPU systems.
-2.  **Execute:**
+2.  **Execute:** (Run from project root)
     ```bash
-    python src/segmentation_pipeline.py
+    python -m src.segmentation_pipeline
     ```
-    *   This will first tile images if configured (tiles stored in `images/tiled_outputs/<image_id>/`), then run Cellpose segmentation for every active image/tile combined with every active parameter set.
-    *   Outputs are saved in `results/<image_id>_<param_set_id>/` (for non-tiled images) or `results/<image_id>_<param_set_id>_<cleaned_tile_name>/` (for tiles).
-    *   `results/run_log.json` is created/updated with details of all individual segmentation jobs.
+    *   This will first rescale/tile images if configured (tiles stored in `images/tiled_outputs/<image_id>/`), then run Cellpose segmentation.
+    *   Outputs are saved in `results/<image_id>_<param_set_id>/` (for non-tiled) or `results/<image_id>_<param_set_id>_<cleaned_tile_name>/` (for tiles).
+    *   `results/run_log.json` is created/updated.
 
-### Step 3: Map Transcripts to Cells (Optional, Per Job)
-1.  After Step 2, choose a specific segmentation output (a `_mask.tif` file from one of the job folders in `results/`).
-2.  Run `src/map_transcripts_to_cells.py`:
+### Step 3: Stitch Tiled Segmentations (If Tiling Was Used)
+If tiling was applied to an image for a particular parameter set:
+1.  **Run `stitch_masks.py` Script:** (Run from project root)
     ```bash
-    python src/map_transcripts_to_cells.py \
+    python -m src.stitch_masks <original_image_id> <param_set_id> <output_dir_for_stitched> --output_filename <stitched_mask.tif>
+    ```
+    *   Example:
+        ```bash
+        python -m src.stitch_masks XeniumImage1_Scaled50 Cellpose_DefaultDiam results/XeniumImage1_Scaled50_Cellpose_DefaultDiam_STITCHED
+        ```
+    *   This saves the combined mask (e.g., `results/XeniumImage1_Scaled50_Cellpose_DefaultDiam_STITCHED/stitched_mask.tif`).
+
+### Step 4: Map Transcripts to Cells (Optional)
+1.  **Prepare Inputs:** Path to transcript file, chosen segmentation mask (`_mask.tif` from a job or a `stitched_mask.tif`), MPP values (corresponding to the chosen mask's resolution!), and any offsets.
+2.  **Run Transcript Mapping Script:** (Run from project root)
+    ```bash
+    python -m src.map_transcripts_to_cells \
         "path/to/transcripts.parquet" \
-        "results/ImageID_ParamSetID_TileNameOpt/image_mask.tif" \
-        "results/ImageID_ParamSetID_TileNameOpt/mapping_output" \
+        "path/to/your_chosen_mask.tif" \
+        "path/to/mapping_output_directory" \
         --mpp_x <val> --mpp_y <val> 
         # ... other arguments ...
     ```
 
-### Step 4: Generate Summary Image of Segmentations (Optional)
-1.  Run `src/create_summary_image.py`:
+### Step 5: Generate Summary Image of Segmentations (Optional)
+(Compares individual segmentation jobs, which may include tiles)
+1.  **Run Summary Script:** (Run from project root)
     ```bash
-    python src/create_summary_image.py
+    python -m src.create_summary_image
     ```
-    *   It reads `results/run_log.json` to find successfully completed, active segmentation jobs (tiles or full images) and includes them in the summary.
 2.  View `results/segmentation_summary_consistency.png`.
 
 ## Troubleshooting
-
+*   **Import Errors:** Always run scripts as modules from the project root, e.g., `python -m src.script_name`.
 *   **Tiling:** Check `images/tiled_outputs/<image_id>/` for generated tiles and `_manifest.json`.
-*   **OME-TIFF Pre-processing:** If `preprocess_ometiff.py` outputs black or incorrect images, double-check the `--channel`, `--zplane`, and `--series` arguments against your OME-TIFF's actual structure.
-*   **Segmentation Errors (`segmentation_pipeline.py`):**
-    *   Check `results/run_log.json` for the status of all jobs.
-    *   For failed jobs, check `error_log.txt` in the specific job's output folder in `results/`.
-*   **Summary Image Issues (`create_summary_image.py`):**
-    *   Ensure `_mask.tif` files exist for successfully processed jobs listed in `run_log.json`.
-    *   Verify original images (or tiles if applicable) are accessible.
-*   **GPU Errors:** If using GPU, ensure `MAX_PARALLEL_PROCESSES = 1` for single-GPU systems.
-*   **Transcript Mapping:** Ensure correct `--mpp_x`, `--mpp_y`, and offset values. Verify `feature_name` and `qv` columns in your transcript file.
+*   **OME-TIFF Pre-processing:** Verify `--channel`, `--zplane`, `--series` arguments.
+*   **Segmentation Errors:** Check `results/run_log.json` and `error_log.txt` in specific job output folders.
+*   **Stitching Errors:** Ensure `run_log.json` has successful tile jobs for the target IDs. Original image dimension inference might need adjustment.
+*   **Transcript Mapping:** Crucially, ensure `--mpp_x`, `--mpp_y` (and offsets) match the resolution and coordinate system of the *mask file being used*.
+*   **GPU Errors:** If using GPU, set `MAX_PARALLEL_PROCESSES = 1` in `segmentation_pipeline.py` for single-GPU systems.
 
