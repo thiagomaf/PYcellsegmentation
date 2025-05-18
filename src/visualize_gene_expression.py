@@ -1,3 +1,4 @@
+
 import os
 import argparse
 import pandas as pd
@@ -11,7 +12,7 @@ import json
 import re
 import traceback
 
-from .pipeline_utils import clean_filename_for_dir, rescale_image_and_save
+from .pipeline_utils import clean_filename_for_dir, rescale_image_and_save # clean_filename_for_dir might be unused now
 
 UNASSIGNED_CELL_ID = -1
 DEFAULT_BACKGROUND_COLOR_FOR_CELLS_NO_EXPRESSION = np.array([200, 200, 200], dtype=np.uint8)
@@ -23,6 +24,16 @@ IMAGE_DIR_BASE = os.path.join(PROJECT_ROOT, "images")
 TILED_IMAGE_OUTPUT_BASE = os.path.join(IMAGE_DIR_BASE, "tiled_outputs")
 RESCALED_IMAGE_CACHE_DIR = os.path.join(IMAGE_DIR_BASE, "rescaled_cache") 
 RESULTS_DIR_BASE = os.path.join(PROJECT_ROOT, "results")
+
+def sanitize_identifier_for_filename(identifier_str):
+    """Sanitizes an identifier string to be filename-safe.
+    Replaces sequences of non-alphanumeric characters (excluding '.', '-') 
+    with a single underscore. Preserves internal dots and hyphens.
+    """
+    if not identifier_str:
+        return ""
+    # Allow letters, numbers, underscore, hyphen, dot. Replace others.
+    return re.sub(r'[^\w.-]+', '_', identifier_str)
 
 def load_mapped_transcripts(mapped_transcripts_csv_path):
     print(f"Loading mapped transcripts from: {mapped_transcripts_csv_path} ...")
@@ -194,27 +205,21 @@ def get_job_info_and_paths(param_sets_path, target_image_id, target_param_set_id
     rescaling_cfg = image_config.get("rescaling_config")
     if rescaling_cfg and "scale_factor" in rescaling_cfg and rescaling_cfg["scale_factor"] != 1.0:
         print(f"  Rescaling config found for {target_image_id}: factor {rescaling_cfg['scale_factor']}")
-        # Use target_processing_unit_name's base for cache ID if it's a rescaled image itself, else target_image_id
-        # This part assumes rescale_image_and_save uses target_image_id as the primary cache key for the *original* image's scaled versions.
-        image_id_for_cache = target_image_id # Cache is based on original image ID
+        image_id_for_cache = target_image_id
         
         rescaled_path, actual_sf = rescale_image_and_save(
-            original_source_image_full_path, # Always rescale from original if config says so
+            original_source_image_full_path, 
             image_id_for_cache, 
             rescaling_cfg
         )
         if actual_sf != 1.0 and os.path.exists(rescaled_path):
             path_of_image_unit_for_segmentation = rescaled_path
             applied_scale_factor = actual_sf
-        else: # Rescaling failed or no rescale needed per config
-             pass # path_of_image_unit_for_segmentation remains original_source_image_full_path or previous state
         print(f"  Path after explicit config rescaling: {path_of_image_unit_for_segmentation}, Scale factor: {applied_scale_factor}")
 
-    # Fallback: Infer scale factor if not set by explicit config but present in target_processing_unit_name
-    # This is crucial if visualizing an already scaled image where rescaling_cfg might not apply at this stage
     if applied_scale_factor == 1.0 and "_scaled_" in target_processing_unit_name:
-        match = re.search(r"_scaled_([0-9]+(?:_[0-9]+)?)(?:_mask)?\\.", os.path.basename(target_processing_unit_name))
-        if not match: # Try matching without extension if previous failed (e.g. if dir name is passed)
+        match = re.search(r"_scaled_([0-9]+(?:_[0-9]+)?)(?:_mask)?\.", os.path.basename(target_processing_unit_name))
+        if not match: 
              match = re.search(r"_scaled_([0-9]+(?:_[0-9]+)?)$", os.path.splitext(os.path.basename(target_processing_unit_name))[0])
 
         if match:
@@ -224,70 +229,45 @@ def get_job_info_and_paths(param_sets_path, target_image_id, target_param_set_id
                 if 0 < parsed_sf_from_name <= 1.0:
                     applied_scale_factor = parsed_sf_from_name
                     print(f"  Inferred applied_scale_factor {applied_scale_factor} from target_processing_unit_name '{target_processing_unit_name}'")
-                    # If target_processing_unit_name is the scaled image, path_of_image_unit_for_segmentation should point to it
-                    # This logic assumes target_processing_unit_name if scaled is in RESCALED_IMAGE_CACHE_DIR or similar known structure
-                    # For visualization, target_processing_unit_name *is* the image that was segmented.
-                    # We need to construct its potential path if it was from cache.
                     scaled_filename_candidate = f"{os.path.splitext(os.path.basename(original_image_filename))[0]}_scaled_{match.group(1)}.tif"
                     potential_cached_path = os.path.join(RESCALED_IMAGE_CACHE_DIR, target_image_id, scaled_filename_candidate)
                     if os.path.exists(potential_cached_path) and target_processing_unit_name == os.path.basename(potential_cached_path):
                         path_of_image_unit_for_segmentation = potential_cached_path
                         print(f"  Path for segmentation (inferred as scaled): {path_of_image_unit_for_segmentation}")
-                    elif os.path.exists(target_processing_unit_name): # if full path was provided
+                    elif os.path.exists(target_processing_unit_name):
                         path_of_image_unit_for_segmentation = target_processing_unit_name
-                    # else: path_of_image_unit_for_segmentation remains original or as set by explicit rescale_cfg
-
             except ValueError:
                 print(f"  Could not parse scale factor from filename: {target_processing_unit_name}")
 
-
     tiling_cfg = image_config.get("tiling_config")
-    # Check if target_processing_unit_name indicates it's a tile (heuristic)
-    # A more robust way would be to get this info from config or a dedicated parameter.
-    # For now, if tiling_cfg exists and target_processing_unit_name is not the main (potentially scaled) image.
     base_name_of_main_image_unit = os.path.basename(path_of_image_unit_for_segmentation if applied_scale_factor == 1.0 else f"{os.path.splitext(original_image_filename)[0]}_scaled_{str(applied_scale_factor).replace('.', '_')}.tif" )
     
     if tiling_cfg and tiling_cfg.get("tile_size") and target_processing_unit_name != base_name_of_main_image_unit:
         is_tiled_job = True
-        # Determine parent directory for tiles (could be based on scaled original image)
         tile_storage_parent_dir_name = target_image_id
-        if applied_scale_factor != 1.0: # If the original image from which tiles were made was scaled
+        if applied_scale_factor != 1.0: 
             scale_factor_str_for_tile_parent = str(applied_scale_factor).replace('.', '_')
             tile_storage_parent_dir_name += f"_scaled{scale_factor_str_for_tile_parent}"
         
-        # path_of_image_unit_for_segmentation should now be the specific tile
         path_of_image_unit_for_segmentation = os.path.join(TILED_IMAGE_OUTPUT_BASE, tile_storage_parent_dir_name, target_processing_unit_name) 
         print(f"  This is a tiled job. Segmentation will use tile: {path_of_image_unit_for_segmentation}")
         if not os.path.exists(path_of_image_unit_for_segmentation):
-             print(f"  WARNING: Tile image file not found: {path_of_image_unit_for_segmentation}. Proceeding with original/rescaled path if it exists.")
-             # Fallback or error based on desired behavior for missing tiles
-             # For now, we'll let it try to use the original_source_image_full_path or rescaled full image path and error later if mask is not found
+             print(f"  WARNING: Tile image file not found: {path_of_image_unit_for_segmentation}.")
 
-    # Determine the results folder name
     experiment_id_for_results_folder = f"{target_image_id}_{target_param_set_id}"
     if applied_scale_factor != 1.0:
         scale_factor_str = str(applied_scale_factor).replace('.', '_')
         experiment_id_for_results_folder += f"_scaled{scale_factor_str}"
 
-    # If it's a tiled job, some conventions might add the tile name to the folder or expect masks in a subfolder of the parent's experiment_id
-    # For simplicity and based on user's expected "results/IMAGE_PARAM_scaledX_Y/TILE_NAME_mask.tif"
-    # the experiment_id_for_results_folder remains the parent image's ID (with scaling).
-    # The mask_filename_part will distinguish the tile.
-
     mask_filename_part = os.path.splitext(target_processing_unit_name)[0] + "_mask.tif"
     mask_path = os.path.join(RESULTS_DIR_BASE, experiment_id_for_results_folder, mask_filename_part)
     
-    # Final check on path_of_image_unit_for_segmentation if it wasn't a tile and wasn't explicitly rescaled by config
-    # It should be the target_processing_unit_name if that name implies scaling and is different from original
     if not is_tiled_job and target_processing_unit_name != os.path.basename(original_source_image_full_path) and applied_scale_factor != 1.0:
-        # Construct potential path based on cache structure for the target_processing_unit_name
-        # This assumes target_processing_unit_name is a direct child of a cache folder named after target_image_id
         potential_path = os.path.join(RESCALED_IMAGE_CACHE_DIR, target_image_id, target_processing_unit_name)
         if os.path.exists(potential_path):
             path_of_image_unit_for_segmentation = potential_path
-        elif os.path.exists(target_processing_unit_name): # if it's a full path or in current dir
+        elif os.path.exists(target_processing_unit_name): 
              path_of_image_unit_for_segmentation = target_processing_unit_name
-        # Else, it might have been set correctly by explicit rescaling earlier, or remains original.
 
     print(f"  Final derived path for image unit to use for display/finding mask: {path_of_image_unit_for_segmentation}")
     print(f"  Final derived mask path: {mask_path}")
@@ -379,10 +359,10 @@ if __name__ == "__main__":
         exit(1)
 
     for gene in args.genes:
-        cleaned_gene_name = clean_filename_for_dir(gene)
-        # Use the experiment_folder_id for a consistent prefix reflecting the segmentation run
-        unique_file_prefix = clean_filename_for_dir(experiment_folder_id) 
-        output_filename = f"{unique_file_prefix}_{cleaned_gene_name}_expression_overlay.png"
+        # Use the new sanitize_identifier_for_filename function
+        sane_experiment_id_prefix = sanitize_identifier_for_filename(experiment_folder_id)
+        sane_gene_name = sanitize_identifier_for_filename(gene)
+        output_filename = f"{sane_experiment_id_prefix}_{sane_gene_name}_expression_overlay.png"
         output_png_path = os.path.join(args.output_dir, output_filename)
         
         visualize_gene_expression_for_job(
@@ -397,3 +377,4 @@ if __name__ == "__main__":
         )
     
     print("Gene expression visualization process finished.")
+
