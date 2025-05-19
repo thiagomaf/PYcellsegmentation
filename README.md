@@ -20,6 +20,7 @@ The pipeline generally follows these steps:
     *   **`cellpose_parameter_configurations`**: Defines different sets of Cellpose parameters.
     *   **`global_segmentation_settings`**: Global settings like `max_processes` for segmentation, `default_log_level`, `FORCE_GRAYSCALE`, and `USE_GPU_IF_AVAILABLE`.
     *   **`visualization_tasks`**: Defines gene expression visualization tasks, specifying source segmentation, transcript data, genes, and output parameters.
+    *   **`mapping_tasks`**: Defines transcript-to-cell mapping tasks.
 
 4.  **Segmentation & Tiling (`src/segmentation_pipeline.py`)**:
     *   Reads the `parameter_sets.json`.
@@ -133,7 +134,8 @@ This is the main control file, located in the project root. Update it to point t
       "global_segmentation_settings": { /* ... */ },
       "image_configurations": [ /* ... */ ],
       "cellpose_parameter_configurations": [ /* ... */ ],
-      "visualization_tasks": [ /* ... */ ]
+      "visualization_tasks": [ /* ... */ ],
+      "mapping_tasks": [ /* ... */ ]
     }
     ```
 
@@ -182,6 +184,40 @@ This is the main control file, located in the project root. Update it to point t
     *   `"genes_to_visualize"`: List of gene names.
     *   `"output_subfolder_name"`: Subfolder under `data/results/visualizations/` for this task's output.
 
+*   **`mapping_tasks` (List of Objects):**
+    Define transcript-to-cell mapping tasks. Each task processes one transcript file against one segmentation mask.
+    ```json
+    {
+      "task_id": "map_experiment1_job1",
+      "is_active": true,
+      "description": "Map transcripts for experiment1 using segmentation from pset1 on the rescaled image.",
+      "source_image_id": "img_exp1",
+      "source_param_set_id": "pset1",
+      "source_segmentation_scale_factor": 0.5, // Null or 1.0 if no scaling for segmentation
+      "source_processing_unit_display_name": "img_exp1_scaled_0_5.tif", // Actual filename of the image unit that was segmented
+      "source_segmentation_is_tile": false, // True if source_processing_unit_display_name is a tile name
+      "input_transcripts_path": "data/raw/transcripts/experiment1/transcripts.parquet",
+      "output_base_dir": "data/processed/mapped/experiment1_job1_map/",
+      "output_prefix": "mapped_transcripts_run1",
+      "mpp_x_of_mask": 0.65, // MPP of the mask file itself
+      "mpp_y_of_mask": 0.65, // MPP of the mask file itself
+      "mask_path_override": null // Optional: full path to mask if derivation is not suitable
+    }
+    ```
+    *   `task_id`: (String) Unique identifier.
+    *   `is_active`: (Boolean) Whether to run this task.
+    *   `description`: (String, Optional) User-friendly description.
+    *   `source_image_id`: (String) ID of the original image from `image_configurations`.
+    *   `source_param_set_id`: (String) ID of the Cellpose parameters from `cellpose_parameter_configurations` used for the segmentation.
+    *   `source_segmentation_scale_factor`: (Float, Optional) The scale factor applied *before* segmentation if the mask was generated from a rescaled image. Use `null` or `1.0` if segmentation was on the original scale.
+    *   `source_processing_unit_display_name`: (String) **Crucial.** The filename of the actual image unit that was segmented and whose mask will be used (e.g., `"image_scaled_0_5.tif"`, `"tile_r0_c0.tif"`, or `"original_image.tif"`). This name is used to find the `_mask.tif` file within the derived experiment result folder.
+    *   `source_segmentation_is_tile`: (Boolean) Set to `true` if `source_processing_unit_display_name` refers to a tile, `false` otherwise. This helps in correctly constructing the experiment ID for path derivation.
+    *   `input_transcripts_path`: (String) Path to the input transcript file (e.g., `.parquet` or `.csv`), typically under `data/raw/transcripts/`.
+    *   `output_base_dir`: (String) Directory where mapping results (mapped transcripts CSV, feature-cell matrix CSV) will be saved, typically under `data/processed/mapped/`.
+    *   `output_prefix`: (String) Prefix for output filenames.
+    *   `mpp_x_of_mask`, `mpp_y_of_mask`: (Float) Microns-per-pixel values **of the mask image**. If segmentation was on a rescaled image, these MPP values must reflect that scaling (i.e., `original_mpp / scale_factor`).
+    *   `mask_path_override`: (String, Optional) If provided, this full path to the mask TIFF file will be used directly, bypassing the derivation logic.
+
 ### Step 2: Run Segmentation Pipeline
 Execute from the project root:
 ```bash
@@ -202,15 +238,24 @@ python -m src.stitch_masks <original_image_id> <param_set_id> <output_directory_
 ```
 
 ### Step 4: Map Transcripts to Cells
+This script maps transcript coordinates to segmented cell IDs using a specified mask.
+Configuration is managed via `mapping_tasks` in `parameter_sets.json`.
+
+Execute from the project root:
 ```bash
-python -m src.map_transcripts_to_cells \
-    "data/raw/transcripts/my_experiment/transcripts.parquet" \
-    "data/processed/segmentation/my_experiment/experiment_id_final/mask_file_name.tif" \
-    "data/processed/mapped/my_experiment/" \
-    --mpp_x 0.2125 --mpp_y 0.2125 \
-    --output_prefix "my_mapping"
+python -m src.map_transcripts_to_cells --config parameter_sets.json
 ```
-*Adjust paths and MPP values as needed.*
+Or, to run a specific active task:
+```bash
+python -m src.map_transcripts_to_cells --config parameter_sets.json --task_id your_mapping_task_id
+```
+
+**Command-line arguments:**
+*   `--config <path>`: Path to your JSON configuration file. Default: `parameter_sets.json`.
+*   `--task_id <ID>`: (Optional) Run only the specified mapping task ID from the JSON file. If omitted, all active tasks in `mapping_tasks` are run.
+*   `--log_level <LEVEL>`: Set the logging level. Overrides JSON `default_log_level` from `global_segmentation_settings`.
+
+Outputs (mapped transcripts CSV, feature-by-cell matrix CSV) are saved to the `output_base_dir` specified in each task configuration (e.g., `data/processed/mapped/your_task_output/`).
 
 ### Step 5: Visualize Gene Expression
 Ensure `visualization_tasks` are defined in `parameter_sets.json`.

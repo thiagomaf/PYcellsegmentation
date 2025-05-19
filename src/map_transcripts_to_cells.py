@@ -7,6 +7,16 @@ from scipy.sparse import coo_matrix
 import scipy.io 
 import traceback
 from cellpose import io as cellpose_io # Using cellpose.io for consistency
+from scipy.sparse import csr_matrix
+from pyarrow.parquet import read_table
+import logging
+import json
+
+# Internal imports from src
+from .file_paths import PROJECT_ROOT, RESULTS_DIR_BASE # Assuming RESULTS_DIR_BASE is where segmentation outputs are
+from .pipeline_utils import setup_logging, construct_full_experiment_id, get_mask_path_from_experiment_id
+
+logger = logging.getLogger(__name__)
 
 # --- Default Values ---
 DEFAULT_QV_THRESHOLD = 20.0
@@ -151,64 +161,217 @@ def generate_feature_cell_matrix(mapped_transcripts_df, output_dir, filename_pre
         print(f"Error generating or saving feature-cell matrix: {e}")
         traceback.print_exc()
 
+def map_transcripts_for_task(task_config):
+    """Maps transcripts to cells for a single task defined in the configuration."""
+    logger.info(f"Starting transcript mapping for task: {task_config.get('task_id', 'Unknown Task')}")
+    logger.debug(f"Task configuration: {task_config}")
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Map Xenium transcripts to Cellpose segmented cells.")
-    parser.add_argument("transcript_file", help="Path to the transcript data file (e.g., transcripts.parquet or .csv).")
-    parser.add_argument("mask_file", help="Path to the Cellpose segmentation mask TIFF file (_mask.tif).")
-    parser.add_argument("output_dir", help="Directory to save the mapped transcripts and feature-cell matrix.")
+    mpp_x = task_config.get("mpp_x_of_mask")
+    mpp_y = task_config.get("mpp_y_of_mask")
+    if mpp_x is None or mpp_y is None:
+        logger.error(f"MPP values (mpp_x_of_mask, mpp_y_of_mask) are required for task {task_config.get('task_id')}. Skipping.")
+        return False
+
+    transcripts_path = task_config.get("input_transcripts_path")
+    if not os.path.isabs(transcripts_path):
+        transcripts_path = os.path.join(PROJECT_ROOT, transcripts_path)
     
-    parser.add_argument("--mpp_x", type=float, required=True, help="Microns per pixel in X (mask image).")
-    parser.add_argument("--mpp_y", type=float, required=True, help="Microns per pixel in Y (mask image).")
-    
-    parser.add_argument("--x_offset_microns", type=float, default=0.0, help="Offset in microns for X coordinates. Default: 0.")
-    parser.add_argument("--y_offset_microns", type=float, default=0.0, help="Offset in microns for Y coordinates. Default: 0.")
+    output_dir = task_config.get("output_base_dir")
+    if not os.path.isabs(output_dir):
+        output_dir = os.path.join(PROJECT_ROOT, output_dir)
+    os.makedirs(output_dir, exist_ok=True)
 
-    parser.add_argument("--qv_threshold", type=float, default=DEFAULT_QV_THRESHOLD, 
-                        help=f"Min QV score for transcripts (default: {DEFAULT_QV_THRESHOLD}).")
-    
-    parser.add_argument("--output_prefix", type=str, default="mapped_transcripts", 
-                        help="Prefix for output files.")
+    output_prefix = task_config.get("output_prefix", "mapped_transcripts")
 
-    args = parser.parse_args()
+    mask_path = task_config.get("mask_path_override")
+    if not mask_path:
+        # Derive mask path
+        source_image_id = task_config.get("source_image_id")
+        source_param_set_id = task_config.get("source_param_set_id")
+        scale_factor = task_config.get("source_segmentation_scale_factor")
+        # Use 'source_processing_unit_display_name' which should be the actual filename of the segmented unit (e.g. image_scaled_0.5.tif or tile_r0_c0.tif)
+        processing_unit_display_name = task_config.get("source_processing_unit_display_name")
+        is_tile = task_config.get("source_segmentation_is_tile", False) # New field needed to distinguish tile from full image name
 
-    if not os.path.exists(args.output_dir):
-        try:
-            os.makedirs(args.output_dir)
-            print(f"Created output directory: {args.output_dir}")
-        except OSError as e:
-            print(f"Error creating output directory {args.output_dir}: {e}")
-            exit(1)
+        if not source_image_id or not source_param_set_id or not processing_unit_display_name:
+            logger.error(f"Task {task_config.get('task_id')}: For derived mask path, 'source_image_id', 'source_param_set_id', and 'source_processing_unit_display_name' are required. Skipping.")
+            return False
+        
+        experiment_id_final = construct_full_experiment_id(
+            image_id=source_image_id, 
+            param_set_id=source_param_set_id, 
+            scale_factor=scale_factor,
+            # If it's a tile, processing_unit_display_name is the tile name itself (e.g. tile_r0_c0.tif)
+            # If not a tile, this argument to construct_full_experiment_id should be None.
+            processing_unit_name_for_tile=processing_unit_display_name if is_tile else None,
+            is_tile=is_tile 
+        )
+        
+        # The `processing_unit_display_name` is the direct name for mask lookup (e.g., my_image_scaled_0_5.tif or tile_r0_c0.tif)
+        mask_path = get_mask_path_from_experiment_id(RESULTS_DIR_BASE, experiment_id_final, processing_unit_display_name)
 
+    if not mask_path or not os.path.exists(mask_path):
+        logger.error(f"Mask file not found for task {task_config.get('task_id')}. Path: {mask_path}. Searched based on source parameters. Skipping.")
+        return False
 
-    print("--- Starting Transcript Mapping ---")
-    transcripts_loaded = load_transcripts(args.transcript_file, args.qv_threshold)
-    
-    if transcripts_loaded is not None and not transcripts_loaded.empty:
-        segmentation_mask = load_segmentation_mask(args.mask_file)
-        if segmentation_mask is not None:
-            mapped_transcripts_df = map_transcripts_to_cells(
-                transcripts_loaded, segmentation_mask, 
-                args.mpp_x, args.mpp_y,
-                args.x_offset_microns, args.y_offset_microns
-            )
-            
-            if mapped_transcripts_df is not None:
-                mapped_csv_path = os.path.join(args.output_dir, f"{args.output_prefix}_with_cell_ids.csv")
-                try:
-                    mapped_transcripts_df.to_csv(mapped_csv_path, index=False)
-                    print(f"Saved mapped transcripts with cell IDs to: {mapped_csv_path}")
-                except Exception as e:
-                    print(f"Error saving mapped transcripts CSV: {e}")
+    logger.info(f"Using mask file: {mask_path}")
+    logger.info(f"Loading transcripts from: {transcripts_path}")
 
-                generate_feature_cell_matrix(mapped_transcripts_df, args.output_dir, 
-                                             filename_prefix=args.output_prefix)
-            else:
-                print("Transcript mapping step returned None or empty DataFrame.")
+    try:
+        mask = tifffile.imread(mask_path)
+        logger.info(f"Mask loaded successfully. Shape: {mask.shape}, Max ID: {mask.max()}")
+
+        if transcripts_path.endswith('.parquet'):
+            df = read_table(transcripts_path).to_pandas()
+        elif transcripts_path.endswith('.csv'):
+            df = pd.read_csv(transcripts_path)
         else:
-            print("Mask loading failed. Cannot proceed with mapping.")
-    else:
-        print("Transcript loading or filtering failed, or no transcripts passed QV filter.")
+            logger.error(f"Unsupported transcript file format: {transcripts_path}. Must be .parquet or .csv. Skipping task.")
+            return False
+        logger.info(f"Transcripts loaded. Shape: {df.shape}. Columns: {df.columns.tolist()}")
+
+        required_cols = ['global_x', 'global_y', 'gene'] 
+        if not all(col in df.columns for col in required_cols):
+            logger.error(f"Transcript data at {transcripts_path} is missing one or more required columns: {required_cols}. Found: {df.columns.tolist()}. Skipping task.")
+            return False
+
+        df.rename(columns={'global_x': 'pixel_x', 'global_y': 'pixel_y'}, inplace=True)
+        logger.info("Assuming 'global_x' and 'global_y' in transcript file are pixel coordinates at the mask's resolution.")
+
+        df_filtered = df[(df['pixel_x'] >= 0) & (df['pixel_x'] < mask.shape[1]) &
+                         (df['pixel_y'] >= 0) & (df['pixel_y'] < mask.shape[0])].copy()
+        
+        num_filtered_out = len(df) - len(df_filtered)
+        if num_filtered_out > 0:
+            logger.info(f"Filtered out {num_filtered_out} transcripts that were outside the mask boundaries.")
+
+        if df_filtered.empty:
+            logger.warning("No transcripts remaining after filtering for mask boundaries. Proceeding to write empty outputs.")
+            cell_ids_for_transcripts = []
+        else:
+            cell_ids_for_transcripts = mask[df_filtered['pixel_y'].astype(int).values, 
+                                          df_filtered['pixel_x'].astype(int).values]
+        
+        df_filtered.loc[:, 'cell_id'] = cell_ids_for_transcripts
+        logger.info(f"Assigned cell IDs to {len(df_filtered[df_filtered['cell_id'] > 0])} transcripts within cells.")
+
+        mapped_transcripts_output_path = os.path.join(output_dir, f"{output_prefix}_transcripts_mapped.csv")
+        df_filtered.to_csv(mapped_transcripts_output_path, index=False)
+        logger.info(f"Mapped transcripts saved to: {mapped_transcripts_output_path}")
+
+        df_in_cells = df_filtered[df_filtered['cell_id'] > 0]
+        if not df_in_cells.empty:
+            feature_cell_matrix = pd.crosstab(df_in_cells['gene'], df_in_cells['cell_id'])
+            matrix_output_path = os.path.join(output_dir, f"{output_prefix}_feature_cell_matrix.csv")
+            feature_cell_matrix.to_csv(matrix_output_path)
+            logger.info(f"Feature-by-cell matrix saved to: {matrix_output_path}")
+        else:
+            logger.info("No transcripts were assigned to cells (cell_id > 0). Skipping feature-by-cell matrix generation.")
+        
+        logger.info(f"Transcript mapping for task {task_config.get('task_id', 'Unknown Task')} completed successfully.")
+        return True
+
+    except Exception as e:
+        logger.error(f"Error during transcript mapping for task {task_config.get('task_id', 'Unknown Task')}: {e}", exc_info=True)
+        return False
+
+def main():
+    parser = argparse.ArgumentParser(description="Maps transcripts to segmented cells based on a mask.")
+    parser.add_argument("--config", default="parameter_sets.json",
+                        help="Path to the parameter sets JSON file (default: parameter_sets.json relative to project root).")
+    parser.add_argument("--task_id", type=str, default=None,
+                        help="Specific task_id from the mapping_tasks in the config file to run. If not provided, all active tasks will be run.")
+    parser.add_argument("--log_level", type=str, default="INFO", choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
+                        help="Logging level (default: INFO).")
     
-    print("--- Transcript Mapping Finished ---")
+    args = parser.parse_args()
+    # Determine log level: CLI > JSON (if we add it to mapping_tasks or global) > default in setup_logging
+    # For now, CLI or direct default in setup_logging if not passed.
+    # We could enhance this to read from global_segmentation_settings.default_log_level if args.log_level is not set by CLI.
+    effective_log_level = args.log_level.upper()
+    # Potentially load from JSON config if args.log_level is None and a global default exists
+    config_file_path_for_log = args.config
+    if not os.path.isabs(config_file_path_for_log):
+        config_file_path_for_log = os.path.join(PROJECT_ROOT, config_file_path_for_log)
+    
+    json_log_level = None
+    if os.path.exists(config_file_path_for_log):
+        try:
+            with open(config_file_path_for_log, 'r') as f_log_check:
+                log_check_config = json.load(f_log_check)
+            global_settings_log = log_check_config.get("global_segmentation_settings", {})
+            json_log_level = global_settings_log.get("default_log_level")
+        except Exception:
+            pass # Ignore if config can't be read for log level pre-setup
+
+    if args.log_level:
+         effective_log_level = args.log_level.upper()
+    elif json_log_level and isinstance(json_log_level, str) and json_log_level.upper() in ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']:
+        effective_log_level = json_log_level.upper()
+    else:
+        effective_log_level = "INFO" # Fallback default
+
+    setup_logging(effective_log_level)
+    logger = logging.getLogger(__name__) # Re-initialize logger with the correct module name after setup
+
+    logger.info(f"Effective logging level set to: {effective_log_level}")
+
+    config_file_path = args.config
+    if not os.path.isabs(config_file_path):
+        config_file_path = os.path.join(PROJECT_ROOT, config_file_path)
+
+    if not os.path.exists(config_file_path):
+        logger.error(f"Configuration file not found: {config_file_path}")
+        return
+
+    try:
+        with open(config_file_path, 'r') as f:
+            full_config = json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading or parsing configuration file {config_file_path}: {e}")
+        return
+
+    mapping_tasks_config = full_config.get("mapping_tasks")
+    if not mapping_tasks_config or not isinstance(mapping_tasks_config, list):
+        logger.error("'mapping_tasks' section is missing or not a list in the configuration file.")
+        return
+
+    tasks_to_run = []
+    if args.task_id:
+        task_found = False
+        for task_params in mapping_tasks_config:
+            if task_params.get("task_id") == args.task_id:
+                if task_params.get("is_active", False):
+                    tasks_to_run.append(task_params)
+                    task_found = True
+                else:
+                    logger.warning(f"Task {args.task_id} found but is not active. Skipping.")
+                    return # Exit if specific task is inactive
+                break
+        if not task_found:
+            logger.error(f"Specified task_id '{args.task_id}' not found in mapping_tasks.")
+            return
+    else:
+        tasks_to_run = [task for task in mapping_tasks_config if task.get("is_active", False)]
+        if not tasks_to_run:
+            logger.info("No active mapping tasks found to run.")
+            return
+
+    logger.info(f"Found {len(tasks_to_run)} mapping task(s) to run.")
+    successful_tasks = 0
+    for i, task_params in enumerate(tasks_to_run):
+        logger.info(f"--- Running mapping task {i+1}/{len(tasks_to_run)}: {task_params.get('task_id', 'Unnamed Task')} ---")
+        if map_transcripts_for_task(task_params):
+            successful_tasks += 1
+    
+    logger.info(f"--- Mapping Summary ---")
+    logger.info(f"Total tasks processed: {len(tasks_to_run)}")
+    logger.info(f"Successfully completed tasks: {successful_tasks}")
+    logger.info(f"Failed tasks: {len(tasks_to_run) - successful_tasks}")
+
+if __name__ == '__main__':
+    # Example of how to call from command line (adjust paths and parameters in JSON):
+    # python -m src.map_transcripts_to_cells --config parameter_sets.json --task_id map_experiment1_job1
+    # python -m src.map_transcripts_to_cells --config parameter_sets.json 
+    main()
 
