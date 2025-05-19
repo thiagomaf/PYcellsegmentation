@@ -5,6 +5,11 @@ import cv2
 import tifffile
 import numpy as np
 import traceback
+import logging
+
+from .file_paths import RESCALED_IMAGE_CACHE_DIR, IMAGE_DIR_BASE, RESULTS_DIR_BASE
+
+logger = logging.getLogger(__name__)
 
 RESCALED_IMAGE_CACHE_DIR = os.path.join("images", "rescaled_cache") # Relative to project root
 
@@ -30,7 +35,7 @@ def rescale_image_and_save(original_image_path, image_id_for_cache, rescaling_co
     Assumes RESCALED_IMAGE_CACHE_DIR is accessible from project root.
     """
     if not os.path.exists(original_image_path):
-        print(f"  Error: Original image for rescaling not found: {original_image_path}")
+        logger.error(f"Original image for rescaling not found: {original_image_path}")
         return original_image_path, 1.0
 
     if not rescaling_config or "scale_factor" not in rescaling_config:
@@ -38,7 +43,7 @@ def rescale_image_and_save(original_image_path, image_id_for_cache, rescaling_co
 
     scale_factor = rescaling_config["scale_factor"]
     if not (isinstance(scale_factor, (int, float)) and 0 < scale_factor <= 1.0):
-        print(f"  Warning: Invalid scale_factor {scale_factor} for {original_image_path}. Must be float between 0 (excl) and 1.0. Skipping rescale.")
+        logger.warning(f"Invalid scale_factor {scale_factor} for {original_image_path}. Must be float between 0 (excl) and 1.0. Skipping rescale.")
         return original_image_path, 1.0
     if scale_factor == 1.0: # No actual rescaling
         return original_image_path, 1.0
@@ -48,13 +53,13 @@ def rescale_image_and_save(original_image_path, image_id_for_cache, rescaling_co
     
     if not os.path.exists(RESCALED_IMAGE_CACHE_DIR):
         try: os.makedirs(RESCALED_IMAGE_CACHE_DIR)
-        except OSError as e: print(f"Could not create base rescaled cache dir {RESCALED_IMAGE_CACHE_DIR}: {e}")
+        except OSError as e: logger.error(f"Could not create base rescaled cache dir {RESCALED_IMAGE_CACHE_DIR}: {e}")
     
     rescaled_image_specific_dir = os.path.join(RESCALED_IMAGE_CACHE_DIR, image_id_for_cache)
     if not os.path.exists(rescaled_image_specific_dir):
         try: os.makedirs(rescaled_image_specific_dir)
         except OSError as e:
-            print(f"  Error creating cache subdir {rescaled_image_specific_dir}: {e}. Cannot cache rescaled image.")
+            logger.error(f"  Error creating cache subdir {rescaled_image_specific_dir}: {e}. Cannot cache rescaled image.")
             return original_image_path, 1.0
 
     original_filename = os.path.basename(original_image_path)
@@ -63,31 +68,31 @@ def rescale_image_and_save(original_image_path, image_id_for_cache, rescaling_co
     rescaled_image_path = os.path.join(rescaled_image_specific_dir, rescaled_image_filename)
 
     if os.path.exists(rescaled_image_path):
-        print(f"  Found cached rescaled image: {rescaled_image_path}")
+        logger.info(f"  Found cached rescaled image: {rescaled_image_path}")
         return rescaled_image_path, scale_factor
 
     try:
-        print(f"  Rescaling {original_image_path} by factor {scale_factor} using {interpolation_str}...")
+        logger.info(f"  Rescaling {original_image_path} by factor {scale_factor} using {interpolation_str}...")
         img = cv2.imread(original_image_path, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_ANYCOLOR)
         if img is None:
-            print(f"  Error: Could not load original image {original_image_path} for rescaling.")
+            logger.error(f"  Error: Could not load original image {original_image_path} for rescaling.")
             return original_image_path, 1.0
 
         new_width = int(round(img.shape[1] * scale_factor))
         new_height = int(round(img.shape[0] * scale_factor))
         
         if new_width == 0 or new_height == 0:
-            print(f"  Error: Rescaled dimensions are zero or near-zero ({new_width}x{new_height}). Scale factor {scale_factor} too small for image size {img.shape[:2]}.")
+            logger.error(f"  Error: Rescaled dimensions are zero or near-zero ({new_width}x{new_height}). Scale factor {scale_factor} too small for image size {img.shape[:2]}.")
             return original_image_path, 1.0
 
         rescaled_img = cv2.resize(img, (new_width, new_height), interpolation=interpolation_method)
         
         tifffile.imwrite(rescaled_image_path, rescaled_img)
-        print(f"  Saved rescaled image to: {rescaled_image_path} (Shape: {rescaled_img.shape})")
+        logger.info(f"  Saved rescaled image to: {rescaled_image_path} (Shape: {rescaled_img.shape})")
         return rescaled_image_path, scale_factor
     except Exception as e:
-        print(f"  Error during rescaling or saving {original_image_path}: {e}")
-        traceback.print_exc()
+        logger.error(f"  Error during rescaling or saving {original_image_path}: {e}")
+        logger.error(traceback.format_exc())
         return original_image_path, 1.0
 
 def determine_image_unit_for_segmentation_and_mask_path(config, RESULTS_DIR_BASE, TILED_IMAGE_DIR_BASE, original_source_image_full_path, target_image_id, target_processing_unit_name, is_tiled_job, tile_job_params=None, rescaling_config_for_image=None):
@@ -100,7 +105,7 @@ def determine_image_unit_for_segmentation_and_mask_path(config, RESULTS_DIR_BASE
 
     # 1. Handle potential rescaling (primary mechanism via rescaling_config_for_image)
     if rescaling_config_for_image and rescaling_config_for_image.get("scale_factor") != 1.0:
-        print(f"  Rescaling config found for {target_image_id}: factor {rescaling_config_for_image.get('scale_factor')}")
+        logger.info(f"  Rescaling config found for {target_image_id}: factor {rescaling_config_for_image.get('scale_factor')}")
         image_path_for_potential_rescaling = original_source_image_full_path
         rescaled_path, actual_sf = rescale_image_and_save(
             image_path_for_potential_rescaling,
@@ -110,9 +115,9 @@ def determine_image_unit_for_segmentation_and_mask_path(config, RESULTS_DIR_BASE
         if actual_sf != 1.0 and os.path.exists(rescaled_path):
             path_of_image_unit_for_segmentation = rescaled_path
             applied_scale_factor = actual_sf
-            print(f"  Path after (potential) rescaling: {path_of_image_unit_for_segmentation}, Scale factor: {applied_scale_factor}")
+            logger.info(f"  Path after (potential) rescaling: {path_of_image_unit_for_segmentation}, Scale factor: {applied_scale_factor}")
         else:
-            print(f"  Rescaling did not change path or failed. Using: {path_of_image_unit_for_segmentation}")
+            logger.info(f"  Rescaling did not change path or failed. Using: {path_of_image_unit_for_segmentation}")
 
     # 2. Handle tiling
     if is_tiled_job and tile_job_params:
@@ -120,7 +125,7 @@ def determine_image_unit_for_segmentation_and_mask_path(config, RESULTS_DIR_BASE
         # If the original image was rescaled *before* tiling, tile_parent_dir_name should reflect that.
         # This part assumes tile_parent_dir_name is correctly set by the tiling process.
         path_of_image_unit_for_segmentation = os.path.join(TILED_IMAGE_DIR_BASE, tile_parent_dir_name, target_processing_unit_name)
-        print(f"  This is a tiled job. Segmentation will use tile: {path_of_image_unit_for_segmentation}")
+        logger.info(f"  This is a tiled job. Segmentation will use tile: {path_of_image_unit_for_segmentation}")
         # If tiling is active, the `applied_scale_factor` should ideally be known from the `rescaling_config_for_image`
         # that was applied *before* tiling, or be 1.0 if no pre-tiling rescale happened.
 
@@ -136,9 +141,9 @@ def determine_image_unit_for_segmentation_and_mask_path(config, RESULTS_DIR_BASE
                 parsed_sf = float(scale_str)
                 if 0 < parsed_sf <= 1.0:
                     applied_scale_factor = parsed_sf
-                    print(f"  Inferred applied_scale_factor {applied_scale_factor} from target_processing_unit_name '{target_processing_unit_name}'")
+                    logger.info(f"  Inferred applied_scale_factor {applied_scale_factor} from target_processing_unit_name '{target_processing_unit_name}'")
                 else:
-                    print(f"  Warning: Parsed scale factor {parsed_sf} from filename is invalid.")
+                    logger.warning(f"  Warning: Parsed scale factor {parsed_sf} from filename is invalid.")
             else: # Fallback for names like "..._scaled_0_25_mask.tif" (if mask name is passed)
                 match_mask = re.search(r"_scaled_([0-9]+(?:_[0-9]+)?).*_mask\.[^.]+$", os.path.basename(target_processing_unit_name))
                 if match_mask:
@@ -146,11 +151,11 @@ def determine_image_unit_for_segmentation_and_mask_path(config, RESULTS_DIR_BASE
                     parsed_sf = float(scale_str)
                     if 0 < parsed_sf <= 1.0:
                         applied_scale_factor = parsed_sf
-                        print(f"  Inferred applied_scale_factor {applied_scale_factor} from target_processing_unit_name (mask pattern) '{target_processing_unit_name}'")
+                        logger.info(f"  Inferred applied_scale_factor {applied_scale_factor} from target_processing_unit_name (mask pattern) '{target_processing_unit_name}'")
                     else:
-                        print(f"  Warning: Parsed scale factor {parsed_sf} from mask filename is invalid.")
+                        logger.warning(f"  Warning: Parsed scale factor {parsed_sf} from mask filename is invalid.")
         except ValueError:
-            print(f"  Could not parse scale factor from filename: {target_processing_unit_name}")
+            logger.error(f"  Could not parse scale factor from filename: {target_processing_unit_name}")
 
 
     # 3. Determine the mask path folder and filename
@@ -175,3 +180,55 @@ def determine_image_unit_for_segmentation_and_mask_path(config, RESULTS_DIR_BASE
     mask_path = os.path.join(RESULTS_DIR_BASE, experiment_id_final_for_mask_folder, mask_filename_part)
             
     return path_of_image_unit_for_segmentation, mask_path, applied_scale_factor, original_source_image_full_path
+
+def get_base_experiment_id(image_id: str, param_set_id: str) -> str:
+    """Constructs the base part of an experiment ID."""
+    return f"{image_id}_{param_set_id}"
+
+def format_scale_factor_for_path(scale_factor: float | None) -> str:
+    """Formats a scale factor for use in paths/IDs (e.g., _scaled_0_5). Returns empty string if scale is 1.0 or None."""
+    if scale_factor is not None and scale_factor != 1.0:
+        return f"_scaled_{str(scale_factor).replace('.', '_')}"
+    return ""
+
+def construct_full_experiment_id(image_id: str, param_set_id: str, scale_factor: float | None = None, processing_unit_name_for_tile: str | None = None, is_tile: bool = False) -> str:
+    """
+    Constructs the full experiment ID used for result folder names.
+    For tiles, it incorporates a sanitized version of the tile name.
+    For non-tiles, it incorporates a scale factor string if applicable.
+    """
+    base_id = get_base_experiment_id(image_id, param_set_id)
+    if is_tile and processing_unit_name_for_tile:
+        # Use clean_filename_for_dir to clean the tile name part for the ID
+        # clean_filename_for_dir removes the extension, which is appropriate here.
+        sanitized_tile_name = clean_filename_for_dir(processing_unit_name_for_tile)
+        return f"{base_id}_{sanitized_tile_name}"
+    else:
+        scale_str = format_scale_factor_for_path(scale_factor)
+        return f"{base_id}{scale_str}"
+
+def construct_mask_path(results_dir: str, experiment_id: str, processing_unit_name: str) -> str:
+    """
+    Constructs the full path to a mask file within the results directory.
+    Ensures the mask filename ends with _mask.tif.
+    Args:
+        results_dir (str): Base directory for all results.
+        experiment_id (str): The specific experiment subfolder ID.
+        processing_unit_name (str): The name of the image/tile that was processed.
+    Returns:
+        str: The full path to the mask file.
+    """
+    mask_basename = os.path.splitext(processing_unit_name)[0]
+    if not mask_basename.endswith("_mask"):
+        mask_filename = f"{mask_basename}_mask.tif"
+    else: # Already contains _mask, just ensure .tif extension
+        mask_filename = f"{mask_basename}.tif"
+    
+    return os.path.join(results_dir, experiment_id, mask_filename)
+
+def normalize_to_8bit_for_display(img_array):
+    if img_array is None or img_array.size == 0:
+        logger.warning("normalize_to_8bit received None or empty input.")
+        return np.zeros((100,100,3) if (img_array is not None and hasattr(img_array, 'ndim') and img_array.ndim == 3) else (100,100), dtype=np.uint8)
+    
+    # ... (rest of the function, ensure any prints are converted to logger.info/warning/error) ...

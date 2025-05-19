@@ -12,3 +12,5 @@ tifffile
 pandas
 scipy
 pyarrow
+pytest
+pytest-mock
