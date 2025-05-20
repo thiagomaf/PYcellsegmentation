@@ -425,11 +425,11 @@ These are the main control files, located in the project root.
 
 *   **`visualization_tasks` (in `visualization_config.json`)**:
     The main object containing all settings for gene expression visualization.
-    *   **`default_genes_to_visualize`**: (Optional) This field specifies genes to be visualized by default if a task does not define its own `genes_to_visualize` list. It supports multiple formats for flexibility:
-        *   **As a list of strings:** Each string is the full actual gene ID (e.g., `["medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0448621", "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0197771"]`). In this case, the actual gene ID will also be used as the display name.
-        *   **As a dictionary:** Keys are user-friendly display names (aliases) and values are the full actual gene IDs (e.g., `{"MtNIN": "medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0448621", "PantherGene": "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0197771"}`).
-        *   **As a mixed list:** A list containing both actual gene ID strings and single-entry dictionaries where the key is the alias and the value is the actual ID (e.g., `["medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0448621", {"MyCustomName": "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0197771"}]`).
-        The display name (alias or the actual ID if no alias is given) will be used in plot titles and logs, while the actual gene ID is always used for data lookup and filename generation.
+    *   **`default_genes_to_visualize`**: (Optional) Specifies genes to be visualized by default if a task does not define its own `genes_to_visualize` list. The recommended formats are:
+        *   **As a dictionary (preferred when using aliases):** Keys are user-friendly display names (aliases) and values are the full actual gene IDs. Example: `{"MtNIN": "medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0448621", "PantherGene": "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0197771"}`. If a gene ID should be displayed as itself (no alias), use the ID as both the key and value: `{"medtr.A17.gnm5.ann1_6.AnotherGene": "medtr.A17.gnm5.ann1_6.AnotherGene"}`. A full example combining these: `{"MtNIN": "medtr.A17...", "medtr.A17.gnm5.ann1_6.RegularGene": "medtr.A17.gnm5.ann1_6.RegularGene"}`.
+        *   **As a list of strings (if no aliases are needed):** Each string is the full actual gene ID (e.g., `["medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0448621", "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0197771"]`). In this case, the actual gene ID will also be used as the display name.
+        *   A mixed list format (e.g., `["ID1", {"Alias2": "ID2"}]`) is also supported by the parser but using a consistent dictionary (when aliases are present) or a simple list (when no aliases are needed) is generally clearer.
+        The display name (alias from the dictionary key, or the actual ID if no alias is given/key matches value) will be used in plot titles and logs. The actual gene ID (the dictionary value) is always used for data lookup and filename generation.
     *   **`tasks`**: An array of objects, each defining a specific visualization job.
         *   `"task_id"`: (String) A unique identifier for this visualization task (e.g., `"exp1_dapi_gene_set1_viz"`).
         *   `"is_active"`: (Boolean) Set to `true` to run this visualization task. If `false`, it will be skipped.
@@ -440,10 +440,10 @@ These are the main control files, located in the project root.
             *   **For tiled segmentations:** This field is **mandatory** and must specify the exact tile filename (e.g., `"tile_r0_c0.tif"`) whose mask is to be used. (Whether a segmentation is considered tiled is determined by the `apply_tiling` setting in the `segmentation_options` of the linked `image_configuration`).
             *   This name is crucial for locating the correct `_mask.tif` file.
         *   `"mapped_transcripts_csv_path"`: (String) Path to the CSV file containing mapped transcript data. This file should typically include columns for transcript coordinates (e.g., 'x', 'y' or 'global_x', 'global_y'), gene names (e.g., 'gene'), and the cell ID to which each transcript was assigned (e.g., 'cell_id'). An example path: `"data/processed/mapped/my_experiment/mapped_transcripts.csv"`.
-        *   **`genes_to_visualize`**: (Optional) Specifies genes for this particular task, overriding `default_genes_to_visualize`. The format is the same as for `default_genes_to_visualize`, allowing:
-            *   A list of actual gene ID strings.
-            *   A dictionary of `{"DisplayName": "ActualGeneID", ...}`.
-            *   A mixed list of strings and single-entry dictionaries `{"DisplayName": "ActualGeneID"}`.
+        *   **`genes_to_visualize`**: (Optional) Specifies genes for this particular task, overriding `default_genes_to_visualize`. The format follows the same recommendations as for `default_genes_to_visualize`:
+            *   **Dictionary (preferred when using aliases):** `{"DisplayName": "ActualGeneID", ...}`. For example: `{"CustomGene1": "FullGeneID1", "FullGeneID2": "FullGeneID2"}`.
+            *   **List of strings (if no aliases are needed):** `["FullGeneID1", "FullGeneID2"]`.
+            *   The parser also supports a mixed list format.
             If omitted, `default_genes_to_visualize` from the global `visualization_tasks` scope will be used.
         *   `"output_subfolder_name"`: (String) The name of the subfolder where the generated visualization images for this task will be saved. This folder will be created under the main visualization output directory (typically `data/results/visualizations/`). E.g., `"exp1_dapi_channel_genes"`.
         *   `"visualization_params"`: (Object, Optional) Parameters to control the appearance of the visualization.
@@ -459,7 +459,7 @@ These are the main control files, located in the project root.
     **Example:**
     ```json
     "visualization_tasks": {
-      "default_genes_to_visualize": ["GlobalGeneX", "GlobalGeneY"],
+      "default_genes_to_visualize": {"MtNIN": "medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0448621", "PantherGene": "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0197771", "medtr.A17.gnm5.ann1_6.AnotherGene": "medtr.A17.gnm5.ann1_6.AnotherGene"},
       "tasks": [
         {
           "task_id": "vis_exp1_image_dapi_genes_ab", // This task will use its own gene list
