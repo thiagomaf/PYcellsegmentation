@@ -1,14 +1,14 @@
 {  
     "visualization_tasks": {
-      "default_genes_to_visualize": [
-        "medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0448621",
-        "medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0435611",
-        "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0197771",
-        "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0160171",
-        "medtr.A17.gnm5.ann1_6.MtrunA17Chr3g0082981",
-        "medtr.A17.gnm5.ann1_6.MtrunA17Chr3g0082991",
-        "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0159341"
-      ],
+      "default_genes_to_visualize": {
+        "MtNIN":      "medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0448621",
+        "MtLb1":      "medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0435611",
+        "MtLEC4":     "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0197771",
+        "MtUMAMIT14": "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0160171",
+        "MtENOD12":   "medtr.A17.gnm5.ann1_6.MtrunA17Chr3g0082981",
+        "MtENOD11":   "medtr.A17.gnm5.ann1_6.MtrunA17Chr3g0082991",
+        "MtPIN6":     "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0159341"
+      },
       "tasks": [
         {
           "task_id": "5A_viz",

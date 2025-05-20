@@ -38,6 +38,40 @@ TRANSCRIPT_DOT_SIZE = 1
 
 # PROJECT_ROOT, IMAGE_DIR_BASE etc. are now imported from file_paths
 
+def _parse_gene_visualization_list(genes_spec):
+    """
+    Parses the gene specification (list of IDs or dict of Alias:ID)
+    into a list of (display_name, actual_gene_id) tuples.
+    """
+    parsed_genes = []
+    if isinstance(genes_spec, dict):
+        for display_name, actual_id in genes_spec.items():
+            if isinstance(actual_id, str) and isinstance(display_name, str):
+                parsed_genes.append((display_name, actual_id))
+            else:
+                logger.warning(f"Invalid entry in gene dictionary: key '{display_name}' or value '{actual_id}' is not a string. Skipping.")
+    elif isinstance(genes_spec, list):
+        for gene_entry in genes_spec:
+            if isinstance(gene_entry, str):
+                parsed_genes.append((gene_entry, gene_entry)) # Display name is the same as actual ID
+            elif isinstance(gene_entry, dict) and len(gene_entry) == 1:
+                display_name, actual_id = list(gene_entry.items())[0]
+                if isinstance(actual_id, str) and isinstance(display_name, str):
+                    parsed_genes.append((display_name, actual_id))
+                else:
+                    logger.warning(f"Invalid entry in gene list of dicts: {gene_entry}. Key or value not strings. Skipping.")
+            else:
+                logger.warning(f"Unsupported gene entry type in list: {gene_entry}. Skipping.")
+    elif genes_spec is not None:
+        logger.warning(f"genes_to_visualize is neither a list nor a dict, but: {type(genes_spec)}. No genes will be processed.")
+    
+    if not parsed_genes and genes_spec: # If input was provided but nothing parsed
+        logger.warning(f"Could not parse any valid genes from specification: {genes_spec}")
+    elif not parsed_genes and not genes_spec:
+        logger.info("Gene specification is empty. No genes to parse.")
+
+    return parsed_genes
+
 def load_mapped_transcripts(mapped_transcripts_csv_path):
     logger.info(f"Loading mapped transcripts from: {mapped_transcripts_csv_path} ...")
     try:
@@ -82,7 +116,8 @@ def visualize_gene_expression_for_job(
     mapped_transcripts_df, 
     segmentation_mask_array, 
     background_image_for_overlay_rgb, 
-    gene_of_interest, 
+    actual_gene_id,   # Changed from gene_of_interest
+    display_gene_name, # New parameter
     output_png_path, 
     effective_mpp_x, effective_mpp_y, 
     task_visualization_params,
@@ -90,17 +125,29 @@ def visualize_gene_expression_for_job(
     plot_transcript_dots=False
     ):
 
-    logger.info(f"--- Visualizing expression for gene: {gene_of_interest} ---")
-    gene_transcripts_df = mapped_transcripts_df[mapped_transcripts_df['feature_name'] == gene_of_interest]
+    logger.info(f"--- Visualizing expression for gene: {display_gene_name} (Actual ID: {actual_gene_id}) ---")
+    # Use actual_gene_id for data filtering
+    gene_transcripts_df = mapped_transcripts_df[mapped_transcripts_df['feature_name'] == actual_gene_id]
     total_gene_transcripts = len(gene_transcripts_df)
     if total_gene_transcripts == 0:
-        logger.info(f"No transcripts found for gene '{gene_of_interest}'. Skipping visualization."); return
+        logger.info(f"No transcripts found for gene '{display_gene_name}' (Actual ID: {actual_gene_id}). Skipping visualization.")
+        # Still save an empty CSV for this gene if it was requested, to avoid downstream errors
+        # when create_mapping_summary looks for it.
+        csv_filename_base = os.path.splitext(output_png_path)[0]
+        csv_output_path = f"{csv_filename_base}_cell_counts.csv"
+        try:
+            empty_counts_df = pd.DataFrame(columns=['cell_id', 'transcript_count'])
+            empty_counts_df.to_csv(csv_output_path, index=False)
+            logger.info(f"  Saved empty cell counts CSV for '{display_gene_name}' to: {csv_output_path}")
+        except Exception as e_csv_empty:
+            logger.error(f"  Error saving empty cell counts CSV for '{display_gene_name}': {e_csv_empty}")
+        return
 
     assigned_gene_transcripts_df = gene_transcripts_df[gene_transcripts_df['assigned_cell_id'] != UNASSIGNED_CELL_ID]
     num_assigned = len(assigned_gene_transcripts_df)
     num_unassigned = total_gene_transcripts - num_assigned
     percent_unassigned = (num_unassigned / total_gene_transcripts * 100) if total_gene_transcripts > 0 else 0
-    logger.info(f"  Total '{gene_of_interest}' transcripts: {total_gene_transcripts} (Assigned: {num_assigned}, Unassigned: {num_unassigned} [{percent_unassigned:.2f}%])")
+    logger.info(f"  Total '{display_gene_name}' transcripts: {total_gene_transcripts} (Assigned: {num_assigned}, Unassigned: {num_unassigned} [{percent_unassigned:.2f}%])")
 
     cell_expression_counts = assigned_gene_transcripts_df.groupby('assigned_cell_id').size()
     max_cell_id_in_mask = int(segmentation_mask_array.max())
@@ -130,7 +177,7 @@ def visualize_gene_expression_for_job(
         # Determine min/max for normalization based on percentiles of positive values
         positive_values = values_for_normalization[values_for_normalization > 0]
         if positive_values.empty:
-            logger.info(f"  No cells with positive (or log-positive) expression for '{gene_of_interest}'. Using default 0-1 range for colormap if any cells exist.")
+            logger.info(f"  No cells with positive (or log-positive) expression for '{display_gene_name}'. Using default 0-1 range for colormap if any cells exist.")
             norm_min_val_actual = 0.0
             norm_max_val_actual = 1.0 # Avoid division by zero if positive_values is empty
         else:
@@ -146,7 +193,7 @@ def visualize_gene_expression_for_job(
                     norm_min_val_actual = 0.0
                     norm_max_val_actual = 1.0
         
-        logger.info(f"  Colormap normalization range for '{gene_of_interest}': Min={norm_min_val_actual:.2f}, Max={norm_max_val_actual:.2f} (based on {'log-scaled' if log_scale_counts else 'raw'} counts)")
+        logger.info(f"  Colormap normalization range for '{display_gene_name}': Min={norm_min_val_actual:.2f}, Max={norm_max_val_actual:.2f} (based on {'log-scaled' if log_scale_counts else 'raw'} counts)")
 
         try: colormap_func = matplotlib.colormaps[colormap_name]
         except AttributeError: colormap_func = plt.cm.get_cmap(colormap_name) # older matplotlib
@@ -169,7 +216,7 @@ def visualize_gene_expression_for_job(
                 rgba_color = colormap_func(norm_intensity)
                 cell_colors_rgb[cell_id_int] = (np.array(rgba_color[:3]) * 255).astype(np.uint8)
     else:
-        logger.info(f"  No cells found with expression of '{gene_of_interest}'. Cells will have default color.")
+        logger.info(f"  No cells found with expression of '{display_gene_name}'. Cells will have default color.")
         # For colorbar, if no expression, we might use a dummy range or not show it
         norm_min_val_actual = 0.0 
         norm_max_val_actual = 1.0 # Default range for a placeholder colorbar if needed
@@ -178,7 +225,7 @@ def visualize_gene_expression_for_job(
     overlay_img_rgb = cellpose_plot.mask_overlay(background_image_for_overlay_rgb, segmentation_mask_array, colors=cell_colors_rgb)
 
     if plot_transcript_dots and not gene_transcripts_df.empty:
-        logger.info(f"  Plotting {total_gene_transcripts} transcript dots for '{gene_of_interest}'...")
+        logger.info(f"  Plotting {total_gene_transcripts} transcript dots for '{display_gene_name}'...")
         dot_color_rgb = TRANSCRIPT_DOT_COLOR 
         
         t_x_pixels = ((gene_transcripts_df['x_location'] - x_offset_microns) / effective_mpp_x).astype(int)
@@ -206,13 +253,18 @@ def visualize_gene_expression_for_job(
 
             # Add colorbar to the figure - adjust fraction, pad, and orientation as needed
             cbar = fig.colorbar(sm, ax=ax, orientation='vertical', fraction=0.046, pad=0.04)
-            cbar.set_label(colormap_label, rotation=270, labelpad=20)
+            cbar_title = f"{display_gene_name} - {colormap_label}" if display_gene_name != actual_gene_id else colormap_label
+            cbar.set_label(cbar_title, rotation=270, labelpad=20) # Use display_gene_name in colorbar
         
+        # Set main plot title using display_gene_name
+        ax.set_title(display_gene_name, fontsize=12)
+
         fig.savefig(output_png_path, bbox_inches='tight', dpi=150)
         plt.close(fig) # Close the figure to free memory
-        logger.info(f"  Expression overlay for '{gene_of_interest}' saved to: {output_png_path}")
+        logger.info(f"  Expression overlay for '{display_gene_name}' saved to: {output_png_path}")
 
         # Save cell expression counts to CSV
+        # Filename is based on actual_gene_id (via output_png_path), content refers to display_gene_name for logs
         if not cell_expression_counts.empty:
             # Derive CSV path from PNG path
             csv_filename_base = os.path.splitext(output_png_path)[0]
@@ -221,9 +273,9 @@ def visualize_gene_expression_for_job(
                 counts_df_to_save = cell_expression_counts.reset_index()
                 counts_df_to_save.columns = ['cell_id', 'transcript_count']
                 counts_df_to_save.to_csv(csv_output_path, index=False)
-                logger.info(f"  Cell expression counts for '{gene_of_interest}' saved to: {csv_output_path}")
+                logger.info(f"  Cell expression counts for '{display_gene_name}' saved to: {csv_output_path}")
             except Exception as e_csv:
-                logger.error(f"  Error saving cell expression counts CSV for '{gene_of_interest}': {e_csv}")
+                logger.error(f"  Error saving cell expression counts CSV for '{display_gene_name}': {e_csv}")
         elif total_gene_transcripts > 0: # Transcripts exist but none assigned to cells in this mask
             csv_filename_base = os.path.splitext(output_png_path)[0]
             csv_output_path = f"{csv_filename_base}_cell_counts.csv"
@@ -231,12 +283,12 @@ def visualize_gene_expression_for_job(
                 # Create and save an empty DataFrame with correct headers
                 empty_counts_df = pd.DataFrame(columns=['cell_id', 'transcript_count'])
                 empty_counts_df.to_csv(csv_output_path, index=False)
-                logger.info(f"  No cell-assigned transcripts for '{gene_of_interest}'. Empty cell counts CSV saved to: {csv_output_path}")
+                logger.info(f"  Saved empty cell counts CSV for '{display_gene_name}' to: {csv_output_path}")
             except Exception as e_csv_empty:
-                logger.error(f"  Error saving empty cell counts CSV for '{gene_of_interest}': {e_csv_empty}")
+                logger.error(f"  Error saving empty cell counts CSV for '{display_gene_name}': {e_csv_empty}")
 
     except Exception as e:
-        logger.error(f"  Error saving expression overlay for '{gene_of_interest}': {e} (Path: {output_png_path})") 
+        logger.error(f"  Error saving expression overlay for '{display_gene_name}': {e} (Path: {output_png_path})") 
 
 def _get_image_config_from_params(param_sets_path, target_image_id):
     if not os.path.exists(param_sets_path):
@@ -641,25 +693,31 @@ if __name__ == "__main__":
         y_offset = task.get("y_offset_microns", 0.0)
         colormap = task.get("colormap", "viridis")
 
-        for gene in genes_to_visualize: 
-            # Extract the last part of the gene name after splitting by '.'
-            gene_parts = gene.split('.')
-            short_gene_name = gene_parts[-1] if gene_parts else gene
-            safe_gene_name = clean_filename_for_dir(short_gene_name) # Sanitize the shortened name
+        for display_name, actual_id in genes_for_this_task: 
+            # Construct filename based on actual_id's short form
+            short_actual_gene_name = actual_id.split('.')[-1]
+            safe_short_actual_gene_name = clean_filename_for_dir(short_actual_gene_name)
             
-            output_filename = f"{safe_gene_name}{file_suffix}"
-            output_png_path = os.path.join(task_output_dir, output_filename)
+            # Ensure output filename is unique and based on the actual gene ID for consistency
+            # The display_name will be used for the title of the plot.
+            output_filename_base = f"{safe_short_actual_gene_name}_expression_overlay" # No task_id here, it's in subfolder
             
+            gene_output_png_path = os.path.join(task_output_dir, f"{output_filename_base}.png")
+
             visualize_gene_expression_for_job(
-                mapped_df, seg_mask, display_background_8bit_rgb, 
-                gene, output_png_path,
-                effective_mpp_x=effective_mpp_x, 
+                mapped_transcripts_df=mapped_df,
+                segmentation_mask_array=seg_mask,
+                background_image_for_overlay_rgb=display_background_8bit,
+                actual_gene_id=actual_id,             # Pass actual ID
+                display_gene_name=display_name,       # Pass display name
+                output_png_path=gene_output_png_path,
+                effective_mpp_x=effective_mpp_x,        # Use adjusted MPP for plotting
                 effective_mpp_y=effective_mpp_y,
-                task_visualization_params=task_viz_params,
-                x_offset_microns=x_offset, 
-                y_offset_microns=y_offset,
+                task_visualization_params=task_viz_params, # Pass the task-specific viz params
+                x_offset_microns=x_offset,              # from image_config
+                y_offset_microns=y_offset,              # from image_config
                 plot_transcript_dots=plot_dots_flag
             )
-        logger.info(f"--- Finished Visualization Task: {task_id_str} ---")
+        logger.info(f"===== Finished Processing Visualization Task: {task_id_str} =====")
     
     logger.info("\nAll specified visualization tasks processed.")

@@ -34,6 +34,39 @@ def segment_image_worker(job_params_dict):
     logger.info(f"Worker starting for Experiment ID: {experiment_id}, Image Unit: {processing_unit_name}")
     logger.info(f"  Image path: {image_path}")
 
+    if job_params_dict.get("segmentation_skipped") is True:
+        # Use the specific keys from pipeline_config_parser for mask lookup
+        mask_folder_exp_id = job_params_dict.get("experiment_id_for_mask_folder")
+        mask_file_base = job_params_dict.get("mask_filename_base")
+        
+        # Get the scaled unit name for logging what this job *is* processing (intensity wise)
+        current_run_scaled_unit_name = job_params_dict.get("scaled_unit_name_for_current_run", processing_unit_name) # Fallback to old key for safety
+
+        if not mask_folder_exp_id or not mask_file_base:
+            logger.error(f"  Error: Segmentation skipped, but missing 'experiment_id_for_mask_folder' or 'mask_filename_base' in job params for {current_run_scaled_unit_name}.")
+            return {"status": "error", "experiment_id": experiment_id, "unit": current_run_scaled_unit_name, "error": "Missing params for pre-existing mask lookup"}
+
+        logger.info(f"  Segmentation skipped for current run unit '{current_run_scaled_unit_name}'. Attempting to use pre-existing mask.")
+        logger.info(f"    Looking for mask folder ID: '{mask_folder_exp_id}', Mask base name: '{mask_file_base}'")
+
+        output_dir_for_mask = os.path.join(RESULTS_DIR_BASE, mask_folder_exp_id)
+        mask_filename = f"{mask_file_base}_mask.tif"
+        expected_mask_path = os.path.join(output_dir_for_mask, mask_filename)
+
+        if os.path.exists(expected_mask_path):
+            logger.info(f"  Found pre-existing mask: {expected_mask_path}")
+            return {
+                "status": "success", 
+                "experiment_id": experiment_id, 
+                "unit": current_run_scaled_unit_name, 
+                "mask_path": expected_mask_path, 
+                "message": "Segmentation skipped; pre-existing mask found."
+            }
+        else:
+            error_msg = f"Segmentation skipped, but pre-existing mask not found at: {expected_mask_path}"
+            logger.error(error_msg)
+            return {"status": "error", "experiment_id": experiment_id, "unit": current_run_scaled_unit_name, "error": error_msg}
+
     if not all([image_path, processing_unit_name, experiment_id]):
         error_msg = "Worker error: Missing critical parameters (image_path, processing_unit_name, or experiment_id)."
         logger.error(error_msg)
@@ -94,7 +127,10 @@ def segment_image_worker(job_params_dict):
             eval_params["min_size"] = min_size_from_config
             logger.info(f"  Explicitly setting min_size to {min_size_from_config} for Cellpose model.eval().")
         else:
-            logger.info(f"  min_size not specified in config or is None; letting Cellpose use its default for min_size.")
+            # If min_size is not in config, use a Cellpose-friendly default (e.g., 15)
+            # rather than letting it be None implicitly passed to Cellpose internals.
+            eval_params["min_size"] = 15 
+            logger.info(f"  min_size not specified in config or is None; explicitly setting to {eval_params['min_size']} for Cellpose.")
 
         masks, flows, styles = model.eval(img, **eval_params)
         
@@ -206,7 +242,9 @@ if __name__ == '__main__':
         "MIN_SIZE": 15, # Example
         "FORCE_GRAYSCALE": True,
         "mpp_x_original_for_log": 0.5, # Example metadata
-        "mpp_y_original_for_log": 0.5  # Example metadata
+        "mpp_y_original_for_log": 0.5,  # Example metadata
+        "experiment_id_for_mask_folder": "testExp_cyto2_scale1_unitWorker",
+        "mask_filename_base": "testExp_cyto2_scale1_unitWorker"
     }
     result = segment_image_worker(test_job_params)
     logger.info(f"Test worker result: {result}")

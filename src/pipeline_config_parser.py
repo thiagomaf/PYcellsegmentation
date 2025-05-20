@@ -74,9 +74,10 @@ def load_and_expand_configurations(param_json_file_path, global_use_gpu_if_avail
             continue
 
         current_image_path_for_processing = original_image_path
-        current_image_name_for_processing = original_image_filename
+        current_image_name_for_processing = os.path.basename(original_image_filename)
         applied_scale_factor = 1.0
-        rescaling_cfg = img_config.get("rescaling_config")
+        segmentation_options = img_config.get("segmentation_options", {})
+        rescaling_cfg = segmentation_options.get("rescaling_config")
 
         if rescaling_cfg and "scale_factor" in rescaling_cfg and rescaling_cfg["scale_factor"] != 1.0 :
             logger.info(f"  Image Config: '{image_id_base}' (Rescaling {original_image_filename} by factor {rescaling_cfg['scale_factor']})")
@@ -92,9 +93,9 @@ def load_and_expand_configurations(param_json_file_path, global_use_gpu_if_avail
             logger.info(f"  Image Config: '{image_id_base}' (No rescaling for {original_image_filename})")
 
         images_to_segment_this_round = [] 
-        tiling_cfg = img_config.get("tiling_config")
+        tiling_cfg = segmentation_options.get("tiling_parameters")
 
-        if tiling_cfg and tiling_cfg.get("tile_size"):
+        if tiling_cfg and tiling_cfg.get("apply_tiling") and tiling_cfg.get("tile_size"):
             logger.info(f"    Tiling configured for: {current_image_name_for_processing} (orig: {original_image_filename})")
             
             tile_storage_dir_suffix = image_id_base 
@@ -141,60 +142,118 @@ def load_and_expand_configurations(param_json_file_path, global_use_gpu_if_avail
             })
 
         for img_proc_info in images_to_segment_this_round:
-            for cp_config in cellpose_param_configs:
-                if not cp_config.get("is_active", True): continue
+            segmentation_options_for_image = img_config.get("segmentation_options", {}) # Get it from the original img_config
+            apply_segmentation_for_this_image = segmentation_options_for_image.get("apply_segmentation", True)
+
+            if apply_segmentation_for_this_image:
+                for cp_config in cellpose_param_configs:
+                    if not cp_config.get("is_active", True): continue
+                    
+                    param_set_id = cp_config.get("param_set_id", f"cp_params_unknown_{time.strftime('%H%M%S')}")
+                    job = {} 
+
+                    if "cellpose_parameters" in cp_config and isinstance(cp_config["cellpose_parameters"], dict):
+                        for cp_key, cp_value in cp_config["cellpose_parameters"].items():
+                            job[cp_key] = cp_value
+                    
+                    job["actual_image_path_to_process"] = img_proc_info["path"]
+                    job["processing_unit_name"] = img_proc_info["name"]
+                    job["original_image_id_for_log"] = img_proc_info["original_image_id"]
+                    job["original_image_filename_for_log"] = img_proc_info["original_image_filename"]
+                    job["param_set_id_for_log"] = param_set_id
+                    job["scale_factor_applied_for_log"] = img_proc_info["applied_scale_factor"]
+                    job["is_tile_for_log"] = img_proc_info["is_tile"]
+                    if img_proc_info["is_tile"]:
+                        job["tile_details_for_log"] = img_proc_info["tile_info"]
+
+                    cp_diameter = job.get("DIAMETER") 
+                    if img_proc_info["applied_scale_factor"] != 1.0 and cp_diameter is not None and cp_diameter > 0:
+                        job["DIAMETER_FOR_CELLPOSE"] = int(round(cp_diameter * img_proc_info["applied_scale_factor"]))
+                        logger.info(f"    Adjusted diameter for scaled image: {job['DIAMETER_FOR_CELLPOSE']} (original: {cp_diameter}, scale: {img_proc_info['applied_scale_factor']})")
+                    else:
+                        job["DIAMETER_FOR_CELLPOSE"] = cp_diameter 
+                    
+                    job["experiment_id_final"] = construct_full_experiment_id(
+                        image_id=img_proc_info["original_image_id"],
+                        param_set_id=param_set_id,
+                        scale_factor=img_proc_info["applied_scale_factor"],
+                        processing_unit_name_for_tile=img_proc_info["name"],
+                        is_tile=img_proc_info["is_tile"]
+                    )
+                    job.setdefault("MODEL_CHOICE", "cyto3")
+                    job.setdefault("MIN_SIZE", 15)
+                    job.setdefault("CELLPROB_THRESHOLD", 0.0)
+                    job.setdefault("FORCE_GRAYSCALE", True)
+                    job["USE_GPU"] = cp_config.get("cellpose_parameters", {}).get("USE_GPU", global_use_gpu_if_available)
+                    job["segmentation_skipped"] = False # Explicitly set for segmentation jobs
+
+                    img_mpp_x = img_config.get("mpp_x")
+                    img_mpp_y = img_config.get("mpp_y")
+                    if img_mpp_x is not None: job["mpp_x_original_for_log"] = img_mpp_x
+                    if img_mpp_y is not None: job["mpp_y_original_for_log"] = img_mpp_y
+
+                    all_jobs_to_create.append(job)
+                    logger.info(f"    Created segmentation job: ExpID '{job['experiment_id_final']}' for unit '{job['processing_unit_name']}'")
+            else:
+                # Segmentation is OFF for this image unit.
+                job = {}
                 
-                param_set_id = cp_config.get("param_set_id", f"cp_params_unknown_{time.strftime('%H%M%S')}")
-                job = {} 
-                
-                for key, value in cp_config.items():
-                    if key not in ["param_set_id", "is_active", "USE_GPU"]:
-                        job[key] = value
-                
-                job["actual_image_path_to_process"] = img_proc_info["path"]
-                job["processing_unit_name"] = img_proc_info["name"]
-                
+                # Information about the locally scaled intensity image for this run
+                job["scaled_image_path_for_current_run"] = img_proc_info["path"]
+                job["scaled_unit_name_for_current_run"] = img_proc_info["name"]
+                job["current_run_scale_factor"] = img_proc_info["applied_scale_factor"] # Local scaling
+
+                # Information for logging and general reference
                 job["original_image_id_for_log"] = img_proc_info["original_image_id"]
                 job["original_image_filename_for_log"] = img_proc_info["original_image_filename"]
-                job["param_set_id_for_log"] = param_set_id
-                job["scale_factor_applied_for_log"] = img_proc_info["applied_scale_factor"]
                 job["is_tile_for_log"] = img_proc_info["is_tile"]
                 if img_proc_info["is_tile"]:
                     job["tile_details_for_log"] = img_proc_info["tile_info"]
 
-                cp_diameter = job.get("DIAMETER") 
-                if img_proc_info["applied_scale_factor"] != 1.0 and cp_diameter is not None and cp_diameter > 0:
-                    job["DIAMETER_FOR_CELLPOSE"] = int(round(cp_diameter * img_proc_info["applied_scale_factor"]))
-                    logger.info(f"    Adjusted diameter for scaled image: {job['DIAMETER_FOR_CELLPOSE']} (original: {cp_diameter}, scale: {img_proc_info['applied_scale_factor']})")
-                else:
-                    job["DIAMETER_FOR_CELLPOSE"] = cp_diameter 
+                param_set_id_for_existing_mask = segmentation_options_for_image.get("use_existing_mask_param_set_id")
+                if not param_set_id_for_existing_mask:
+                    logger.warning(f"  Image config '{img_proc_info['original_image_id']}' has apply_segmentation=false but is missing 'use_existing_mask_param_set_id' in segmentation_options. Cannot generate job for pre-existing mask. Skipping this job.")
+                    continue
                 
-                job["experiment_id_final"] = construct_full_experiment_id(
+                job["param_set_id_for_log"] = param_set_id_for_existing_mask
+
+                # Construct Experiment ID for the MASK FOLDER (assumes mask from original scale)
+                job["experiment_id_for_mask_folder"] = construct_full_experiment_id(
                     image_id=img_proc_info["original_image_id"],
-                    param_set_id=param_set_id,
-                    scale_factor=img_proc_info["applied_scale_factor"],
-                    processing_unit_name_for_tile=img_proc_info["name"],
-                    is_tile=img_proc_info["is_tile"]
+                    param_set_id=param_set_id_for_existing_mask,
+                    scale_factor=1.0, # CRITICAL: Assumes masks were generated from original scale
+                    # For non-tiled original masks, processing_unit_name_for_tile might be original filename
+                    processing_unit_name_for_tile=os.path.basename(img_proc_info["original_image_filename"]), 
+                    is_tile=False # Assuming pre-existing masks are not from a tiled version of original for simplicity.
+                                  # If they *could* be, this needs to be more nuanced, possibly another config.
                 )
 
-                job.setdefault("MODEL_CHOICE", "cyto3")
-                job.setdefault("FLOW_THRESHOLD", None) 
-                job.setdefault("MIN_SIZE", None) 
-                job.setdefault("CELLPROB_THRESHOLD", 0.0)
-                job.setdefault("FORCE_GRAYSCALE", True)
-                job["USE_GPU"] = global_use_gpu_if_available
+                # Base name for the MASK FILE itself (from original image filename)
+                job["mask_filename_base"] = os.path.splitext(os.path.basename(img_proc_info["original_image_filename"]))[0]
                 
-                # Add original MPP values to the base image info if they exist
-                # These can be used by other modules like visualization
+                # The main "experiment_id_final" for this job entry can be the same as for mask folder,
+                # or could be made more unique if needed, but worker uses the specific ones above.
+                # For clarity in run_log.json and logs, let's use the mask folder ID.
+                job["experiment_id_final"] = job["experiment_id_for_mask_folder"]
+                
+                # For summarize_job_results, it expects "actual_image_path_to_process" and "processing_unit_name"
+                # to log about the job. Let's provide the locally scaled ones here for that summary.
+                # The worker will know to use the specific mask-related keys.
+                job["actual_image_path_to_process"] = job["scaled_image_path_for_current_run"]
+                job["processing_unit_name"] = job["scaled_unit_name_for_current_run"]
+                job["scale_factor_applied_for_log"] = job["current_run_scale_factor"]
+
+
                 img_mpp_x = img_config.get("mpp_x")
                 img_mpp_y = img_config.get("mpp_y")
-                if img_mpp_x is not None:
-                    job["mpp_x_original_for_log"] = img_mpp_x
-                if img_mpp_y is not None:
-                    job["mpp_y_original_for_log"] = img_mpp_y
+                if img_mpp_x is not None: job["mpp_x_original_for_log"] = img_mpp_x
+                if img_mpp_y is not None: job["mpp_y_original_for_log"] = img_mpp_y
+                
+                job["segmentation_skipped"] = True
+                job["USE_GPU"] = global_use_gpu_if_available # Default, not used by worker if skipped
 
                 all_jobs_to_create.append(job)
-                logger.info(f"    Created job: ExpID '{job['experiment_id_final']}' for unit '{job['processing_unit_name']}'")
+                logger.info(f"    Created job for pre-existing mask: ExpID for mask folder '{job['experiment_id_for_mask_folder']}', Mask base name '{job['mask_filename_base']}'. Current run unit '{job['scaled_unit_name_for_current_run']}'.")
 
     logger.info(f"--- Total jobs generated: {len(all_jobs_to_create)} ---")
     return all_jobs_to_create

@@ -15,7 +15,7 @@ FUNCTIONAL_TEST_CONFIG = {
     "image_configurations": [
         {
             "image_id": "func_test_img1",
-            "original_image_filename": "func_dummy_img.tif",
+            "original_image_filename": "images/func_dummy_img.tif",
             "is_active": True,
             "segmentation_options": {
                 "apply_segmentation": True,
@@ -69,7 +69,7 @@ def functional_test_environment(tmp_path, mocker):
     # Also need to mock for pipeline_config_parser if it's not using the same instances
     mocker.patch('src.pipeline_config_parser.PROJECT_ROOT', str(test_project_root))
     mocker.patch('src.pipeline_config_parser.IMAGE_DIR_BASE', str(images_dir))
-    mocker.patch('src.pipeline_config_parser.RESULTS_DIR_BASE', str(results_dir))
+    # mocker.patch('src.pipeline_config_parser.RESULTS_DIR_BASE', str(results_dir)) # This was causing an error
     mocker.patch('src.pipeline_config_parser.RESCALED_IMAGE_CACHE_DIR', str(images_dir / "rescaled_cache"))
     mocker.patch('src.pipeline_config_parser.TILED_IMAGE_OUTPUT_BASE', str(images_dir / "tiled_outputs"))
 

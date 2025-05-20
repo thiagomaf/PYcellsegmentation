@@ -87,15 +87,25 @@ def summarize_job_results(job_results_list, total_jobs_configured):
             continue
         
         status = result_dict.get("status", "unknown")
-        exp_id = result_dict.get("experiment_id_final", f"unknown_job_{i+1}")
-        unit_name = result_dict.get("processing_unit_name", "unknown_image")
+        exp_id = result_dict.get("experiment_id", f"unknown_job_{i+1}")
+        unit_name = result_dict.get("unit", "unknown_image")
         
-        if status == "succeeded":
+        if status == "success":
             num_cells_found = result_dict.get('num_cells', 'N/A')
-            logger.info(f"  Job {i+1}/{total_jobs_configured}: {exp_id} (Unit: {unit_name}) - SUCCEEDED (Found {num_cells_found} cells)")
+            success_message = f"SUCCEEDED"
+            if num_cells_found != 'N/A':
+                 success_message += f" (Found {num_cells_found} cells)"
+            else:
+                mask_path = result_dict.get('mask_path')
+                if mask_path and os.path.exists(mask_path):
+                    success_message += f" (Mask saved: {mask_path})"
+                else:
+                    success_message += " (Details in worker log)"
+
+            logger.info(f"  Job {i+1}/{total_jobs_configured}: {exp_id} (Unit: {unit_name}) - {success_message}")
             successful_runs += 1
         else:
-            error_msg_short = result_dict.get('message', 'Unknown error')
+            error_msg_short = result_dict.get('error', 'Unknown error')
             logger.error(f"  Job {i+1}/{total_jobs_configured}: {exp_id} (Unit: {unit_name}) - FAILED ({error_msg_short})")
             failed_runs += 1
     

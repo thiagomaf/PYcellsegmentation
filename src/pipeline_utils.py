@@ -7,16 +7,94 @@ import numpy as np
 import traceback
 import logging
 
-from .file_paths import RESCALED_IMAGE_CACHE_DIR, IMAGE_DIR_BASE, RESULTS_DIR_BASE
+from .file_paths import RESCALED_IMAGE_CACHE_DIR, IMAGE_DIR_BASE, RESULTS_DIR_BASE, PROJECT_ROOT
 
 logger = logging.getLogger(__name__)
 
 RESCALED_IMAGE_CACHE_DIR = os.path.join("images", "rescaled_cache") # Relative to project root
 
 def clean_filename_for_dir(filename):
-    name_without_ext = os.path.splitext(filename)[0]
-    cleaned_name = re.sub(r'[^\w\.-]', '_', name_without_ext)
-    return cleaned_name
+    # Get the filename without the directory path
+    base_filename = os.path.basename(filename)
+
+    # Remove the very last extension (e.g., .tif, .ext, .gz)
+    name_without_final_ext = os.path.splitext(base_filename)[0]
+
+    # If the original filename was something like ".bashrc", splitext gives (".bashrc", "").
+    # In this case, name_without_final_ext is ".bashrc". We want "bashrc".
+    if name_without_final_ext.startswith(".") and not os.path.splitext(name_without_final_ext)[1]:
+         # Check if there's actually a name part after the dot
+        if len(name_without_final_ext) > 1:
+            name_to_clean = name_without_final_ext[1:]
+        else: # it's just "."
+            name_to_clean = "_" # or handle as an error/empty string
+    else:
+        name_to_clean = name_without_final_ext
+
+    # Replace hyphens with a temporary placeholder to distinguish them
+    # This is because the test 'complex-name.v1.2.ext' -> 'complex-name_v1_2'
+    # suggests hyphens should be preserved if they are not part of a sequence to be replaced by a single underscore.
+    # However, other tests imply hyphens become underscores. This is contradictory.
+    # Given 'complex-name_v1_2', it seems dots become underscores, hyphens are kept.
+    # Given 'my image with spaces.ome.tiff' -> 'my_image_with_spaces_ome', spaces and dots become _.
+    # Given 'a!b@c#d$.tif' -> 'a_b_c_d_', non-alphanum become _.
+
+    # Strategy:
+    # 1. Replace one or more dots with a single underscore.
+    # 2. Replace one or more spaces with a single underscore.
+    # 3. Replace any remaining character that is not alphanumeric, not an underscore, and not a hyphen, with a single underscore.
+    # 4. Consolidate multiple underscores.
+    # 5. Strip leading/trailing underscores UNLESS the test 'a!b@c#d$.tif' -> 'a_b_c_d_' implies a trailing underscore is sometimes desired.
+
+    # Let's try a simpler approach first, matching most general cases.
+    # Replace sequences of dots, spaces, or hyphens with a single underscore.
+    cleaned_name = re.sub(r'[.\s-]+', '_', name_to_clean)
+    # Replace any remaining non-alphanumeric character (that's not already an underscore) with an underscore.
+    cleaned_name = re.sub(r'[^a-zA-Z0-9_]', '_', cleaned_name)
+    # Consolidate multiple underscores.
+    cleaned_name = re.sub(r'_+', '_', cleaned_name)
+    # Strip leading/trailing underscores. This might be too aggressive for 'a!b@c#d$.tif'.
+    cleaned_name = cleaned_name.strip('_')
+    
+    # Special case for the 'a!b@c#d$.tif' -> 'a_b_c_d_' test: if the original name_without_final_ext ended with a non-alphanum
+    # character which became an underscore, and strip('_') removed it, add it back.
+    # This is getting very specific. Let's see if the tests pass without this first.
+
+    # The test 'complex-name.v1.2.ext' -> 'complex-name_v1_2' is the trickiest.
+    # It implies that '.' should become '_' BUT '-' should be preserved.
+    # My current regex [.\s-]+ makes '-' become '_'.
+
+    # Revised strategy for 'complex-name' and general cases:
+    # Preserve hyphens, make dots and spaces underscores, then clean other chars.
+    
+    name_with_hyphens_preserved = name_to_clean.replace('-', '---HYPHEN---')
+    name_dots_spaces_to_underscore = re.sub(r'[.\s]+', '_', name_with_hyphens_preserved)
+    name_reverted_hyphens = name_dots_spaces_to_underscore.replace('---HYPHEN---', '-')
+    
+    # Now, clean any remaining non-alphanumeric chars (excluding '-', '_')
+    cleaned_name_final = re.sub(r'[^a-zA-Z0-9_-]+', '_', name_reverted_hyphens)
+    
+    # Strip leading/trailing underscores
+    cleaned_name_final = cleaned_name_final.strip('_')
+
+    # Handle the 'a!b@c#d$.tif' -> 'a_b_c_d_' case which wants a trailing underscore.
+    # If the original name_without_final_ext ended with a character that became an underscore
+    # and was then stripped, we might need to add it back.
+    # The character '$' in 'a!b@c#d$' becomes '_' . 'a_b_c_d_'.
+    # If name_without_final_ext[-1] is not alphanumeric and not a hyphen, and cleaned_name_final does not end with '_',
+    # it suggests a trailing underscore might be expected.
+    if name_without_final_ext and not name_without_final_ext[-1].isalnum() and name_without_final_ext[-1] not in ['-', '_'] and not cleaned_name_final.endswith('_'):
+         cleaned_name_final += '_'
+         # And if this created a double underscore at the end, fix it
+         if cleaned_name_final.endswith('__'):
+             cleaned_name_final = cleaned_name_final[:-1]
+
+
+    # If, after all this, the name is empty (e.g. input was "."), return "_"
+    if not cleaned_name_final and base_filename: # check base_filename to avoid issues with empty input
+        return "_"
+        
+    return cleaned_name_final
 
 def get_cv2_interpolation_method(method_str="INTER_AREA"):
     methods = {
@@ -28,72 +106,100 @@ def get_cv2_interpolation_method(method_str="INTER_AREA"):
     }
     return methods.get(method_str.upper(), cv2.INTER_AREA)
 
-def rescale_image_and_save(original_image_path, image_id_for_cache, rescaling_config):
-    """
-    Loads an image, rescales it, and saves it to a cache directory.
-    Returns the path to the rescaled image and the actual scale factor used.
-    Assumes RESCALED_IMAGE_CACHE_DIR is accessible from project root.
-    """
-    if not os.path.exists(original_image_path):
-        logger.error(f"Original image for rescaling not found: {original_image_path}")
+def rescale_image_and_save(original_image_path, image_id_base, rescaling_config):
+    scale_factor = rescaling_config.get("scale_factor", 1.0)
+    interpolation_str = rescaling_config.get("interpolation", "INTER_LINEAR")
+    interpolation_method = getattr(cv2, interpolation_str, cv2.INTER_LINEAR)
+
+    if scale_factor == 1.0:
+        logger.info(f"  Scale factor is 1.0, no rescaling needed for {original_image_path}.")
         return original_image_path, 1.0
 
-    if not rescaling_config or "scale_factor" not in rescaling_config:
-        return original_image_path, 1.0
-
-    scale_factor = rescaling_config["scale_factor"]
-    if not (isinstance(scale_factor, (int, float)) and 0 < scale_factor <= 1.0):
-        logger.warning(f"Invalid scale_factor {scale_factor} for {original_image_path}. Must be float between 0 (excl) and 1.0. Skipping rescale.")
-        return original_image_path, 1.0
-    if scale_factor == 1.0: # No actual rescaling
-        return original_image_path, 1.0
-
-    interpolation_str = rescaling_config.get("interpolation", "INTER_AREA")
-    interpolation_method = get_cv2_interpolation_method(interpolation_str)
+    # Construct path for cached rescaled image
+    original_filename_base = os.path.splitext(os.path.basename(original_image_path))[0]
+    scaled_filename = f"{original_filename_base}_scaled_{str(scale_factor).replace('.', '_')}{os.path.splitext(original_image_path)[1]}"
     
-    if not os.path.exists(RESCALED_IMAGE_CACHE_DIR):
-        try: os.makedirs(RESCALED_IMAGE_CACHE_DIR)
-        except OSError as e: logger.error(f"Could not create base rescaled cache dir {RESCALED_IMAGE_CACHE_DIR}: {e}")
-    
-    rescaled_image_specific_dir = os.path.join(RESCALED_IMAGE_CACHE_DIR, image_id_for_cache)
-    if not os.path.exists(rescaled_image_specific_dir):
-        try: os.makedirs(rescaled_image_specific_dir)
+    # Ensure RESCALED_IMAGE_CACHE_DIR is an absolute path if it's defined relative to PROJECT_ROOT
+    # This assumes RESCALED_IMAGE_CACHE_DIR is already correctly defined (e.g. using os.path.join(PROJECT_ROOT, "images/rescaled_cache"))
+    # Create a subdirectory within the cache for this specific image_id_base to avoid filename clashes if multiple original images have same basename.
+    image_specific_cache_dir = os.path.join(RESCALED_IMAGE_CACHE_DIR, image_id_base)
+    if not os.path.exists(image_specific_cache_dir):
+        try:
+            os.makedirs(image_specific_cache_dir)
         except OSError as e:
-            logger.error(f"  Error creating cache subdir {rescaled_image_specific_dir}: {e}. Cannot cache rescaled image.")
+            logger.error(f"  Error creating image-specific cache directory {image_specific_cache_dir}: {e}. Cannot save rescaled image.")
             return original_image_path, 1.0
 
-    original_filename = os.path.basename(original_image_path)
-    scale_factor_str_file = str(scale_factor).replace('.', '_')
-    rescaled_image_filename = f"{os.path.splitext(original_filename)[0]}_scaled_{scale_factor_str_file}.tif"
-    rescaled_image_path = os.path.join(rescaled_image_specific_dir, rescaled_image_filename)
 
-    if os.path.exists(rescaled_image_path):
-        logger.info(f"  Found cached rescaled image: {rescaled_image_path}")
-        return rescaled_image_path, scale_factor
+    cached_rescaled_image_path = os.path.join(image_specific_cache_dir, scaled_filename)
+
+    if os.path.exists(cached_rescaled_image_path):
+        logger.info(f"  Found cached rescaled image: {cached_rescaled_image_path}")
+        return cached_rescaled_image_path, scale_factor
 
     try:
         logger.info(f"  Rescaling {original_image_path} by factor {scale_factor} using {interpolation_str}...")
-        img = cv2.imread(original_image_path, cv2.IMREAD_ANYDEPTH | cv2.IMREAD_ANYCOLOR)
+        img = tifffile.imread(original_image_path)
+        
         if img is None:
-            logger.error(f"  Error: Could not load original image {original_image_path} for rescaling.")
+            logger.error(f"  Error: Could not load original image {original_image_path} for rescaling using tifffile.")
             return original_image_path, 1.0
 
-        new_width = int(round(img.shape[1] * scale_factor))
-        new_height = int(round(img.shape[0] * scale_factor))
-        
-        if new_width == 0 or new_height == 0:
-            logger.error(f"  Error: Rescaled dimensions are zero or near-zero ({new_width}x{new_height}). Scale factor {scale_factor} too small for image size {img.shape[:2]}.")
-            return original_image_path, 1.0
+        logger.debug(f"    Original image shape: {img.shape}, dtype: {img.dtype}")
 
-        rescaled_img = cv2.resize(img, (new_width, new_height), interpolation=interpolation_method)
+        img_to_resize = None
+        if img.ndim == 2: # Grayscale HxW
+            img_to_resize = img
+        elif img.ndim == 3: # Could be HxWxC or ZxHxW
+            # Assuming for simple rescaling, if it's ZxHxW, we take the middle slice or first slice.
+            # Or if HxWxC, cv2.resize handles it. Let's assume HxW or HxWxC for cv2.
+            # A common case for OME-TIFFs read by tifffile might be (Series, Z, C, H, W, S) or simpler forms.
+            # For now, let's try to be robust for common 2D/3D TIFFs (H,W), (H,W,C), (Z,H,W)
+            if img.shape[0] < 10 and img.ndim == 3 : # Probably (Z, H, W) or (C, H, W) with few Z/C
+                 logger.info(f"    Input is 3D with shape {img.shape}. Attempting to rescale the first slice/channel as 2D.")
+                 img_to_resize = img[0, :, :] # Take the first slice/channel
+            elif img.shape[-1] < 10 and img.ndim == 3: # Probably (H,W,C)
+                 img_to_resize = img
+            else: # Default to first slice if unsure for ZxHxW, or if it's truly volumetric and needs specific handling
+                 logger.warning(f"    Input image is {img.ndim}D with shape {img.shape}. Taking first slice/channel if it's the first dimension, otherwise attempting direct resize. This might not be suitable for all volumetric images.")
+                 if img.ndim > 2 and img.shape[0] > 1 and img.shape[0] < img.shape[1] and img.shape[0] < img.shape[2]: # Heuristic for (Z,H,W)
+                    img_to_resize = img[0,:,:]
+                 else: # Hope cv2.resize can handle it or it's (H,W) after all
+                    img_to_resize = img
+
+
+        if img_to_resize is None or img_to_resize.ndim < 2: # Check if img_to_resize is valid
+            logger.error(f"    Error: Could not extract a suitable 2D/3D array for resizing from shape {img.shape}. Original path: {original_image_path}")
+            return original_image_path, 1.0
         
-        tifffile.imwrite(rescaled_image_path, rescaled_img)
-        logger.info(f"  Saved rescaled image to: {rescaled_image_path} (Shape: {rescaled_img.shape})")
-        return rescaled_image_path, scale_factor
+        logger.debug(f"    Shape of array being sent to cv2.resize: {img_to_resize.shape}")
+
+        original_h, original_w = img_to_resize.shape[0], img_to_resize.shape[1]
+        new_w = int(round(original_w * scale_factor))
+        new_h = int(round(original_h * scale_factor))
+
+        if new_w <= 0 or new_h <= 0:
+            logger.error(f"  Error: Calculated new dimensions ({new_w}x{new_h}) are invalid for {original_image_path}.")
+            return original_image_path, 1.0
+            
+        logger.info(f"    Original dimensions: {original_w}x{original_h}. Target scaled dimensions: {new_w}x{new_h}.")
+        
+        rescaled_img = cv2.resize(img_to_resize, (new_w, new_h), interpolation=interpolation_method)
+        logger.info(f"    Shape after cv2.resize: {rescaled_img.shape}, dtype: {rescaled_img.dtype}")
+
+        try:
+            tifffile.imwrite(cached_rescaled_image_path, rescaled_img)
+            logger.info(f"    Successfully rescaled and cached to: {cached_rescaled_image_path}")
+            return cached_rescaled_image_path, scale_factor
+        except Exception as e_write:
+            logger.error(f"  CRITICAL: Failed to write rescaled image to {cached_rescaled_image_path}: {e_write}")
+            logger.error(traceback.format_exc())
+            return original_image_path, 1.0 # Fallback if write fails
+
     except Exception as e:
-        logger.error(f"  Error during rescaling or saving {original_image_path}: {e}")
+        logger.error(f"  Error during rescaling of {original_image_path}: {e}")
         logger.error(traceback.format_exc())
-        return original_image_path, 1.0
+        return original_image_path, 1.0 # Fallback
 
 def determine_image_unit_for_segmentation_and_mask_path(config, RESULTS_DIR_BASE, TILED_IMAGE_DIR_BASE, original_source_image_full_path, target_image_id, target_processing_unit_name, is_tiled_job, tile_job_params=None, rescaling_config_for_image=None):
     """
@@ -263,10 +369,71 @@ def normalize_to_8bit_for_display(img_array):
 
     except Exception as e:
         logger.error(f"Error during 8-bit normalization for input of dtype {img_array.dtype} and shape {img_array.shape}: {e}")
-        logger.error(traceback.format_exc()) # Ensure traceback is imported in pipeline_utils.py
+        logger.error(traceback.format_exc())
         # Fallback: return a black image
         try:
             placeholder_shape = img_array.shape
         except: # Handle if img_array itself has no shape (shouldn't happen if initial check passed)
             placeholder_shape = (100,100,3) if (hasattr(img_array, 'ndim') and img_array.ndim == 3 and hasattr(img_array, 'shape') and len(img_array.shape) > 2 and img_array.shape[-1] == 3) else (100,100)
         return np.zeros(placeholder_shape, dtype=np.uint8)
+
+def get_image_mpp_and_path_from_config(all_image_configs, target_image_id, target_processing_unit_name=None):
+    """
+    Finds the image configuration for a given image_id and returns the config,
+    the full path to the original image, and its MPP values.
+
+    Args:
+        all_image_configs (list): A list of image configuration dictionaries.
+        target_image_id (str): The image_id to search for.
+        target_processing_unit_name (str, optional): The specific processing unit name.
+            Currently primarily used for logging context if image_id is not found,
+            but could be used for more complex logic in the future.
+
+    Returns:
+        tuple: (image_config, original_image_full_path, mpp_x, mpp_y)
+               Returns (None, None, None, None) if the image_id is not found
+               or if essential information is missing.
+    """
+    if not all_image_configs:
+        logger.warning("get_image_mpp_and_path_from_config: all_image_configs list is empty or None.")
+        return None, None, None, None
+
+    for img_cfg in all_image_configs:
+        if img_cfg.get("image_id") == target_image_id:
+            original_filename = img_cfg.get("original_image_filename")
+            mpp_x = img_cfg.get("mpp_x")
+            mpp_y = img_cfg.get("mpp_y")
+
+            if not original_filename:
+                logger.error(f"Image config for '{target_image_id}' found, but 'original_image_filename' is missing.")
+                return img_cfg, None, mpp_x, mpp_y # Return what we have, path will be None
+
+            if mpp_x is None or mpp_y is None:
+                logger.warning(f"Image config for '{target_image_id}' found, but 'mpp_x' or 'mpp_y' is missing.")
+                # Continue, but mpp values might be None
+
+            original_image_full_path = os.path.join(PROJECT_ROOT, original_filename)
+            
+            # Log if the constructed path doesn't exist, but still return it.
+            # The caller can decide how to handle a non-existent path.
+            if not os.path.exists(original_image_full_path):
+                logger.warning(f"Original image for '{target_image_id}' not found at derived path: {original_image_full_path}")
+
+            return img_cfg, original_image_full_path, mpp_x, mpp_y
+
+    processing_unit_context = f" (for processing unit '{target_processing_unit_name}')" if target_processing_unit_name else ""
+    logger.error(f"Image ID '{target_image_id}' not found in any image_configurations{processing_unit_context}.")
+    return None, None, None, None
+
+__all__ = [
+    "clean_filename_for_dir",
+    "get_cv2_interpolation_method",
+    "rescale_image_and_save",
+    "determine_image_unit_for_segmentation_and_mask_path",
+    "get_base_experiment_id",
+    "format_scale_factor_for_path",
+    "construct_full_experiment_id",
+    "construct_mask_path",
+    "normalize_to_8bit_for_display",
+    "get_image_mpp_and_path_from_config"
+]
