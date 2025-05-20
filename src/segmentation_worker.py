@@ -64,7 +64,7 @@ def segment_image_worker(job_params_dict):
         logger.info(f"  Model: {model_choice}, Diameter: {diameter}, GPU: {use_gpu}")
         logger.info(f"  Optional params - FlowThresh: {flow_threshold}, CellProbThresh: {cellprob_threshold}, MinSize: {min_size}, ForceGrayscale: {force_grayscale}")
 
-        model = models.Cellpose(gpu=use_gpu, model_type=model_choice)
+        model = models.CellposeModel(gpu=use_gpu, model_type=model_choice)
         
         # Prepare channels: if grayscale and 3D, expand dims for Cellpose
         channels = [0,0] # Default for grayscale
