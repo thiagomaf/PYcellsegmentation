@@ -161,16 +161,21 @@ This is the main control file, located in the project root. Update it to point t
     *   `USE_GPU_IF_AVAILABLE`: (Boolean) Global default for Cellpose GPU usage.
 
 *   **`image_configurations` (List of Objects):**
-    Define each source image to process.
-    *   `"image_id"`: Unique string.
-    *   `"original_image_filename"`: Path to the image file, relative to `PROJECT_ROOT` (e.g., `"data/raw/images/my_experiment/image1.tif"`).
-    *   `"is_active"`: Boolean.
-    *   `"mpp_x"`, `"mpp_y"`: Microns per pixel (required for some visualization/tiling).
-    *   `"segmentation_options"`: (Object, Optional)
-        *   `"apply_segmentation"`: Boolean.
-        *   `"rescaling_config"`: { `"scale_factor"`, `"interpolation"` }
-        *   `"tiling_parameters"`: { `"apply_tiling"`, `"tile_size_xy_microns"`, `"overlap_microns"` }.
-    
+    Define each source image to be processed by the pipeline. Each object in this list represents one image and its specific processing settings.
+    *   `"image_id"`: (String) A unique identifier for this image configuration (e.g., `"exp1_dapi_channel"`, `"slide2_tile_grid"`). This ID is used throughout the pipeline for logging, output file naming, and linking to other configurations (like `visualization_tasks`).
+    *   `"original_image_filename"`: (String) The path to the source image file, relative to the project root directory (e.g., `"data/raw/images/my_experiment/image1.ome.tif"`). This can be an OME-TIFF, standard TIFF, or other formats readable by `tifffile`.
+    *   `"is_active"`: (Boolean) Set to `true` to include this image configuration in the current pipeline run. If `false`, this image will be skipped.
+    *   `"mpp_x"`, `"mpp_y"`: (Float) Microns per pixel for the image in the X and Y dimensions, respectively. These values are crucial for accurate measurements if tiling is based on physical units (microns) and for some visualization scaling. If not applicable or unknown, you can use `1.0`.
+    *   `"segmentation_options"`: (Object, Optional) Contains parameters related to how this specific image should be segmented, including whether to segment it at all, and if rescaling or tiling should be applied before segmentation.
+        *   `"apply_segmentation"`: (Boolean) If `true`, Cellpose segmentation will be performed on this image (or its rescaled/tiled versions). If `false`, segmentation is skipped for this image configuration, though other operations might still apply.
+        *   `"rescaling_config"`: (Object or `null`, Optional) Defines parameters for on-the-fly image rescaling before segmentation. Set to `null` or omit if no rescaling is needed.
+            *   `"scale_factor"`: (Float) The factor by which to rescale the image. E.g., `0.5` halves the image dimensions, `2.0` doubles them. Rescaling can help if object sizes are too large or too small for the chosen Cellpose model or diameter, or to reduce processing time for very large images. It affects the effective microns-per-pixel of the image being segmented.
+            *   `"interpolation"`: (String) The interpolation method to use for rescaling. Common values include `"INTER_NEAREST"` (fast, preserves sharp edges, good for masks), `"INTER_LINEAR"` (default, good for general downscaling), `"INTER_CUBIC"` (good for upscaling, slower), `"INTER_AREA"` (good for downscaling, preserves area). Refer to OpenCV documentation for more options.
+        *   `"tiling_parameters"`: (Object or `null`, Optional) Defines parameters for dividing the image into smaller tiles for segmentation. Useful for very large images that don't fit in memory or to apply segmentation locally. Set to `null` or omit if no tiling is needed.
+            *   `"apply_tiling"`: (Boolean) If `true`, tiling will be performed. If `false`, the entire image (possibly after rescaling) is processed at once.
+            *   `"tile_size_xy_microns"`: (Integer) The desired size of each tile in microns (both width and height). This requires `mpp_x` and `mpp_y` to be set correctly. Alternatively, a pixel-based tile size could be implemented if needed (not current default).
+            *   `"overlap_microns"`: (Integer) The overlap between adjacent tiles in microns. Overlap helps to avoid edge artifacts during segmentation and ensures objects spanning tile boundaries are captured correctly. Cellpose's stitching mechanism (if used) benefits from this.
+    **Example:**
     ```json
     "image_configurations": [
       {
@@ -220,11 +225,18 @@ This is the main control file, located in the project root. Update it to point t
     ```
 
 *   **`cellpose_parameter_configurations` (List of Objects):**
-    Define sets of Cellpose parameters.
-    *   `"param_set_id"`: Unique string.
-    *   `"is_active"`: Boolean.
-    *   `"cellpose_parameters"`: { `"MODEL_CHOICE"`, `"DIAMETER"`, `"FLOW_THRESHOLD"`, etc. }
-    
+    Define sets of Cellpose parameters to be applied to images. Each object in this list represents a distinct configuration.
+    *   `"param_set_id"`: (String) A unique identifier for this specific set of Cellpose parameters (e.g., `"cyto2_default_diam30"`, `"nuclei_custom_flow0.8"`). This ID is used to link `image_configurations` to these settings, allowing different images or the same image to be processed with multiple parameter sets.
+    *   `"is_active"`: (Boolean) Set to `true` to enable this parameter set for processing, or `false` to disable and skip it during a pipeline run.
+    *   `"cellpose_parameters"`: (Object) An object containing key-value pairs that correspond to the arguments for the Cellpose `model.eval()` method. These parameters directly control the segmentation behavior. For a comprehensive list and detailed explanations of all available Cellpose parameters, please refer to the official Cellpose documentation. Common parameters include:
+        *   `"MODEL_CHOICE"`: (String) Specifies the Cellpose model to use (e.g., `"cyto2"` for cytoplasm, `"nuclei"` for nuclei, `"livecell"`, or a path to a custom-trained model).
+        *   `"USE_GPU"`: (Boolean) If `true`, Cellpose will attempt to use a compatible GPU if available, which can significantly speed up segmentation. Set to `false` to force CPU usage.
+        *   `"CHANNELS"`: (List of Integers) Defines the channels for segmentation. For grayscale images, use `[0,0]`. For multi-channel images where, for example, the cytoplasm is green (channel 2) and nucleus is blue (channel 1), you might use `[2,1]` (cytoplasm channel first, nucleus channel second for cyto2 model) or `[1,0]` (nucleus channel first for nuclei model, second channel is ignored or set to 0).
+        *   `"DIAMETER"`: (Integer) Estimated average diameter of the objects (cells or nuclei) in pixels. If set to `0` or `null`, Cellpose will attempt to automatically estimate the diameter from the image. Providing an accurate estimate can improve segmentation quality.
+        *   `"FLOW_THRESHOLD"`: (Float) Threshold for the flow field prediction from the model. Default is typically `0.4`. Higher values generally lead to fewer, larger, and more merged objects, while lower values can result in more segmented objects, potentially including noise.
+        *   `"CELLPROB_THRESHOLD"`: (Float) Threshold for the cell probability map. Default is typically `0.0`. Increasing this (e.g., towards positive values) makes segmentation more conservative (fewer objects), while decreasing it (e.g., towards negative values) makes it more sensitive (more objects).
+        *   `"MIN_SIZE"`: (Integer) The minimum number of pixels a segmented object must have to be included in the final masks. Objects smaller than this are discarded. Default is often around `15`.
+        *   `"STITCH_THRESHOLD"`: (Float, Optional) When segmenting tiled images, this threshold (ranging from 0.0 to 1.0) is used to stitch together masks from adjacent tiles. Only relevant if tiling is enabled in `image_configurations`. Default is typically `0.0` if not specified by Cellpose, but can be adjusted.
     **Example:**
     ```json
     "cellpose_parameter_configurations": [
