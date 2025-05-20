@@ -224,6 +224,49 @@ This is the main control file, located in the project root. Update it to point t
     *   `"param_set_id"`: Unique string.
     *   `"is_active"`: Boolean.
     *   `"cellpose_parameters"`: { `"MODEL_CHOICE"`, `"DIAMETER"`, `"FLOW_THRESHOLD"`, etc. }
+    
+    **Example:**
+    ```json
+    "cellpose_parameter_configurations": [
+      {
+        "param_set_id": "cyto2_default_diam30",
+        "is_active": true,
+        "cellpose_parameters": {
+          "MODEL_CHOICE": "cyto2",
+          "USE_GPU": true,
+          "CHANNELS": [0, 0],
+          "DIAMETER": 30,
+          "FLOW_THRESHOLD": 0.4,
+          "CELLPROB_THRESHOLD": 0.0,
+          "MIN_SIZE": 15
+        }
+      },
+      {
+        "param_set_id": "nuclei_custom_diam15",
+        "is_active": true,
+        "cellpose_parameters": {
+          "MODEL_CHOICE": "nuclei",
+          "USE_GPU": true,
+          "CHANNELS": [1, 0],
+          "DIAMETER": 15,
+          "FLOW_THRESHOLD": 0.6,
+          "CELLPROB_THRESHOLD": -2.0,
+          "MIN_SIZE": 10,
+          "STITCH_THRESHOLD": 0.1 
+        }
+      },
+      {
+        "param_set_id": "livecell_diam0_autodetect",
+        "is_active": false,
+        "cellpose_parameters": {
+          "MODEL_CHOICE": "livecell",
+          "USE_GPU": false,
+          "CHANNELS": [0,0],
+          "DIAMETER": 0 
+        }
+      }
+    ]
+    ```
 
 *   **`visualization_tasks` (List of Objects):**
     Define gene expression visualization tasks.
