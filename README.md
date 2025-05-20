@@ -169,7 +169,7 @@ This is the main control file, located in the project root. Update it to point t
     *   `"segmentation_options"`: (Object, Optional)
         *   `"apply_segmentation"`: Boolean.
         *   `"rescaling_config"`: { `"scale_factor"`, `"interpolation"` }
-        *   `"tiling_parameters"`: { `"apply_tiling"`, `"tile_size_xy_microns"`, `"overlap_microns"` }
+        *   `"tiling_parameters"`: { `"apply_tiling"`, `"tile_size_xy_microns"`, `"overlap_microns"` }.
     
     ```json
     "image_configurations": [
