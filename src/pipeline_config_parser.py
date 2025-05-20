@@ -10,7 +10,7 @@ from .file_paths import IMAGE_DIR_BASE, TILED_IMAGE_OUTPUT_BASE, RESCALED_IMAGE_
 
 logger = logging.getLogger(__name__)
 
-def load_and_expand_configurations(param_json_file_path):
+def load_and_expand_configurations(param_json_file_path, global_use_gpu_if_available: bool):
     """
     Loads configurations from parameter_sets.json, handles rescaling and tiling,
     and generates a flat list of all individual jobs to be run.
@@ -148,7 +148,7 @@ def load_and_expand_configurations(param_json_file_path):
                 job = {} 
                 
                 for key, value in cp_config.items():
-                    if key not in ["param_set_id", "is_active"]:
+                    if key not in ["param_set_id", "is_active", "USE_GPU"]:
                         job[key] = value
                 
                 job["actual_image_path_to_process"] = img_proc_info["path"]
@@ -182,7 +182,7 @@ def load_and_expand_configurations(param_json_file_path):
                 job.setdefault("MIN_SIZE", None) 
                 job.setdefault("CELLPROB_THRESHOLD", 0.0)
                 job.setdefault("FORCE_GRAYSCALE", True)
-                job.setdefault("USE_GPU", False)
+                job["USE_GPU"] = global_use_gpu_if_available
                 
                 # Add original MPP values to the base image info if they exist
                 # These can be used by other modules like visualization

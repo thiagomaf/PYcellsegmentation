@@ -224,7 +224,7 @@ These are the main control files, located in the project root.
     *   `default_log_level`: (String) "DEBUG", "INFO", etc. Overridden by CLI `--log_level`.
     *   `max_processes`: (Integer) Max parallel jobs. Overridden by CLI `--max_processes`.
     *   `FORCE_GRAYSCALE`: (Boolean) Global default for grayscale conversion.
-    *   `USE_GPU_IF_AVAILABLE`: (Boolean) Global default for Cellpose GPU usage.
+    *   `USE_GPU_IF_AVAILABLE`: (Boolean) Global default for Cellpose GPU usage. If `true`, the pipeline will attempt to use an available GPU for all segmentations. If `false`, CPU will be used. This is the primary setting controlling GPU usage.
 
     ```json
     {
@@ -307,7 +307,6 @@ These are the main control files, located in the project root.
     *   `"is_active"`: (Boolean) Set to `true` to enable this parameter set for processing, or `false` to disable and skip it during a pipeline run.
     *   `"cellpose_parameters"`: (Object) An object containing key-value pairs that correspond to the arguments for the Cellpose `model.eval()` method. These parameters directly control the segmentation behavior. For a comprehensive list and detailed explanations of all available Cellpose parameters, please refer to the official Cellpose documentation. Common parameters include:
         *   `"MODEL_CHOICE"`: (String) Specifies the Cellpose model to use (e.g., `"cyto2"` for cytoplasm, `"nuclei"` for nuclei, `"livecell"`, or a path to a custom-trained model).
-        *   `"USE_GPU"`: (Boolean) If `true`, Cellpose will attempt to use a compatible GPU if available, which can significantly speed up segmentation. Set to `false` to force CPU usage.
         *   `"CHANNELS"`: (List of Integers) Defines the channels for segmentation. For grayscale images, use `[0,0]`. For multi-channel images where, for example, the cytoplasm is green (channel 2) and nucleus is blue (channel 1), you might use `[2,1]` (cytoplasm channel first, nucleus channel second for cyto2 model) or `[1,0]` (nucleus channel first for nuclei model, second channel is ignored or set to 0).
         *   `"DIAMETER"`: (Integer) Estimated average diameter of the objects (cells or nuclei) in pixels. If set to `0` or `null`, Cellpose will attempt to automatically estimate the diameter from the image. Providing an accurate estimate can improve segmentation quality.
         *   `"FLOW_THRESHOLD"`: (Float) Threshold for the flow field prediction from the model. Default is typically `0.4`. Higher values generally lead to fewer, larger, and more merged objects, while lower values can result in more segmented objects, potentially including noise.
@@ -322,7 +321,6 @@ These are the main control files, located in the project root.
         "is_active": true,
         "cellpose_parameters": {
           "MODEL_CHOICE": "cyto2",
-          "USE_GPU": true,
           "CHANNELS": [0, 0],
           "DIAMETER": 30,
           "FLOW_THRESHOLD": 0.4,
@@ -335,7 +333,6 @@ These are the main control files, located in the project root.
         "is_active": true,
         "cellpose_parameters": {
           "MODEL_CHOICE": "nuclei",
-          "USE_GPU": true,
           "CHANNELS": [1, 0],
           "DIAMETER": 15,
           "FLOW_THRESHOLD": 0.6,
@@ -349,7 +346,6 @@ These are the main control files, located in the project root.
         "is_active": false,
         "cellpose_parameters": {
           "MODEL_CHOICE": "livecell",
-          "USE_GPU": false,
           "CHANNELS": [0,0],
           "DIAMETER": 0 
         }

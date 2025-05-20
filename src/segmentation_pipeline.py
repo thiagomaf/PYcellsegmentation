@@ -135,6 +135,8 @@ def main():
     effective_log_level = "INFO" # Hardcoded default for log level
     hardcoded_default_max_processes = 1
     effective_max_processes = hardcoded_default_max_processes # Hardcoded default for max_processes
+    # Default for GPU usage
+    effective_use_gpu = False # Default to False
 
     # Try to load default_log_level and max_processes from JSON config
     pipeline_params = {} # Initialize to empty dict
@@ -155,6 +157,11 @@ def main():
                 effective_max_processes = json_max_processes
             elif json_max_processes is not None: # Invalid value in JSON
                  print(f"[STARTUP_WARNING] Invalid 'max_processes' value ({json_max_processes}) in {config_file_path}. Using default/CLI.")
+
+            # Handle USE_GPU_IF_AVAILABLE from JSON
+            json_use_gpu = global_settings.get("USE_GPU_IF_AVAILABLE")
+            if isinstance(json_use_gpu, bool):
+                effective_use_gpu = json_use_gpu
 
 
         except Exception as e:
@@ -183,6 +190,7 @@ def main():
     logger.info(f" Using configuration file: {config_file_path}") # Use resolved path
     logger.info(f" Effective logging level: {effective_log_level}")
     logger.info(f" Effective max parallel processes: {effective_max_processes}") # Updated log message
+    logger.info(f" Effective GPU usage intent: {effective_use_gpu}") # Log GPU setting
     logger.info("====================================================================")
 
     # run_log_file path depends on RESULTS_DIR_BASE which is now imported
@@ -192,7 +200,7 @@ def main():
     base_directories_to_ensure = [IMAGE_DIR_BASE, TILED_IMAGE_OUTPUT_BASE, RESCALED_IMAGE_CACHE_DIR, RESULTS_DIR_BASE]
     ensure_directories(base_directories_to_ensure)
 
-    active_jobs_to_run = load_and_expand_configurations(config_file_path) # Pass resolved path
+    active_jobs_to_run = load_and_expand_configurations(config_file_path, effective_use_gpu) # Pass GPU setting
     initial_job_count = len(active_jobs_to_run)
 
     if not active_jobs_to_run:
