@@ -131,6 +131,7 @@ This project offers a suite of tools that can be used as a cohesive pipeline or 
 1.  **Clone the Repository.**
 2.  **Set up a Python Virtual Environment:**
     It's highly recommended to use a virtual environment to manage project dependencies. This isolates the project's requirements from your global Python installation.
+    *Important: Virtual environments are not generally transportable between computers or different path locations. You should create a new virtual environment and install dependencies on each machine where you set up the project.*
 
     *   **Windows (PowerShell/Command Prompt):**
         ```bash
