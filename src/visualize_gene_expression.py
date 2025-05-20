@@ -285,53 +285,76 @@ if __name__ == "__main__":
     # Setup basic logging for direct script running
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
-    parser = argparse.ArgumentParser(description="Visualize gene expression on segmented cells, using parameter_sets.json for paths and task definitions.")
-    parser.add_argument("--config", default="parameter_sets.json",
-                        help="Path to the parameter sets JSON file (default: parameter_sets.json). Can be relative to project root.")
+    parser = argparse.ArgumentParser(description="Visualize gene expression on segmented cells, using separate processing and visualization JSON configuration files.")
+    parser.add_argument("--proc_config", default="processing_config.json",
+                        help="Path to the processing JSON configuration file (e.g., processing_config.json). Contains image_configurations. Default: processing_config.json")
+    parser.add_argument("--viz_config", default="visualization_config.json",
+                        help="Path to the visualization tasks JSON configuration file (e.g., visualization_config.json). Default: visualization_config.json")
     parser.add_argument("--task_id", default=None,
-                        help="Optional ID of a specific visualization task to run from the config file. If not provided, all active tasks are run.")
+                        help="Optional ID of a specific visualization task to run from the visualization_config.json. If not provided, all active tasks are run.")
     
     args = parser.parse_args()
 
-    param_sets_full_path = args.config
-    if not os.path.isabs(param_sets_full_path):
-        param_sets_full_path = os.path.join(PROJECT_ROOT, param_sets_full_path)
+    # Resolve paths for config files
+    proc_config_full_path = args.proc_config
+    if not os.path.isabs(proc_config_full_path):
+        proc_config_full_path = os.path.join(PROJECT_ROOT, proc_config_full_path)
 
-    if not os.path.exists(param_sets_full_path):
-        logger.error(f"Error: Configuration file not found: {param_sets_full_path}"); exit(1)
+    viz_config_full_path = args.viz_config
+    if not os.path.isabs(viz_config_full_path):
+        viz_config_full_path = os.path.join(PROJECT_ROOT, viz_config_full_path)
 
+    # Load Processing Config
+    if not os.path.exists(proc_config_full_path):
+        logger.error(f"Error: Processing configuration file not found: {proc_config_full_path}"); exit(1)
     try:
-        with open(param_sets_full_path, 'r') as f:
-            config_data = json.load(f)
+        with open(proc_config_full_path, 'r') as f:
+            processing_config_data = json.load(f)
     except Exception as e:
-        logger.error(f"Error reading/parsing configuration file {param_sets_full_path}: {e}"); exit(1)
-
-    visualization_tasks = config_data.get("visualization_tasks", [])
-    image_configurations = {img_cfg["image_id"]: img_cfg for img_cfg in config_data.get("image_configurations", [])}
-
-    if not visualization_tasks:
-        logger.info("No 'visualization_tasks' found in the configuration file."); exit(0)
+        logger.error(f"Error reading/parsing processing configuration file {proc_config_full_path}: {e}"); exit(1)
+    
+    image_configurations = {img_cfg["image_id"]: img_cfg for img_cfg in processing_config_data.get("image_configurations", [])}
     if not image_configurations:
-        logger.error("No 'image_configurations' found in the configuration file. MPP values cannot be retrieved."); exit(1)
+        logger.error(f"No 'image_configurations' found in {proc_config_full_path}. This is required for visualization backgrounds and metadata."); exit(1)
 
+    # Load Visualization Config
+    if not os.path.exists(viz_config_full_path):
+        logger.error(f"Error: Visualization configuration file not found: {viz_config_full_path}"); exit(1)
+    try:
+        with open(viz_config_full_path, 'r') as f:
+            viz_config_data = json.load(f)
+    except Exception as e:
+        logger.error(f"Error reading/parsing visualization configuration file {viz_config_full_path}: {e}"); exit(1)
+
+    visualization_tasks_object = viz_config_data.get("visualization_tasks", {})
+    default_genes_global = visualization_tasks_object.get("default_genes_to_visualize", [])
+    if default_genes_global:
+        logger.info(f"Found default_genes_to_visualize: {default_genes_global}")
+
+    individual_tasks_list = visualization_tasks_object.get("tasks", [])
+    if not individual_tasks_list:
+        logger.info("No 'tasks' found within the 'visualization_tasks' object in {viz_config_full_path}."); exit(0)
+
+    # Filter tasks to run
     tasks_to_run = []
     if args.task_id:
         task_found = False
-        for task in visualization_tasks:
+        for task in individual_tasks_list:
             if task.get("task_id") == args.task_id:
                 tasks_to_run.append(task)
                 task_found = True
                 break
         if not task_found:
-            logger.error(f"Error: Visualization task with ID '{args.task_id}' not found in configuration file."); exit(1)
+            logger.error(f"Error: Visualization task with ID '{args.task_id}' not found in {viz_config_full_path}."); exit(1)
     else:
-        for task in visualization_tasks:
-            if task.get("is_active", True): # Default to active if not specified
+        for task in individual_tasks_list:
+            if task.get("is_active", True):
                 tasks_to_run.append(task)
 
     if not tasks_to_run:
         logger.info("No active visualization tasks to run."); exit(0)
 
+    # --- The rest of the loop is largely the same, ensuring param_sets_full_path for get_job_info_and_paths refers to proc_config_full_path ---
     base_visualization_output_dir = os.path.join(RESULTS_DIR_BASE, "visualizations")
     if not os.path.exists(base_visualization_output_dir):
         try: 
@@ -344,23 +367,33 @@ if __name__ == "__main__":
         task_id_str = task.get("task_id", f"unnamed_task_{task_idx+1}")
         logger.info(f"\n--- Processing Visualization Task: {task_id_str} ---")
 
+        genes_for_this_task = task.get("genes_to_visualize") 
+        if genes_for_this_task is None: 
+            genes_for_this_task = default_genes_global 
+            if genes_for_this_task: 
+                 logger.info(f"  Task '{task_id_str}': Using default_genes_to_visualize: {genes_for_this_task}")
+        else:
+            logger.info(f"  Task '{task_id_str}': Using task-specific genes_to_visualize: {genes_for_this_task}")
+
+        if not genes_for_this_task: 
+            logger.warning(f"  Task '{task_id_str}': No genes specified for visualization. Plotting may be skipped or empty.")
+            genes_for_this_task = [] 
+        
+        genes_to_visualize = genes_for_this_task
+
         source_image_id = task.get("source_image_id")
         source_param_set_id = task.get("source_param_set_id")
-        # source_processing_unit_name is now potentially derived
-        # source_segmentation_scale_factor is removed from task, derived by get_job_info_and_paths
         mapped_transcripts_csv_rel_path = task.get("mapped_transcripts_csv_path")
-        genes_to_visualize = task.get("genes_to_visualize")
-        output_subfolder_name = task.get("output_subfolder_name", task_id_str) # Default to task_id if not specified
-        # source_segmentation_is_tile is now derived from image_config_for_task
+        output_subfolder_name = task.get("output_subfolder_name", task_id_str) 
 
         source_processing_unit_name = task.get("source_processing_unit_name")
+        # image_config_for_task is now sourced from the loaded image_configurations dict from processing_config.json
         image_config_for_task = image_configurations.get(source_image_id)
 
         if not image_config_for_task:
-            logger.warning(f"Skipping task '{task_id_str}': Source image_id '{source_image_id}' not found in image_configurations.")
+            logger.warning(f"Skipping task '{task_id_str}': Source image_id '{source_image_id}' not found in image_configurations (from {proc_config_full_path}).")
             continue
         
-        # Determine if the source image for this task was configured for tiling
         segmentation_opts = image_config_for_task.get("segmentation_options", {})
         tiling_params = segmentation_opts.get("tiling_parameters", {})
         image_was_configured_for_tiling = tiling_params.get("apply_tiling", False)
@@ -370,13 +403,12 @@ if __name__ == "__main__":
                 logger.warning(f"Skipping task '{task_id_str}': 'source_processing_unit_display_name' is mandatory when the linked image_configuration (id: {source_image_id}) has apply_tiling=true, but was not provided.")
                 continue
             else:
-                # Derive for non-tiled
                 original_fname = image_config_for_task.get("original_image_filename")
                 if not original_fname:
                     logger.warning(f"Skipping task '{task_id_str}': Cannot derive source_processing_unit_name because 'original_image_filename' is missing in image_config '{source_image_id}'.")
                     continue
                 
-                rescaling_cfg = segmentation_opts.get("rescaling_config") # Already within segmentation_opts
+                rescaling_cfg = segmentation_opts.get("rescaling_config")
                 scale_factor = 1.0
                 if rescaling_cfg and "scale_factor" in rescaling_cfg:
                     sf_from_config = rescaling_cfg["scale_factor"]
@@ -392,21 +424,14 @@ if __name__ == "__main__":
                     source_processing_unit_name = os.path.basename(original_fname)
                     logger.info(f"  Derived source_processing_unit_name for non-tiled task '{task_id_str}': {source_processing_unit_name} (no rescaling)")
         
-        # At this point, source_processing_unit_name is set (either from task or derived for non-tiled)
-        # image_was_configured_for_tiling tells us the context from image_configurations.
-        # The get_job_info_and_paths function will use image_config_for_task and source_processing_unit_name
-        # to further determine paths and the effective is_tiled_job status for mask finding.
-
         if not all([source_image_id, source_param_set_id, source_processing_unit_name, mapped_transcripts_csv_rel_path, genes_to_visualize]):
-            logger.warning(f"Skipping task '{task_id_str}': Missing one or more required fields after potential derivation: source_image_id, source_param_set_id, source_processing_unit_name, mapped_transcripts_csv_path, genes_to_visualize."); continue
+            logger.warning(f"Skipping task '{task_id_str}': Missing one or more required fields OR no genes to visualize were resolved. Check: source_image_id, source_param_set_id, source_processing_unit_name, mapped_transcripts_csv_path, genes_to_visualize."); continue
 
-        # image_config_for_mpp is already fetched as image_config_for_task
         mpp_x_original = image_config_for_task.get("mpp_x")
         mpp_y_original = image_config_for_task.get("mpp_y")
         if mpp_x_original is None or mpp_y_original is None:
             logger.warning(f"Skipping task '{task_id_str}': mpp_x or mpp_y not found for image_id '{source_image_id}' in image_configurations."); continue
         
-        # Resolve transcript CSV path (relative to project root if not absolute)
         mapped_transcripts_full_path = mapped_transcripts_csv_rel_path
         if not os.path.isabs(mapped_transcripts_full_path):
             mapped_transcripts_full_path = os.path.join(PROJECT_ROOT, mapped_transcripts_full_path)
@@ -422,8 +447,12 @@ if __name__ == "__main__":
             except OSError as e: 
                 logger.error(f"Error creating output dir {task_output_dir} for task '{task_id_str}': {e}"); continue
         
+        # get_job_info_and_paths now needs the path to the processing config for its _get_image_config_from_params call
         background_image_to_display_path, segmentation_mask_path, scale_factor_applied, _, experiment_folder_id = get_job_info_and_paths(
-            param_sets_full_path, source_image_id, source_param_set_id, source_processing_unit_name
+            proc_config_full_path, # Pass the processing config path here
+            source_image_id, 
+            source_param_set_id, 
+            source_processing_unit_name
         )
 
         if not background_image_to_display_path or not segmentation_mask_path or not experiment_folder_id:
@@ -465,7 +494,7 @@ if __name__ == "__main__":
         else: 
             logger.warning(f"Warning for task '{task_id_str}': Background image for overlay has unexpected shape {display_background_8bit.shape}. Attempting grayscale.")
             if display_background_8bit.ndim > 2 and display_background_8bit.shape[-1] > 0 : display_background_8bit_gray = normalize_to_8bit_for_display(display_background_8bit[:,:,0]) 
-            else: display_background_8bit_gray = display_background_8bit # Assume it's already 2D or can be handled by normalize
+            else: display_background_8bit_gray = display_background_8bit
             display_background_8bit_rgb = cv2.cvtColor(normalize_to_8bit_for_display(display_background_8bit_gray), cv2.COLOR_GRAY2RGB)
         
         if display_background_8bit_rgb.shape[:2] != seg_mask.shape[:2]:
@@ -477,7 +506,7 @@ if __name__ == "__main__":
         y_offset = task.get("y_offset_microns", 0.0)
         colormap = task.get("colormap", "viridis")
 
-        for gene in genes_to_visualize:
+        for gene in genes_to_visualize: 
             safe_gene_name = sanitize_string_for_filesystem(gene, remove_extension=False)
             output_filename = f"{safe_gene_name}{file_suffix}"
             output_png_path = os.path.join(task_output_dir, output_filename)
@@ -495,4 +524,3 @@ if __name__ == "__main__":
         logger.info(f"--- Finished Visualization Task: {task_id_str} ---")
     
     logger.info("\nAll specified visualization tasks processed.")
-

@@ -78,7 +78,7 @@
   "mapping_tasks": [
     {
       "task_id": "map_5A",
-      "is_active": true,
+      "is_active": false,
       "description": "Map transcripts for 5A.",
       "source_image_id": "5A",
       "source_param_set_id": "Cellpose_DefaultDiam",
@@ -89,7 +89,7 @@
     },
     {
       "task_id": "map_5B",
-      "is_active": true,
+      "is_active": false,
       "description": "Map transcripts for 5B.",
       "source_image_id": "5B",
       "source_param_set_id": "Cellpose_DefaultDiam",
@@ -100,7 +100,7 @@
     },
     {
       "task_id": "map_5C",
-      "is_active": true,
+      "is_active": false,
       "description": "Map transcripts for 5C.",
       "source_image_id": "5C",
       "source_param_set_id": "Cellpose_DefaultDiam",
@@ -112,32 +112,33 @@
   ],
   
   "visualization_tasks": {
-    "default_genes_to_visualize": ["GlobalGeneX", "GlobalGeneY"],
+    "default_genes_to_visualize": [
+      "medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0448621",
+      "medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0435611",
+      "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0197771",
+      "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0160171",
+      "medtr.A17.gnm5.ann1_6.MtrunA17Chr3g0082981",
+      "medtr.A17.gnm5.ann1_6.MtrunA17Chr3g0082991",
+      "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0159341"
+    ],
     "tasks": [
       {
-        "task_id": "vis_exp1_image_dapi_genes_ab",
-        "is_active": true,
-        "source_image_id": "experiment1_image_dapi",
-        "source_param_set_id": "cyto2_default_diam30",
-        "source_processing_unit_display_name": "image_channel_0_scaled_0_5.tif",
-        "mapped_transcripts_csv_path": "data/processed/mapped/experiment1_image_dapi_cyto2_default_diam30/mapped_transcripts.csv",
+        "task_id": "5A_viz",
+        "is_active": false,
+        "source_image_id": "5A",
+        "source_param_set_id": "Cellpose_DefaultDiam",
+        "mapped_transcripts_csv_path": "data/processed/mapped/experiment_5/mapped_transcripts.csv",
         "genes_to_visualize": ["GeneA", "GeneB"],
-        "output_subfolder_name": "exp1_dapi_genes_ab_on_scaled_seg",
-        "visualization_params": {
-
-        }
+        "output_subfolder_name": "exp1_dapi_genes_ab_on_scaled_seg"
       },
       {
         "task_id": "vis_exp1_image_cells_global_genes",
-        "is_active": true,
+        "is_active": false,
         "source_image_id": "experiment1_image_cells",
         "source_param_set_id": "nuclei_custom_diam15",
         "source_processing_unit_display_name": "tile_r0_c0.tif",
         "mapped_transcripts_csv_path": "data/processed/mapped/experiment1_image_cells_tile_r0_c0_nuclei_custom_diam15/mapped_transcripts_tile_r0_c0.csv",
-        "output_subfolder_name": "exp1_cells_global_genes_tile_r0_c0",
-        "visualization_params": {
-          // ...
-        }
+        "output_subfolder_name": "exp1_cells_global_genes_tile_r0_c0"
       }
     ]
   }

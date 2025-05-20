@@ -10,24 +10,23 @@ The pipeline generally follows these steps:
 
 1.  **Data Preparation & Configuration**:
     *   Place your raw images (e.g., `.ome.tif`) in `data/raw/images/` and transcript files (e.g., `.parquet`) in `data/raw/transcripts/`.
-    *   Configure `parameter_sets.json` located in the project root. This central JSON file defines the entire batch processing and visualization run.
+    *   Configure `processing_config.json` (for segmentation, mapping, etc.) and `visualization_config.json` (for visualization tasks). These files are located in the project root.
 
 2.  **`(Optional)` Image Pre-processing (`src/preprocess_ometiff.py`)**:
-    *   Extracts relevant 2D planes from complex OME-TIFFs (e.g., Xenium) as standard TIFF files. Output these to a working directory, ideally within `data/processed/` or a subfolder of `data/raw/images/` before referencing them in `parameter_sets.json`.
+    *   Extracts relevant 2D planes from complex OME-TIFFs (e.g., Xenium) as standard TIFF files. Output these to a working directory, ideally within `data/processed/` or a subfolder of `data/raw/images/` before referencing them in `processing_config.json`.
     *   **Example Usage:**
         ```bash
         python src/preprocess_ometiff.py path/to/your/input.ome.tif path/to/output_directory --channel 0 --zplane 5 --prefix my_experiment
         ```
 
-3.  **Main Configuration in `parameter_sets.json`**:
-    *   **`image_configurations`**: Defines original images, their unique IDs, paths (pointing to files in `data/raw/images/` or pre-processed locations), activity status, microns-per-pixel (`mpp_x`, `mpp_y`), and `segmentation_options` (including `rescaling_config` and `tiling_parameters`).
-    *   **`cellpose_parameter_configurations`**: Defines different sets of Cellpose parameters.
-    *   **`global_segmentation_settings`**: Global settings like `max_processes` for segmentation, `default_log_level`, `FORCE_GRAYSCALE`, and `USE_GPU_IF_AVAILABLE`.
-    *   **`mapping_tasks`**: Defines transcript-to-cell mapping tasks.
-    *   **`visualization_tasks`**: Defines gene expression visualization tasks, specifying source segmentation, transcript data, genes, and output parameters. It typically uses the output from `mapping_tasks`.
+3.  **Main Configuration Files**:
+    *   **`processing_config.json`**: This central JSON file defines the core batch processing steps.
+        *   Contains: `global_segmentation_settings`, `image_configurations`, `cellpose_parameter_configurations`, and `mapping_tasks`.
+    *   **`visualization_config.json`**: This file defines all gene expression visualization tasks.
+        *   Contains: `visualization_tasks` (which includes `default_genes_to_visualize` and the list of individual `tasks`).
 
 4.  **Segmentation & Tiling (`src/segmentation_pipeline.py`)**:
-    *   Reads the `parameter_sets.json`.
+    *   Reads the `processing_config.json`.
     *   For each active image configuration:
         *   If rescaling is specified, the image is rescaled. Cached rescaled images might be stored (e.g., in `src/file_paths.py` defined `RESCALED_IMAGE_CACHE_DIR` which defaults to `images/rescaled_cache/`).
         *   If tiling is specified, it generates tiles. Cached tile images might be stored (e.g., in `src/file_paths.py` defined `TILED_IMAGE_OUTPUT_BASE` which defaults to `images/tiled_outputs/`).
@@ -41,11 +40,13 @@ The pipeline generally follows these steps:
     *   Combines individual tile masks into a single coherent mask. Input tiles are typically from the tile cache, and the output stitched mask should be saved to a relevant path in `data/processed/segmentation/`.
 
 6.  **`(Optional)` Transcript Mapping (`src/map_transcripts_to_cells.py`)**:
+    *   Reads `processing_config.json` for `mapping_tasks` and to resolve dependencies like image configurations.
     *   Maps transcript locations from `data/raw/transcripts/` (or a processed version) to segmented cell IDs using a chosen mask (from `data/processed/segmentation/`).
     *   Outputs (e.g., mapped transcripts CSV, feature-cell matrix) should be saved to `data/processed/mapped/`.
 
 7.  **`(Optional)` Gene Expression Visualization (`src/visualize_gene_expression.py`)**:
-    *   Driven by `visualization_tasks` in `parameter_sets.json`.
+    *   Driven by `visualization_config.json`.
+    *   Also requires `processing_config.json` to access `image_configurations` for image metadata (MPP, original paths for backgrounds, etc.).
     *   Loads segmentation masks, background images, and mapped transcripts.
     *   Generates PNG images, typically saved to `data/results/visualizations/<task_output_subfolder_name>/`.
 
@@ -53,7 +54,7 @@ The pipeline generally follows these steps:
     *   Analyzes segmentation results to generate consensus/consistency images, typically saved to `data/results/visualizations/` or `data/processed/segmentation/`.
 
 ## Features
-*   **Centralized JSON Configuration:** All parameters for segmentation, tiling, rescaling, and visualization are managed in `parameter_sets.json`.
+*   **Centralized JSON Configuration:** Parameters are managed in `processing_config.json` and `visualization_config.json`.
 *   **Structured Data Management:** Clear organization for raw data, processed files, and results using the `data/` directory.
 *   Flexible batch processing.
 *   Automatic on-the-fly image rescaling and tiling.
@@ -114,7 +115,8 @@ project_root/
 │   ├── unit/
 │   ├── integration/
 │   └── functional/
-├── parameter_sets.json       # Central JSON configuration file
+├── processing_config.json    # Main JSON for segmentation and mapping
+├── visualization_config.json # JSON for visualization tasks
 ├── README.md                 # This file
 ├── requirements.txt          # Python dependencies
 └── .gitignore                # Specifies intentionally untracked files by Git
@@ -129,21 +131,33 @@ project_root/
 2.  Place corresponding raw transcript data (e.g., `.parquet`, `.csv`) into `data/raw/transcripts/my_experiment/`.
 3.  Ensure your Python environment is set up and dependencies from `requirements.txt` are installed.
 
-### Step 1: Configure `parameter_sets.json`
-This is the main control file, located in the project root. Update it to point to your data in `data/raw/` and define your processing parameters.
+### Step 1: Configure `processing_config.json` and `visualization_config.json`
+These are the main control files, located in the project root.
 
-*   **Structure Overview:**
+*   **`processing_config.json` Structure Overview:**
     ```json
     {
       "global_segmentation_settings": { /* ... */ },
       "image_configurations": [ /* ... */ ],
       "cellpose_parameter_configurations": [ /* ... */ ],
-      "mapping_tasks": [ /* ... */ ],
-      "visualization_tasks": [ /* ... */ ]
+      "mapping_tasks": [ /* ... */ ]
     }
     ```
 
-*   **`global_segmentation_settings` (Object, Optional):**
+*   **`visualization_config.json` Structure Overview:**
+    ```json
+    {
+      "visualization_tasks": {
+        "default_genes_to_visualize": ["GlobalGeneX", "GlobalGeneY"],
+        "tasks": [
+          { /* Task 1 details */ },
+          { /* Task 2 details */ }
+        ]
+      }
+    }
+    ```
+
+*   **`global_segmentation_settings` (in `processing_config.json`):**
     Settings that apply globally to `segmentation_pipeline.py`.
     
     *   `default_log_level`: (String) "DEBUG", "INFO", etc. Overridden by CLI `--log_level`.
@@ -162,7 +176,7 @@ This is the main control file, located in the project root. Update it to point t
     }
     ```
 
-*   **`image_configurations` (List of Objects):**
+*   **`image_configurations` (in `processing_config.json`, List of Objects):**
     Define each source image to be processed by the pipeline. Each object in this list represents one image and its specific processing settings.
     *   `"image_id"`: (String) A unique identifier for this image configuration (e.g., `"exp1_dapi_channel"`, `"slide2_tile_grid"`). This ID is used throughout the pipeline for logging, output file naming, and linking to other configurations (like `visualization_tasks`).
     *   `"original_image_filename"`: (String) The path to the source image file, relative to the project root directory (e.g., `"data/raw/images/my_experiment/image1.ome.tif"`). This can be an OME-TIFF, standard TIFF, or other formats readable by `tifffile`.
@@ -226,7 +240,7 @@ This is the main control file, located in the project root. Update it to point t
     ]
     ```
 
-*   **`cellpose_parameter_configurations` (List of Objects):**
+*   **`cellpose_parameter_configurations` (in `processing_config.json`, List of Objects):**
     Define sets of Cellpose parameters to be applied to images. Each object in this list represents a distinct configuration.
     *   `"param_set_id"`: (String) A unique identifier for this specific set of Cellpose parameters (e.g., `"cyto2_default_diam30"`, `"nuclei_custom_flow0.8"`). This ID is used to link `image_configurations` to these settings, allowing different images or the same image to be processed with multiple parameter sets.
     *   `"is_active"`: (Boolean) Set to `true` to enable this parameter set for processing, or `false` to disable and skip it during a pipeline run.
@@ -282,7 +296,7 @@ This is the main control file, located in the project root. Update it to point t
     ]
     ```
 
-*   **`mapping_tasks` (List of Objects):**
+*   **`mapping_tasks` (in `processing_config.json`, List of Objects):**
     Define transcript-to-cell mapping tasks. Each task processes one transcript file against one segmentation mask.
     *   `"task_id"`: (String) Unique identifier for this mapping task.
     *   `"is_active"`: (Boolean) Set to `true` to run this mapping task. If `false`, it will be skipped.
@@ -325,7 +339,7 @@ This is the main control file, located in the project root. Update it to point t
     ]
     ```
 
-*   **`visualization_tasks` (Object):**
+*   **`visualization_tasks` (in `visualization_config.json`, Object):**
     Configures all gene expression visualization operations. This object contains a global default for genes to visualize and a list of specific visualization tasks.
     *   `"default_genes_to_visualize"`: (List of Strings, Optional, e.g. `["GeneX", "GeneY"]`) If provided, this list of genes will be used for any task in the `tasks` list below that does not specify its own `genes_to_visualize`.
     *   `"tasks"`: (List of Objects) Each object in this list defines a specific visualization task.
@@ -389,9 +403,28 @@ This is the main control file, located in the project root. Update it to point t
 ### Step 2: Run Segmentation Pipeline
 Execute from the project root:
 ```bash
-python -m src.segmentation_pipeline --config parameter_sets.json
+python -m src.segmentation_pipeline --config processing_config.json
 ```
 **Command-line arguments:**
-*   `--config <path>`: Path to your JSON configuration. Default: `parameter_sets.json`.
+*   `--config <path>`: Path to your processing JSON configuration. Default: `processing_config.json`.
 *   `--log_level <LEVEL>`: Overrides JSON `default_log_level`.
 *   `--max_processes <N>`: Overrides JSON `max_processes`.
+
+### Step 3: Run Transcript Mapping (if configured in `mapping_tasks`)
+Execute from the project root:
+```bash
+python -m src.map_transcripts_to_cells --config processing_config.json
+```
+**Command-line arguments:**
+*   `--config <path>`: Path to your processing JSON configuration. Default: `processing_config.json`.
+*   `--task_id <ID>`: Specific mapping task ID to run.
+
+### Step 4: Run Gene Expression Visualization
+Execute from the project root:
+```bash
+python -m src.visualize_gene_expression --proc_config processing_config.json --viz_config visualization_config.json
+```
+**Command-line arguments:**
+*   `--proc_config <path>`: Path to the processing JSON configuration (containing image configurations). Default: `processing_config.json`.
+*   `--viz_config <path>`: Path to the visualization tasks JSON configuration. Default: `visualization_config.json`.
+*   `--task_id <ID>`: Specific visualization task ID to run from the `visualization_config.json`.
