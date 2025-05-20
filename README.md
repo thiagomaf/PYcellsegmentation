@@ -325,60 +325,65 @@ This is the main control file, located in the project root. Update it to point t
     ]
     ```
 
-*   **`visualization_tasks` (List of Objects):**
-    Define tasks for generating visualizations of gene expression overlaid on segmentation masks and background images. These tasks typically depend on the output of `mapping_tasks` (i.e., mapped transcript files).
-    *   `"task_id"`: (String) A unique identifier for this visualization task (e.g., `"exp1_dapi_gene_set1_viz"`).
-    *   `"is_active"`: (Boolean) Set to `true` to run this visualization task. If `false`, it will be skipped.
-    *   `"source_image_id"`: (String) Refers to the `image_id` from an `image_configurations` entry. This specifies the original image context (e.g., for background, scale) and is used to derive the segmentation scale factor.
-    *   `"source_param_set_id"`: (String) Refers to the `param_set_id` from a `cellpose_parameter_configurations` entry. This identifies the segmentation parameters used to generate the mask that will be visualized.
-    *   `"source_processing_unit_display_name"`: (String, Optional for non-tiled segmentations) The filename (without path) of the specific image unit that was segmented. 
-        *   **For non-tiled segmentations:** If omitted, this name will be automatically derived. If the image was rescaled via `rescaling_config` in `image_configurations`, the name is constructed from the original image filename and the scale factor (e.g., `original_basename_scaled_0_5.tif`). If not rescaled, it defaults to the base name of the `original_image_filename`.
-        *   **For tiled segmentations:** This field is **mandatory** and must specify the exact tile filename (e.g., `"tile_r0_c0.tif"`) whose mask is to be used. (Whether a segmentation is considered tiled is determined by the `apply_tiling` setting in the `segmentation_options` of the linked `image_configuration`).
-        *   This name is crucial for locating the correct `_mask.tif` file.
-    *   `"mapped_transcripts_csv_path"`: (String) Path to the CSV file containing mapped transcript data. This file should typically include columns for transcript coordinates (e.g., 'x', 'y' or 'global_x', 'global_y'), gene names (e.g., 'gene'), and the cell ID to which each transcript was assigned (e.g., 'cell_id'). An example path: `"data/processed/mapped/my_experiment/mapped_transcripts.csv"`.
-    *   `"genes_to_visualize"`: (List of Strings) A list of gene names (e.g., `["GeneA", "GeneB", "GeneC"]`) for which expression data will be plotted. These gene names must exist in the provided `mapped_transcripts_csv_path`.
-    *   `"output_subfolder_name"`: (String) The name of the subfolder where the generated visualization images for this task will be saved. This folder will be created under the main visualization output directory (typically `data/results/visualizations/`). E.g., `"exp1_dapi_channel_genes"`.
-    *   `"visualization_params"`: (Object, Optional) Additional parameters to customize the visualization appearance.
-        *   `"background_image_path_override"`: (String or `null`, Optional) Full path to a specific image to use as the background for the visualization. If `null` or omitted, the script will attempt to use the `original_image_filename` from the linked `image_configurations`.
-        *   `"mask_alpha"`: (Float, 0.0-1.0, Optional) Opacity of the cell segmentation mask outlines. Default: `0.3`.
-        *   `"dot_size"`: (Integer, Optional) Size of the dots representing transcripts. Default: `5`.
-        *   `"dot_alpha"`: (Float, 0.0-1.0, Optional) Opacity of the transcript dots. Default: `0.5`.
-        *   `"image_brightness_factor"`: (Float, Optional) Multiplier to adjust the brightness of the background image. Default: `1.0`.
-        *   `"crop_to_segmentation_area"`: (Boolean, Optional) If `true`, the visualization will be cropped to the extent of the segmentation mask. Default: `false`.
+*   **`visualization_tasks` (Object):**
+    Configures all gene expression visualization operations. This object contains a global default for genes to visualize and a list of specific visualization tasks.
+    *   `"default_genes_to_visualize"`: (List of Strings, Optional, e.g. `["GeneX", "GeneY"]`) If provided, this list of genes will be used for any task in the `tasks` list below that does not specify its own `genes_to_visualize`.
+    *   `"tasks"`: (List of Objects) Each object in this list defines a specific visualization task.
+        *   `"task_id"`: (String) A unique identifier for this visualization task (e.g., `"exp1_dapi_gene_set1_viz"`).
+        *   `"is_active"`: (Boolean) Set to `true` to run this visualization task. If `false`, it will be skipped.
+        *   `"source_image_id"`: (String) Refers to the `image_id` from an `image_configurations` entry. This specifies the original image context (e.g., for background, scale) and is used to derive the segmentation scale factor.
+        *   `"source_param_set_id"`: (String) Refers to the `param_set_id` from a `cellpose_parameter_configurations` entry. This identifies the segmentation parameters used to generate the mask that will be visualized.
+        *   `"source_processing_unit_display_name"`: (String, Optional for non-tiled segmentations) The filename (without path) of the specific image unit that was segmented. 
+            *   **For non-tiled segmentations:** If omitted, this name will be automatically derived. If the image was rescaled via `rescaling_config` in `image_configurations`, the name is constructed from the original image filename and the scale factor (e.g., `original_basename_scaled_0_5.tif`). If not rescaled, it defaults to the base name of the `original_image_filename`.
+            *   **For tiled segmentations:** This field is **mandatory** and must specify the exact tile filename (e.g., `"tile_r0_c0.tif"`) whose mask is to be used. (Whether a segmentation is considered tiled is determined by the `apply_tiling` setting in the `segmentation_options` of the linked `image_configuration`).
+            *   This name is crucial for locating the correct `_mask.tif` file.
+        *   `"mapped_transcripts_csv_path"`: (String) Path to the CSV file containing mapped transcript data. This file should typically include columns for transcript coordinates (e.g., 'x', 'y' or 'global_x', 'global_y'), gene names (e.g., 'gene'), and the cell ID to which each transcript was assigned (e.g., 'cell_id'). An example path: `"data/processed/mapped/my_experiment/mapped_transcripts.csv"`.
+        *   `"genes_to_visualize"`: (List of Strings, Optional) A list of gene names (e.g., `["GeneA", "GeneB", "GeneC"]`) for which expression data will be plotted. These gene names must exist in the provided `mapped_transcripts_csv_path`. If not provided for a specific task, the `default_genes_to_visualize` (defined at the parent `visualization_tasks` level) will be used. If neither is defined, no genes will be plotted for that task.
+        *   `"output_subfolder_name"`: (String) The name of the subfolder where the generated visualization images for this task will be saved. This folder will be created under the main visualization output directory (typically `data/results/visualizations/`). E.g., `"exp1_dapi_channel_genes"`.
+        *   `"visualization_params"`: (Object, Optional) Additional parameters to customize the visualization appearance.
+            *   `"background_image_path_override"`: (String or `null`, Optional) Full path to a specific image to use as the background for the visualization. If `null` or omitted, the script will attempt to use the `original_image_filename` from the linked `image_configurations`.
+            *   `"mask_alpha"`: (Float, 0.0-1.0, Optional) Opacity of the cell segmentation mask outlines. Default: `0.3`.
+            *   `"dot_size"`: (Integer, Optional) Size of the dots representing transcripts. Default: `5`.
+            *   `"dot_alpha"`: (Float, 0.0-1.0, Optional) Opacity of the transcript dots. Default: `0.5`.
+            *   `"image_brightness_factor"`: (Float, Optional) Multiplier to adjust the brightness of the background image. Default: `1.0`.
+            *   `"crop_to_segmentation_area"`: (Boolean, Optional) If `true`, the visualization will be cropped to the extent of the segmentation mask. Default: `false`.
     **Example:**
     ```json
-    "visualization_tasks": [
-      {
-        "task_id": "vis_exp1_image_dapi_genes_ab",
-        "is_active": true,
-        "source_image_id": "experiment1_image_dapi",
-        "source_param_set_id": "cyto2_default_diam30",
-        "source_processing_unit_display_name": "image_channel_0_scaled_0_5.tif", 
-        "mapped_transcripts_csv_path": "data/processed/mapped/experiment1_image_dapi_cyto2_default_diam30/mapped_transcripts.csv",
-        "genes_to_visualize": ["GeneA", "GeneB"],
-        "output_subfolder_name": "exp1_dapi_genes_ab_on_scaled_seg",
-        "visualization_params": {
-          "mask_alpha": 0.4,
-          "dot_size": 3,
-          "image_brightness_factor": 1.2
+    "visualization_tasks": {
+      "default_genes_to_visualize": ["GlobalGeneX", "GlobalGeneY"],
+      "tasks": [
+        {
+          "task_id": "vis_exp1_image_dapi_genes_ab", // This task will use its own gene list
+          "is_active": true,
+          "source_image_id": "experiment1_image_dapi",
+          "source_param_set_id": "cyto2_default_diam30",
+          "source_processing_unit_display_name": "image_channel_0_scaled_0_5.tif", 
+          "mapped_transcripts_csv_path": "data/processed/mapped/experiment1_image_dapi_cyto2_default_diam30/mapped_transcripts.csv",
+          "genes_to_visualize": ["GeneA", "GeneB"], // Overrides default
+          "output_subfolder_name": "exp1_dapi_genes_ab_on_scaled_seg",
+          "visualization_params": {
+            "mask_alpha": 0.4,
+            "dot_size": 3,
+            "image_brightness_factor": 1.2
+          }
+        },
+        {
+          "task_id": "vis_exp1_image_cells_global_genes", // This task will use the default_genes_to_visualize
+          "is_active": true,
+          "source_image_id": "experiment1_image_cells",
+          "source_param_set_id": "nuclei_custom_diam15",
+          "source_processing_unit_display_name": "tile_r0_c0.tif", 
+          "mapped_transcripts_csv_path": "data/processed/mapped/experiment1_image_cells_tile_r0_c0_nuclei_custom_diam15/mapped_transcripts_tile_r0_c0.csv",
+          // "genes_to_visualize" is omitted, so it will use ["GlobalGeneX", "GlobalGeneY"]
+          "output_subfolder_name": "exp1_cells_global_genes_tile_r0_c0",
+          "visualization_params": {
+            "background_image_path_override": "data/raw/images/experiment1/tiles/tile_r0_c0_background.tif", 
+            "dot_alpha": 0.7,
+            "crop_to_segmentation_area": true
+          }
         }
-      },
-      {
-        "task_id": "vis_exp1_image_cells_gene_c_tiled",
-        "is_active": true,
-        "source_image_id": "experiment1_image_cells",
-        "source_param_set_id": "nuclei_custom_diam15",
-        "source_processing_unit_display_name": "tile_r0_c0.tif", // Example specific tile for a task where image_configurations.experiment1_image_cells.segmentation_options.tiling_parameters.apply_tiling is true
-        "mapped_transcripts_csv_path": "data/processed/mapped/experiment1_image_cells_tile_r0_c0_nuclei_custom_diam15/mapped_transcripts_tile_r0_c0.csv",
-        "genes_to_visualize": ["GeneC"],
-        "output_subfolder_name": "exp1_cells_gene_c_tile_r0_c0",
-        "visualization_params": {
-          "background_image_path_override": "data/raw/images/experiment1/tiles/tile_r0_c0_background.tif", // Optional: if you have specific tile backgrounds
-          "dot_alpha": 0.7,
-          "crop_to_segmentation_area": true
-        }
-      }
-    ]
+      ]
+    }
     ```
 
 ### Step 2: Run Segmentation Pipeline

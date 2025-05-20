@@ -5,52 +5,61 @@
     "FORCE_GRAYSCALE": true,
     "USE_GPU_IF_AVAILABLE": false 
   },
+  
   "image_configurations": [
     {
-      "image_id": "5B_morphology_focus.ome_s0",
-      "original_image_filename": "5B_morphology_focus.ome_s0.tif",
+      "image_id": "5A",
+      "original_image_filename": "data/raw/images/sample_5/5A_morphology_focus.ome.tif",
       "is_active": true,
-      "mpp_x": 1.0, 
-      "mpp_y": 1.0,
+      "mpp_x": 0.2125,
+      "mpp_y": 0.2125,
       "segmentation_options": {
         "apply_segmentation": true,
         "rescaling_config": {
           "scale_factor": 0.25,
           "interpolation": "INTER_AREA"
+        },
+        "tiling_parameters": {
+          "apply_tiling": false
         }
       }
     },
     {
-      "image_id": "processed_plane_s0",
-      "original_image_filename": "processed_plane_s0.tif",
-      "is_active": false,
-      "mpp_x": 1.0,
-      "mpp_y": 1.0,
+      "image_id": "5B",
+      "original_image_filename": "data/raw/images/sample_5/5B_morphology_focus.ome.tif",
+      "is_active": true,
+      "mpp_x": 0.2125,
+      "mpp_y": 0.2125,
       "segmentation_options": {
         "apply_segmentation": true,
         "rescaling_config": {
-          "scale_factor": 0.01,
+          "scale_factor": 0.25,
           "interpolation": "INTER_AREA"
         },
         "tiling_parameters": {
-          "apply_tiling": true,
-          "tile_size_xy_microns": 1024,
-          "overlap_microns": 100,
-          "tile_output_prefix_base": "processed_plane_s0_tiles"
+          "apply_tiling": false
         }
       }
     },
     {
-      "image_id": "SmallTestImage_NoTile_NoScale",
-      "original_image_filename": "test_image.tif",
-      "is_active": false,
-      "mpp_x": 1.0, 
-      "mpp_y": 1.0,
+      "image_id": "5C",
+      "original_image_filename": "data/raw/images/sample_5/5C_morphology_focus.ome.tif",
+      "is_active": true,
+      "mpp_x": 0.2125,
+      "mpp_y": 0.2125,
       "segmentation_options": {
-        "apply_segmentation": true 
+        "apply_segmentation": true,
+        "rescaling_config": {
+          "scale_factor": 0.25,
+          "interpolation": "INTER_AREA"
+        },
+        "tiling_parameters": {
+          "apply_tiling": false
+        }
       }
     }
   ],
+
   "cellpose_parameter_configurations": [
     {
       "param_set_id": "Cellpose_DefaultDiam",
@@ -63,119 +72,73 @@
         "FORCE_GRAYSCALE": true,
         "USE_GPU": false
       }
-    },
-    {
-      "param_set_id": "run02_lower_cellprob",
-      "is_active": false,
-      "cellpose_parameters": {
-        "MODEL_CHOICE": "cyto3",
-        "DIAMETER": null,
-        "FLOW_THRESHOLD": null,
-        "MIN_SIZE": null,
-        "CELLPROB_THRESHOLD": -1.0,
-        "FORCE_GRAYSCALE": true,
-        "USE_GPU": false
-      }
-    },
-    {
-      "param_set_id": "run04_set_diameter_low_cellprob",
-      "is_active": false,
-      "cellpose_parameters": {
-        "MODEL_CHOICE": "cyto3",
-        "DIAMETER": 30,
-        "FLOW_THRESHOLD": null,
-        "MIN_SIZE": null,
-        "CELLPROB_THRESHOLD": -0.5,
-        "FORCE_GRAYSCALE": true,
-        "USE_GPU": false
-      }
-    },
-    {
-      "param_set_id": "run06_small_cells_diam15_lowprob",
-      "is_active": false,
-      "cellpose_parameters": {
-        "MODEL_CHOICE": "cyto3",
-        "DIAMETER": 15,
-        "FLOW_THRESHOLD": 0.4,
-        "MIN_SIZE": 5,
-        "CELLPROB_THRESHOLD": -2.0,
-        "FORCE_GRAYSCALE": true,
-        "USE_GPU": false
-      }
-    },
-    {
-      "param_set_id": "run07_small_cells_diam15_vlowprob",
-      "is_active": false,
-      "cellpose_parameters": {
-        "MODEL_CHOICE": "cyto3",
-        "DIAMETER": 15,
-        "FLOW_THRESHOLD": 0.4,
-        "MIN_SIZE": 5,
-        "CELLPROB_THRESHOLD": -3.0,
-        "FORCE_GRAYSCALE": true,
-        "USE_GPU": false
-      }
-    },
-    {
-      "param_set_id": "run08_small_cells_diam10_lowprob_lowflow",
-      "is_active": false,
-      "cellpose_parameters": {
-        "MODEL_CHOICE": "cyto3",
-        "DIAMETER": 10,
-        "FLOW_THRESHOLD": 0.2,
-        "MIN_SIZE": 3,
-        "CELLPROB_THRESHOLD": -2.5,
-        "FORCE_GRAYSCALE": true,
-        "USE_GPU": false
-      }
-    },
-    {
-      "param_set_id": "run09_cyto2_small_cells_diam15_lowprob",
-      "is_active": false,
-      "cellpose_parameters": {
-        "MODEL_CHOICE": "cyto2",
-        "DIAMETER": 15,
-        "FLOW_THRESHOLD": 0.4,
-        "MIN_SIZE": 5,
-        "CELLPROB_THRESHOLD": -2.0,
-        "FORCE_GRAYSCALE": true,
-        "USE_GPU": true
-      }
     }
   ],
-  "visualization_tasks": [],
+  
   "mapping_tasks": [
     {
-      "task_id": "map_5B_morphology_focus_s0_scaled",
+      "task_id": "map_5A",
       "is_active": true,
-      "description": "Map transcripts for 5B_morphology_focus.ome_s0 using segmentation from Cellpose_DefaultDiam on the 0.25x scaled image.",
-      "source_image_id": "5B_morphology_focus.ome_s0",
+      "description": "Map transcripts for 5A.",
+      "source_image_id": "5A",
       "source_param_set_id": "Cellpose_DefaultDiam",
-      "source_segmentation_scale_factor": 0.25,
-      "source_processing_unit_display_name": "5B_morphology_focus.ome_s0_scaled_0_25.tif",
       "source_segmentation_is_tile": false,
-      "input_transcripts_path": "data/raw/transcripts/experiment_5B/5B_morphology_focus.ome_s0.transcripts.parquet",
-      "output_base_dir": "data/processed/mapped/5B_morphology_focus_s0_scaled_map/",
-      "output_prefix": "5B_s0_scaled_mapped",
-      "mpp_x_of_mask": 0.85,
-      "mpp_y_of_mask": 0.85,
+      "input_transcripts_path": "data/raw/transcripts/experiment_5/5A_morphology_focus.ome.transcripts",
+      "output_base_dir": "data/processed/mapped/experiment_5",
       "mask_path_override": null
     },
     {
-      "task_id": "map_SmallTestImage_NoTile_NoScale",
-      "is_active": false,
-      "description": "Map transcripts for SmallTestImage_NoTile_NoScale using segmentation from Cellpose_DefaultDiam.",
-      "source_image_id": "SmallTestImage_NoTile_NoScale",
+      "task_id": "map_5B",
+      "is_active": true,
+      "description": "Map transcripts for 5B.",
+      "source_image_id": "5B",
       "source_param_set_id": "Cellpose_DefaultDiam",
-      "source_segmentation_scale_factor": null,
-      "source_processing_unit_display_name": "test_image.tif",
       "source_segmentation_is_tile": false,
-      "input_transcripts_path": "data/raw/transcripts/small_test/test_image_transcripts.parquet",
-      "output_base_dir": "data/processed/mapped/SmallTestImage_map/",
-      "output_prefix": "small_test_mapped",
-      "mpp_x_of_mask": 1.0,
-      "mpp_y_of_mask": 1.0,
+      "input_transcripts_path": "data/raw/transcripts/experiment_5/5B_morphology_focus.ome.transcripts",
+      "output_base_dir": "data/processed/mapped/experiment_5",
+      "mask_path_override": null
+    },
+    {
+      "task_id": "map_5C",
+      "is_active": true,
+      "description": "Map transcripts for 5C.",
+      "source_image_id": "5C",
+      "source_param_set_id": "Cellpose_DefaultDiam",
+      "source_segmentation_is_tile": false,
+      "input_transcripts_path": "data/raw/transcripts/experiment_5/5C_morphology_focus.ome.transcripts",
+      "output_base_dir": "data/processed/mapped/experiment_5",
       "mask_path_override": null
     }
-  ]
+  ],
+  
+  "visualization_tasks": {
+    "default_genes_to_visualize": ["GlobalGeneX", "GlobalGeneY"],
+    "tasks": [
+      {
+        "task_id": "vis_exp1_image_dapi_genes_ab",
+        "is_active": true,
+        "source_image_id": "experiment1_image_dapi",
+        "source_param_set_id": "cyto2_default_diam30",
+        "source_processing_unit_display_name": "image_channel_0_scaled_0_5.tif",
+        "mapped_transcripts_csv_path": "data/processed/mapped/experiment1_image_dapi_cyto2_default_diam30/mapped_transcripts.csv",
+        "genes_to_visualize": ["GeneA", "GeneB"],
+        "output_subfolder_name": "exp1_dapi_genes_ab_on_scaled_seg",
+        "visualization_params": {
+
+        }
+      },
+      {
+        "task_id": "vis_exp1_image_cells_global_genes",
+        "is_active": true,
+        "source_image_id": "experiment1_image_cells",
+        "source_param_set_id": "nuclei_custom_diam15",
+        "source_processing_unit_display_name": "tile_r0_c0.tif",
+        "mapped_transcripts_csv_path": "data/processed/mapped/experiment1_image_cells_tile_r0_c0_nuclei_custom_diam15/mapped_transcripts_tile_r0_c0.csv",
+        "output_subfolder_name": "exp1_cells_global_genes_tile_r0_c0",
+        "visualization_params": {
+          // ...
+        }
+      }
+    ]
+  }
 }
