@@ -23,8 +23,8 @@ The pipeline generally follows these steps:
     *   **`image_configurations`**: Defines original images, their unique IDs, paths (pointing to files in `data/raw/images/` or pre-processed locations), activity status, microns-per-pixel (`mpp_x`, `mpp_y`), and `segmentation_options` (including `rescaling_config` and `tiling_parameters`).
     *   **`cellpose_parameter_configurations`**: Defines different sets of Cellpose parameters.
     *   **`global_segmentation_settings`**: Global settings like `max_processes` for segmentation, `default_log_level`, `FORCE_GRAYSCALE`, and `USE_GPU_IF_AVAILABLE`.
-    *   **`visualization_tasks`**: Defines gene expression visualization tasks, specifying source segmentation, transcript data, genes, and output parameters.
     *   **`mapping_tasks`**: Defines transcript-to-cell mapping tasks.
+    *   **`visualization_tasks`**: Defines gene expression visualization tasks, specifying source segmentation, transcript data, genes, and output parameters. It typically uses the output from `mapping_tasks`.
 
 4.  **Segmentation & Tiling (`src/segmentation_pipeline.py`)**:
     *   Reads the `parameter_sets.json`.
@@ -138,8 +138,8 @@ This is the main control file, located in the project root. Update it to point t
       "global_segmentation_settings": { /* ... */ },
       "image_configurations": [ /* ... */ ],
       "cellpose_parameter_configurations": [ /* ... */ ],
-      "visualization_tasks": [ /* ... */ ],
-      "mapping_tasks": [ /* ... */ ]
+      "mapping_tasks": [ /* ... */ ],
+      "visualization_tasks": [ /* ... */ ]
     }
     ```
 
@@ -282,8 +282,51 @@ This is the main control file, located in the project root. Update it to point t
     ]
     ```
 
+*   **`mapping_tasks` (List of Objects):**
+    Define transcript-to-cell mapping tasks. Each task processes one transcript file against one segmentation mask.
+    *   `"task_id"`: (String) Unique identifier for this mapping task.
+    *   `"is_active"`: (Boolean) Set to `true` to run this mapping task. If `false`, it will be skipped.
+    *   `"description"`: (String, Optional) User-friendly description of the task.
+    *   `"source_image_id"`: (String) ID of the original image from `image_configurations`. This is used to find the relevant image metadata (like original MPP, scaling, and tiling settings).
+    *   `"source_param_set_id"`: (String) ID of the Cellpose parameters from `cellpose_parameter_configurations` used for the segmentation that produced the mask.
+    *   `"source_processing_unit_display_name"`: (String, Optional for non-tiled segmentations) The filename (without path) of the specific image unit that was segmented and whose mask will be used.
+        *   **For non-tiled segmentations:** If omitted, this name is automatically derived. If the image was rescaled (per `rescaling_config` in `image_configurations`), the name is constructed as `original_basename_scaled_X_Y.ext`. If not rescaled, it defaults to the base name of the `original_image_filename`.
+        *   **For tiled segmentations:** This field is **mandatory** and must specify the exact tile filename (e.g., `"tile_r0_c0.tif"`). Whether a source image is considered tiled is determined by the `apply_tiling` setting in its `image_configuration`.
+    *   `"input_transcripts_path"`: (String) Path to the input transcript file (e.g., `.parquet` or `.csv`), typically under `data/raw/transcripts/`.
+    *   `"output_base_dir"`: (String) Directory where mapping results (mapped transcripts CSV, feature-cell matrix CSVs) will be saved, typically under `data/processed/mapped/`.
+    *   `"output_prefix"`: (String) Prefix for output filenames (e.g., `"mapped_transcripts_run1"`).
+    *   `"mask_path_override"`: (String, Optional) If provided, this full path to the mask TIFF file will be used directly, bypassing all mask path derivation logic based on source IDs and names.
+    *The following parameters are automatically derived from the linked `image_configuration` and are no longer needed directly in the task definition: `source_segmentation_scale_factor`, `source_segmentation_is_tile`, `mpp_x_of_mask`, `mpp_y_of_mask`.*
+    **Example:**
+    ```json
+    "mapping_tasks": [
+      {
+        "task_id": "map_exp1_non_tiled_rescaled",
+        "is_active": true,
+        "description": "Map transcripts for experiment1 using segmentation from pset1 on a rescaled image (unit name derived).",
+        "source_image_id": "experiment1_image_dapi", // Assumes this image_config has rescaling defined
+        "source_param_set_id": "cyto2_default_diam30",
+        // "source_processing_unit_display_name" is omitted, will be derived e.g., to "image_channel_0_scaled_0_5.tif"
+        "input_transcripts_path": "data/raw/transcripts/experiment1/transcripts.parquet",
+        "output_base_dir": "data/processed/mapped/exp1_dapi_map/",
+        "output_prefix": "mapped_transcripts_dapi"
+      },
+      {
+        "task_id": "map_exp1_tiled_specific_tile",
+        "is_active": true,
+        "description": "Map transcripts for experiment1 using segmentation from pset2 on a specific tile.",
+        "source_image_id": "experiment1_image_cells", // Assumes this image_config has apply_tiling = true
+        "source_param_set_id": "nuclei_custom_diam15",
+        "source_processing_unit_display_name": "tile_r1_c2.tif", // Specific tile name is mandatory here
+        "input_transcripts_path": "data/raw/transcripts/experiment1/transcripts_other.parquet",
+        "output_base_dir": "data/processed/mapped/exp1_cells_tile_r1_c2_map/",
+        "output_prefix": "mapped_transcripts_cells_tile_r1_c2"
+      }
+    ]
+    ```
+
 *   **`visualization_tasks` (List of Objects):**
-    Define tasks for generating visualizations of gene expression overlaid on segmentation masks and background images. Each object in this list configures one such visualization task.
+    Define tasks for generating visualizations of gene expression overlaid on segmentation masks and background images. These tasks typically depend on the output of `mapping_tasks` (i.e., mapped transcript files).
     *   `"task_id"`: (String) A unique identifier for this visualization task (e.g., `"exp1_dapi_gene_set1_viz"`).
     *   `"is_active"`: (Boolean) Set to `true` to run this visualization task. If `false`, it will be skipped.
     *   `"source_image_id"`: (String) Refers to the `image_id` from an `image_configurations` entry. This specifies the original image context (e.g., for background, scale) and is used to derive the segmentation scale factor.
@@ -337,40 +380,6 @@ This is the main control file, located in the project root. Update it to point t
       }
     ]
     ```
-
-*   **`mapping_tasks` (List of Objects):**
-    Define transcript-to-cell mapping tasks. Each task processes one transcript file against one segmentation mask.
-    ```json
-    {
-      "task_id": "map_experiment1_job1",
-      "is_active": true,
-      "description": "Map transcripts for experiment1 using segmentation from pset1 on the rescaled image.",
-      "source_image_id": "img_exp1",
-      "source_param_set_id": "pset1",
-      "source_segmentation_scale_factor": 0.5, // Null or 1.0 if no scaling for segmentation
-      "source_processing_unit_display_name": "img_exp1_scaled_0_5.tif", // Actual filename of the image unit that was segmented
-      "source_segmentation_is_tile": false, // True if source_processing_unit_display_name is a tile name
-      "input_transcripts_path": "data/raw/transcripts/experiment1/transcripts.parquet",
-      "output_base_dir": "data/processed/mapped/experiment1_job1_map/",
-      "output_prefix": "mapped_transcripts_run1",
-      "mpp_x_of_mask": 0.65, // MPP of the mask file itself
-      "mpp_y_of_mask": 0.65, // MPP of the mask file itself
-      "mask_path_override": null // Optional: full path to mask if derivation is not suitable
-    }
-    ```
-    *   `task_id`: (String) Unique identifier.
-    *   `is_active`: (Boolean) Whether to run this task.
-    *   `description`: (String, Optional) User-friendly description.
-    *   `source_image_id`: (String) ID of the original image from `image_configurations`.
-    *   `source_param_set_id`: (String) ID of the Cellpose parameters from `cellpose_parameter_configurations` used for the segmentation.
-    *   `source_segmentation_scale_factor`: (Float, Optional) The scale factor applied *before* segmentation if the mask was generated from a rescaled image. Use `null` or `1.0` if segmentation was on the original scale.
-    *   `source_processing_unit_display_name`: (String) **Crucial.** The filename of the actual image unit that was segmented and whose mask will be used (e.g., `"image_scaled_0_5.tif"`, `"tile_r0_c0.tif"`, or `"original_image.tif"`). This name is used to find the `_mask.tif` file within the derived experiment result folder.
-    *   `source_segmentation_is_tile`: (Boolean) Set to `true` if `source_processing_unit_display_name` refers to a tile, `false` otherwise. This helps in correctly constructing the experiment ID for path derivation.
-    *   `input_transcripts_path`: (String) Path to the input transcript file (e.g., `.parquet` or `.csv`), typically under `data/raw/transcripts/`.
-    *   `output_base_dir`: (String) Directory where mapping results (mapped transcripts CSV, feature-cell matrix CSV) will be saved, typically under `data/processed/mapped/`.
-    *   `output_prefix`: (String) Prefix for output filenames.
-    *   `mpp_x_of_mask`, `mpp_y_of_mask`: (Float) Microns-per-pixel values **of the mask image**. If segmentation was on a rescaled image, these MPP values must reflect that scaling (i.e., `original_mpp / scale_factor`).
-    *   `mask_path_override`: (String, Optional) If provided, this full path to the mask TIFF file will be used directly, bypassing the derivation logic.
 
 ### Step 2: Run Segmentation Pipeline
 Execute from the project root:
