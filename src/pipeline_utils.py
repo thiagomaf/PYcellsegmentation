@@ -229,6 +229,44 @@ def construct_mask_path(results_dir: str, experiment_id: str, processing_unit_na
 def normalize_to_8bit_for_display(img_array):
     if img_array is None or img_array.size == 0:
         logger.warning("normalize_to_8bit received None or empty input.")
-        return np.zeros((100,100,3) if (img_array is not None and hasattr(img_array, 'ndim') and img_array.ndim == 3) else (100,100), dtype=np.uint8)
-    
-    # ... (rest of the function, ensure any prints are converted to logger.info/warning/error) ...
+        # Determine placeholder shape based on whether original img_array hinted at being 3-channel
+        placeholder_shape = (100, 100, 3) if (img_array is not None and hasattr(img_array, 'ndim') and img_array.ndim == 3 and hasattr(img_array, 'shape') and len(img_array.shape) > 2 and img_array.shape[-1] == 3) else (100, 100)
+        return np.zeros(placeholder_shape, dtype=np.uint8)
+
+    try:
+        # If already uint8, return as is
+        if img_array.dtype == np.uint8:
+            logger.info("Input image is already uint8. Returning as is.")
+            return img_array
+
+        # Perform robust intensity scaling using percentiles
+        min_val = np.percentile(img_array, 1)
+        max_val = np.percentile(img_array, 99)
+
+        # Handle cases where the image has no dynamic range after percentile clipping
+        if max_val <= min_val:
+            logger.warning(f"Image has no dynamic range after percentile clipping (min_val: {min_val}, max_val: {max_val}). Original dtype: {img_array.dtype}. Returning a zero image.")
+            return np.zeros_like(img_array, dtype=np.uint8) # Return black image of same shape
+
+        # Clip values to the determined range then scale to 0-255
+        img_clipped = np.clip(img_array, min_val, max_val)
+        
+        # Perform normalization
+        img_normalized = (img_clipped - min_val) / (max_val - min_val) * 255.0
+        
+        # Convert to uint8
+        img_8bit = img_normalized.astype(np.uint8)
+        
+        logger.info(f"Successfully normalized image from dtype {img_array.dtype} (original min: {img_array.min()}, original max: {img_array.max()}; "
+                    f"clipped & scaled using min: {min_val}, max: {max_val}). Output shape: {img_8bit.shape}")
+        return img_8bit
+
+    except Exception as e:
+        logger.error(f"Error during 8-bit normalization for input of dtype {img_array.dtype} and shape {img_array.shape}: {e}")
+        logger.error(traceback.format_exc()) # Ensure traceback is imported in pipeline_utils.py
+        # Fallback: return a black image
+        try:
+            placeholder_shape = img_array.shape
+        except: # Handle if img_array itself has no shape (shouldn't happen if initial check passed)
+            placeholder_shape = (100,100,3) if (hasattr(img_array, 'ndim') and img_array.ndim == 3 and hasattr(img_array, 'shape') and len(img_array.shape) > 2 and img_array.shape[-1] == 3) else (100,100)
+        return np.zeros(placeholder_shape, dtype=np.uint8)

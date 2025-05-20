@@ -58,11 +58,11 @@ def segment_image_worker(job_params_dict):
         # Optional Cellpose parameters
         flow_threshold = job_params_dict.get("FLOW_THRESHOLD") # Let Cellpose use its default if None
         cellprob_threshold = job_params_dict.get("CELLPROB_THRESHOLD", 0.0) # Cellpose default is 0.0
-        min_size = job_params_dict.get("MIN_SIZE") # Let Cellpose use its default if None
+        min_size_from_config = job_params_dict.get("MIN_SIZE") # Get from config, could be None
         force_grayscale = job_params_dict.get("FORCE_GRAYSCALE", True)
         
         logger.info(f"  Model: {model_choice}, Diameter: {diameter}, GPU: {use_gpu}")
-        logger.info(f"  Optional params - FlowThresh: {flow_threshold}, CellProbThresh: {cellprob_threshold}, MinSize: {min_size}, ForceGrayscale: {force_grayscale}")
+        logger.info(f"  Optional params - FlowThresh: {flow_threshold}, CellProbThresh: {cellprob_threshold}, MinSize (from config): {min_size_from_config}, ForceGrayscale: {force_grayscale}")
 
         model = models.CellposeModel(gpu=use_gpu, model_type=model_choice)
         
@@ -83,11 +83,20 @@ def segment_image_worker(job_params_dict):
             # This part might need more sophisticated channel handling based on image specifics if not simple RGB
 
         logger.info(f"  Running Cellpose segmentation for Experiment ID: {experiment_id} on {processing_unit_name}...")
-        masks, flows, styles, diams = model.eval(img, diameter=diameter, channels=channels, 
-                                                 flow_threshold=flow_threshold, 
-                                                 cellprob_threshold=cellprob_threshold,
-                                                 min_size=min_size
-                                                 )
+        
+        eval_params = {
+            "diameter": diameter,
+            "channels": channels,
+            "flow_threshold": flow_threshold,
+            "cellprob_threshold": cellprob_threshold
+        }
+        if min_size_from_config is not None:
+            eval_params["min_size"] = min_size_from_config
+            logger.info(f"  Explicitly setting min_size to {min_size_from_config} for Cellpose model.eval().")
+        else:
+            logger.info(f"  min_size not specified in config or is None; letting Cellpose use its default for min_size.")
+
+        masks, flows, styles = model.eval(img, **eval_params)
         
         # Output paths
         # Masks are saved relative to a folder named after the experiment_id_final, under RESULTS_DIR_BASE
@@ -117,12 +126,11 @@ def segment_image_worker(job_params_dict):
             "image_path_processed": image_path,
             "mask_output_path": mask_output_path,
             "cellpose_model": model_choice,
-            "estimated_diameter": float(diams) if diams is not None else None, # diams can be a single float or an array
-            "input_diameter_arg": diameter,
+            "input_diameter_arg": diameter, # If 0, Cellpose auto-estimated. Actual value not easily available from eval() in new versions.
             "params_used": {
                 "flow_threshold": flow_threshold,
                 "cellprob_threshold": cellprob_threshold,
-                "min_size": min_size,
+                "min_size": eval_params.get("min_size"), # Log what was actually used (None if Cellpose default was used)
                 "channels": channels, # Log what channels were actually used.
                 "USE_GPU": use_gpu,
                 "FORCE_GRAYSCALE": force_grayscale

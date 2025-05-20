@@ -20,13 +20,17 @@
           "output_subfolder_name": "exp1_dapi_genes_ab_on_scaled_seg"
         },
         {
-          "task_id": "vis_exp1_image_cells_global_genes",
-          "is_active": false,
-          "source_image_id": "experiment1_image_cells",
-          "source_param_set_id": "nuclei_custom_diam15",
-          "source_processing_unit_display_name": "tile_r0_c0.tif",
-          "mapped_transcripts_csv_path": "data/processed/mapped/experiment1_image_cells_tile_r0_c0_nuclei_custom_diam15/mapped_transcripts_tile_r0_c0.csv",
-          "output_subfolder_name": "exp1_cells_global_genes_tile_r0_c0"
+          "task_id": "test",
+          "is_active": true,
+          "source_image_id": "test_img",
+          "source_param_set_id": "Cellpose_DefaultDiam",
+          "mapped_transcripts_csv_path": "results/test_img_Cellpose_DefaultDiam_scaled_0_25/mapping_results/5B_morphology_focus.ome_s0_25_with_cell_ids.csv",
+          "output_subfolder_name": "test_viz",
+          "visualization_params": {
+            "log_scale_counts_for_colormap": true,
+            "colormap_min_percentile": 5.0,
+            "colormap_max_percentile": 95.0
+          }
         }
       ]
     }

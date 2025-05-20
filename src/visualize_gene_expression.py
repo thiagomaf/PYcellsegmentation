@@ -5,6 +5,9 @@ import numpy as np
 import cv2
 from cellpose import io as cellpose_io
 from cellpose import plot as cellpose_plot
+
+import matplotlib
+matplotlib.use('Agg') # <--- ADD THIS to set a non-interactive backend BEFORE pyplot import
 import matplotlib.pyplot as plt
 import matplotlib.colors
 import json
@@ -14,13 +17,9 @@ import logging
 
 from .pipeline_utils import (
     normalize_to_8bit_for_display, 
-    sanitize_string_for_filesystem, # Assuming this will be used for output filenames, if not, can be removed
+    clean_filename_for_dir, # Changed from sanitize_string_for_filesystem
     construct_full_experiment_id, # New
-    construct_mask_path,          # New
-    RESCALED_IMAGE_CACHE_DIR as PIPELINE_RESCALED_IMAGE_CACHE_DIR, # Alias to avoid conflict if this script redefines it
-    TILED_IMAGE_OUTPUT_BASE as PIPELINE_TILED_IMAGE_OUTPUT_BASE,   # Alias
-    IMAGE_DIR_BASE as PIPELINE_IMAGE_DIR_BASE,                      # Alias
-    RESULTS_DIR_BASE as PIPELINE_RESULTS_DIR_BASE                   # Alias
+    construct_mask_path          # New
 )
 from .file_paths import (
     PROJECT_ROOT, # Import for resolving config path if needed when run as script
@@ -86,9 +85,9 @@ def visualize_gene_expression_for_job(
     gene_of_interest, 
     output_png_path, 
     effective_mpp_x, effective_mpp_y, 
+    task_visualization_params,
     x_offset_microns=0, y_offset_microns=0, 
-    plot_transcript_dots=False,
-    colormap_name='viridis'
+    plot_transcript_dots=False
     ):
 
     logger.info(f"--- Visualizing expression for gene: {gene_of_interest} ---")
@@ -108,20 +107,73 @@ def visualize_gene_expression_for_job(
     cell_colors_rgb = np.zeros((max_cell_id_in_mask + 1, 3), dtype=np.uint8)
     cell_colors_rgb[1:] = DEFAULT_BACKGROUND_COLOR_FOR_CELLS_NO_EXPRESSION 
 
+    # Get visualization parameters from the task_visualization_params dictionary
+    colormap_name = task_visualization_params.get("colormap", "viridis")
+    log_scale_counts = task_visualization_params.get("log_scale_counts_for_colormap", False)
+    min_percentile = task_visualization_params.get("colormap_min_percentile", 0.0)
+    max_percentile = task_visualization_params.get("colormap_max_percentile", 100.0)
+
+    logger.info(f"  Colormap: {colormap_name}, Log-scale: {log_scale_counts}, Percentiles: [{min_percentile}, {max_percentile}]")
+
+    # These will store the actual values used for colormap normalization limits
+    norm_min_val_actual = 0.0
+    norm_max_val_actual = 0.0
+    colormap_label = "Transcript Count"
+    
     if not cell_expression_counts.empty:
-        min_count = 0 
-        max_count = cell_expression_counts.max()
+        values_for_normalization = cell_expression_counts.copy()
+        if log_scale_counts:
+            values_for_normalization = np.log1p(values_for_normalization)
+            logger.info(f"  Applied log1p transformation to cell counts for colormap scaling.")
+            colormap_label = "log(1 + Count)"
+
+        # Determine min/max for normalization based on percentiles of positive values
+        positive_values = values_for_normalization[values_for_normalization > 0]
+        if positive_values.empty:
+            logger.info(f"  No cells with positive (or log-positive) expression for '{gene_of_interest}'. Using default 0-1 range for colormap if any cells exist.")
+            norm_min_val_actual = 0.0
+            norm_max_val_actual = 1.0 # Avoid division by zero if positive_values is empty
+        else:
+            norm_min_val_actual = np.percentile(positive_values, min_percentile)
+            norm_max_val_actual = np.percentile(positive_values, max_percentile)
+            if norm_max_val_actual <= norm_min_val_actual: # Ensure max > min
+                logger.warning(f"  norm_max_val_actual ({norm_max_val_actual:.2f}) <= norm_min_val_actual ({norm_min_val_actual:.2f}) after percentile clipping. Using full range of positive values or defaults.")
+                # Fallback to min/max of positive values if percentiles resulted in invalid range
+                if positive_values.min() < positive_values.max():
+                    norm_min_val_actual = positive_values.min()
+                    norm_max_val_actual = positive_values.max()
+                else: # Still no range, use 0-1 to avoid errors
+                    norm_min_val_actual = 0.0
+                    norm_max_val_actual = 1.0
+        
+        logger.info(f"  Colormap normalization range for '{gene_of_interest}': Min={norm_min_val_actual:.2f}, Max={norm_max_val_actual:.2f} (based on {'log-scaled' if log_scale_counts else 'raw'} counts)")
+
         try: colormap_func = matplotlib.colormaps[colormap_name]
         except AttributeError: colormap_func = plt.cm.get_cmap(colormap_name) # older matplotlib
 
-        for cell_id, count in cell_expression_counts.items():
+        for cell_id, count_val in cell_expression_counts.items(): # Iterate original counts
+            value_to_normalize = count_val
+            if log_scale_counts:
+                value_to_normalize = np.log1p(count_val)
+            
             cell_id_int = int(cell_id)
             if 0 < cell_id_int <= max_cell_id_in_mask:
-                norm_count = (count - min_count) / (max_count - min_count) if max_count > min_count else (1.0 if max_count > 0 else 0.0)
-                rgba_color = colormap_func(norm_count)
+                if norm_max_val_actual > norm_min_val_actual:
+                    norm_intensity = (value_to_normalize - norm_min_val_actual) / (norm_max_val_actual - norm_min_val_actual)
+                elif value_to_normalize > norm_min_val_actual : # if max == min, and value is above, it's max intensity
+                    norm_intensity = 1.0
+                else: # if max == min, and value is at or below, it's min intensity
+                    norm_intensity = 0.0
+                
+                norm_intensity = np.clip(norm_intensity, 0.0, 1.0) # Ensure it's strictly within [0,1]
+                rgba_color = colormap_func(norm_intensity)
                 cell_colors_rgb[cell_id_int] = (np.array(rgba_color[:3]) * 255).astype(np.uint8)
     else:
         logger.info(f"  No cells found with expression of '{gene_of_interest}'. Cells will have default color.")
+        # For colorbar, if no expression, we might use a dummy range or not show it
+        norm_min_val_actual = 0.0 
+        norm_max_val_actual = 1.0 # Default range for a placeholder colorbar if needed
+        if log_scale_counts: colormap_label = "log(1 + Count)" # Keep label consistent if log scaling was requested
 
     overlay_img_rgb = cellpose_plot.mask_overlay(background_image_for_overlay_rgb, segmentation_mask_array, colors=cell_colors_rgb)
 
@@ -137,8 +189,52 @@ def visualize_gene_expression_for_job(
             if 0 <= tx < w and 0 <= ty < h:
                 cv2.circle(overlay_img_rgb, (tx, ty), TRANSCRIPT_DOT_SIZE, dot_color_rgb, -1)
     try:
-        cv2.imwrite(output_png_path, cv2.cvtColor(overlay_img_rgb, cv2.COLOR_RGB2BGR))
+        # cv2.imwrite(output_png_path, cv2.cvtColor(overlay_img_rgb, cv2.COLOR_RGB2BGR))
+        # Replace cv2.imwrite with matplotlib save to include colorbar
+        fig, ax = plt.subplots(figsize=(10,10)) # Adjust figsize as needed
+        ax.imshow(overlay_img_rgb)
+        ax.axis('off') # Turn off axis numbers and ticks
+
+        # Add colorbar if there was any expression to scale by
+        # (even if all cells ended up with 0 after log/percentile, the range might be non-zero)
+        if not cell_expression_counts.empty or (total_gene_transcripts > 0 and (norm_min_val_actual != 0.0 or norm_max_val_actual != 1.0)):
+            # Create a normalizer for the colorbar
+            norm = matplotlib.colors.Normalize(vmin=norm_min_val_actual, vmax=norm_max_val_actual)
+            # Create a scalar mappable for the colorbar
+            sm = plt.cm.ScalarMappable(cmap=colormap_func, norm=norm)
+            sm.set_array([]) # You need to set_array for the ScalarMappable to work, even an empty one
+
+            # Add colorbar to the figure - adjust fraction, pad, and orientation as needed
+            cbar = fig.colorbar(sm, ax=ax, orientation='vertical', fraction=0.046, pad=0.04)
+            cbar.set_label(colormap_label, rotation=270, labelpad=20)
+        
+        fig.savefig(output_png_path, bbox_inches='tight', dpi=150)
+        plt.close(fig) # Close the figure to free memory
         logger.info(f"  Expression overlay for '{gene_of_interest}' saved to: {output_png_path}")
+
+        # Save cell expression counts to CSV
+        if not cell_expression_counts.empty:
+            # Derive CSV path from PNG path
+            csv_filename_base = os.path.splitext(output_png_path)[0]
+            csv_output_path = f"{csv_filename_base}_cell_counts.csv"
+            try:
+                counts_df_to_save = cell_expression_counts.reset_index()
+                counts_df_to_save.columns = ['cell_id', 'transcript_count']
+                counts_df_to_save.to_csv(csv_output_path, index=False)
+                logger.info(f"  Cell expression counts for '{gene_of_interest}' saved to: {csv_output_path}")
+            except Exception as e_csv:
+                logger.error(f"  Error saving cell expression counts CSV for '{gene_of_interest}': {e_csv}")
+        elif total_gene_transcripts > 0: # Transcripts exist but none assigned to cells in this mask
+            csv_filename_base = os.path.splitext(output_png_path)[0]
+            csv_output_path = f"{csv_filename_base}_cell_counts.csv"
+            try:
+                # Create and save an empty DataFrame with correct headers
+                empty_counts_df = pd.DataFrame(columns=['cell_id', 'transcript_count'])
+                empty_counts_df.to_csv(csv_output_path, index=False)
+                logger.info(f"  No cell-assigned transcripts for '{gene_of_interest}'. Empty cell counts CSV saved to: {csv_output_path}")
+            except Exception as e_csv_empty:
+                logger.error(f"  Error saving empty cell counts CSV for '{gene_of_interest}': {e_csv_empty}")
+
     except Exception as e:
         logger.error(f"  Error saving expression overlay for '{gene_of_interest}': {e} (Path: {output_png_path})") 
 
@@ -203,11 +299,13 @@ def get_job_info_and_paths(param_sets_path, target_image_id, target_param_set_id
     if not original_image_filename: 
         logger.error(f"Error: original_image_filename missing for Image ID '{target_image_id}'."); return default_return
     
-    original_source_image_full_path = os.path.join(IMAGE_DIR_BASE, original_image_filename) # Uses imported IMAGE_DIR_BASE
+    original_source_image_full_path = os.path.join(PROJECT_ROOT, original_image_filename) # Changed IMAGE_DIR_BASE to PROJECT_ROOT
     if not os.path.exists(original_source_image_full_path):
-        logger.error(f"Error: Original source image not found: {original_source_image_full_path}"); return default_return
+        logger.warning(f"Warning: Original source image (path constructed from PROJECT_ROOT + original_image_filename from config) not found: {original_source_image_full_path}")
+        logger.info(f"  Attempted path was: PROJECT_ROOT ('{PROJECT_ROOT}') + original_image_filename ('{original_image_filename}')")
+        # Do not return here, allow continuation if background_image_path_override will be used later or if only metadata is needed from original_image_filename
 
-    path_of_image_unit_for_segmentation = original_source_image_full_path # Default
+    path_of_image_unit_for_segmentation = original_source_image_full_path # Default background, might not exist
     applied_scale_factor = _determine_applied_scale_factor(image_config, target_processing_unit_name)
     
     is_tiled_job = False
@@ -439,7 +537,7 @@ if __name__ == "__main__":
         if not os.path.exists(mapped_transcripts_full_path):
             logger.warning(f"Skipping task '{task_id_str}': Mapped transcripts CSV not found: {mapped_transcripts_full_path}"); continue
 
-        task_output_dir = os.path.join(base_visualization_output_dir, sanitize_string_for_filesystem(output_subfolder_name, remove_extension=True))
+        task_output_dir = os.path.join(base_visualization_output_dir, clean_filename_for_dir(output_subfolder_name))
         if not os.path.exists(task_output_dir):
             try: 
                 os.makedirs(task_output_dir)
@@ -455,16 +553,50 @@ if __name__ == "__main__":
             source_processing_unit_name
         )
 
-        if not background_image_to_display_path or not segmentation_mask_path or not experiment_folder_id:
-            logger.warning(f"Skipping task '{task_id_str}': Could not determine necessary file paths from configuration."); continue
-        if not os.path.exists(background_image_to_display_path):
-            logger.warning(f"Skipping task '{task_id_str}': Background image for display does not exist: {background_image_to_display_path}"); continue
+        # Determine the actual background image path to use
+        actual_background_image_to_load = None
+        task_viz_params = task.get("visualization_params", {})
+        background_override_rel_path = task_viz_params.get("background_image_path_override")
+
+        if background_override_rel_path:
+            logger.info(f"  Task '{task_id_str}' has 'background_image_path_override': {background_override_rel_path}")
+            # Assume override path is relative to PROJECT_ROOT if not absolute
+            if not os.path.isabs(background_override_rel_path):
+                resolved_override_path = os.path.join(PROJECT_ROOT, background_override_rel_path)
+            else:
+                resolved_override_path = background_override_rel_path
+            
+            if os.path.exists(resolved_override_path):
+                actual_background_image_to_load = resolved_override_path
+                logger.info(f"  Using overridden background image: {actual_background_image_to_load}")
+            else:
+                logger.warning(f"  Warning: 'background_image_path_override' specified but not found: {resolved_override_path}. Will attempt fallback.")
+        
+        # If override was not provided or was invalid, fall back to the path derived by get_job_info_and_paths
+        if not actual_background_image_to_load:
+            if background_image_to_display_path: # This is the path from get_job_info_and_paths
+                if os.path.exists(background_image_to_display_path):
+                    actual_background_image_to_load = background_image_to_display_path
+                    logger.info(f"  Using derived background image (from original_image_filename in image_config): {actual_background_image_to_load}")
+                else:
+                    logger.warning(f"  Warning: Derived background image (from original_image_filename) not found: {background_image_to_display_path}")
+            else: # background_image_to_display_path itself might be None if get_job_info_and_paths had issues earlier
+                 logger.warning(f"  Warning: No valid background image path derived by get_job_info_and_paths.")
+
+
+        if not segmentation_mask_path or not experiment_folder_id: # These are critical from get_job_info_and_paths
+            logger.warning(f"Skipping task '{task_id_str}': Could not determine mask_path or experiment_folder_id from configuration."); continue
+        
+        if not actual_background_image_to_load: # If still no valid background after override and fallback
+            logger.warning(f"Skipping task '{task_id_str}': No valid background image could be found or determined."); continue
+
+        # Check existence of mask (background is now checked above)
         if not os.path.exists(segmentation_mask_path):
             logger.warning(f"Skipping task '{task_id_str}': Segmentation mask does not exist: {segmentation_mask_path}"); continue
 
         logger.info(f"  Task '{task_id_str}' - Results experiment folder ID: {experiment_folder_id}")
         logger.info(f"  Task '{task_id_str}' - Using mask: {segmentation_mask_path}")
-        logger.info(f"  Task '{task_id_str}' - Background image for overlay: {background_image_to_display_path} (Scale factor: {scale_factor_applied})")
+        logger.info(f"  Task '{task_id_str}' - Confirmed background image for overlay: {actual_background_image_to_load} (Derived scale factor for MPP: {scale_factor_applied})")
 
         effective_mpp_x = mpp_x_original / scale_factor_applied if scale_factor_applied != 0 else mpp_x_original
         effective_mpp_y = mpp_y_original / scale_factor_applied if scale_factor_applied != 0 else mpp_y_original
@@ -478,12 +610,15 @@ if __name__ == "__main__":
 
         mapped_df = load_mapped_transcripts(mapped_transcripts_full_path)
         seg_mask = cellpose_io.imread(segmentation_mask_path)
-        display_background_raw = cv2.imread(background_image_to_display_path, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH)
+        display_background_raw = cv2.imread(actual_background_image_to_load, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH) # Use the confirmed path
 
         if mapped_df is None or seg_mask is None or display_background_raw is None:
-            logger.warning(f"Skipping task '{task_id_str}': Error loading one or more critical input files for visualization."); continue
+            logger.warning(f"Skipping task '{task_id_str}': Error loading one or more critical input files for visualization (MappedDF: {mapped_df is not None}, Mask: {seg_mask is not None}, BackgroundRaw: {display_background_raw is not None} from {actual_background_image_to_load})."); continue
             
         display_background_8bit = normalize_to_8bit_for_display(display_background_raw)
+        if display_background_8bit is None:
+            logger.error(f"Skipping task '{task_id_str}': Failed to normalize background image to 8-bit (normalize_to_8bit_for_display returned None)."); continue
+
         display_background_8bit_rgb = None
         if display_background_8bit.ndim == 2:
             display_background_8bit_rgb = cv2.cvtColor(display_background_8bit, cv2.COLOR_GRAY2RGB)
@@ -499,7 +634,7 @@ if __name__ == "__main__":
         
         if display_background_8bit_rgb.shape[:2] != seg_mask.shape[:2]:
             logger.error(f"FATAL Error for task '{task_id_str}': Background image shape {display_background_8bit_rgb.shape[:2]} and mask shape {seg_mask.shape[:2]} DO NOT MATCH!")
-            logger.error(f"  Background image path used: {background_image_to_display_path}"); continue
+            logger.error(f"  Background image path used: {actual_background_image_to_load}"); continue
 
         file_suffix = "_expression_overlay.png"
         x_offset = task.get("x_offset_microns", 0.0)
@@ -507,7 +642,11 @@ if __name__ == "__main__":
         colormap = task.get("colormap", "viridis")
 
         for gene in genes_to_visualize: 
-            safe_gene_name = sanitize_string_for_filesystem(gene, remove_extension=False)
+            # Extract the last part of the gene name after splitting by '.'
+            gene_parts = gene.split('.')
+            short_gene_name = gene_parts[-1] if gene_parts else gene
+            safe_gene_name = clean_filename_for_dir(short_gene_name) # Sanitize the shortened name
+            
             output_filename = f"{safe_gene_name}{file_suffix}"
             output_png_path = os.path.join(task_output_dir, output_filename)
             
@@ -516,10 +655,10 @@ if __name__ == "__main__":
                 gene, output_png_path,
                 effective_mpp_x=effective_mpp_x, 
                 effective_mpp_y=effective_mpp_y,
+                task_visualization_params=task_viz_params,
                 x_offset_microns=x_offset, 
                 y_offset_microns=y_offset,
-                plot_transcript_dots=plot_dots_flag,
-                colormap_name=colormap
+                plot_transcript_dots=plot_dots_flag
             )
         logger.info(f"--- Finished Visualization Task: {task_id_str} ---")
     
