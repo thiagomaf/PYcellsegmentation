@@ -145,6 +145,12 @@ This is the main control file, located in the project root. Update it to point t
 
 *   **`global_segmentation_settings` (Object, Optional):**
     Settings that apply globally to `segmentation_pipeline.py`.
+    
+    *   `default_log_level`: (String) "DEBUG", "INFO", etc. Overridden by CLI `--log_level`.
+    *   `max_processes`: (Integer) Max parallel jobs. Overridden by CLI `--max_processes`.
+    *   `FORCE_GRAYSCALE`: (Boolean) Global default for grayscale conversion.
+    *   `USE_GPU_IF_AVAILABLE`: (Boolean) Global default for Cellpose GPU usage.
+
     ```json
     {
       "global_segmentation_settings": {
@@ -155,10 +161,6 @@ This is the main control file, located in the project root. Update it to point t
       }
     }
     ```
-    *   `default_log_level`: (String) "DEBUG", "INFO", etc. Overridden by CLI `--log_level`.
-    *   `max_processes`: (Integer) Max parallel jobs. Overridden by CLI `--max_processes`.
-    *   `FORCE_GRAYSCALE`: (Boolean) Global default for grayscale conversion.
-    *   `USE_GPU_IF_AVAILABLE`: (Boolean) Global default for Cellpose GPU usage.
 
 *   **`image_configurations` (List of Objects):**
     Define each source image to be processed by the pipeline. Each object in this list represents one image and its specific processing settings.
@@ -281,15 +283,63 @@ This is the main control file, located in the project root. Update it to point t
     ```
 
 *   **`visualization_tasks` (List of Objects):**
-    Define gene expression visualization tasks.
-    *   `"task_id"`: Unique string.
-    *   `"is_active"`: Boolean.
-    *   `"source_image_id"`: Links to an `image_id`.
-    *   `"source_param_set_id"`: Links to a `param_set_id`.
-    *   `"source_processing_unit_name"`: Filename of the specific segmented unit (e.g., rescaled image name or tile name).
-    *   `"mapped_transcripts_csv_path"`: Path to mapped transcripts (e.g., `"data/processed/mapped/my_experiment/mapped_data.csv"`).
-    *   `"genes_to_visualize"`: List of gene names.
-    *   `"output_subfolder_name"`: Subfolder under `data/results/visualizations/` for this task's output.
+    Define tasks for generating visualizations of gene expression overlaid on segmentation masks and background images. Each object in this list configures one such visualization task.
+    *   `"task_id"`: (String) A unique identifier for this visualization task (e.g., `"exp1_dapi_gene_set1_viz"`).
+    *   `"is_active"`: (Boolean) Set to `true` to run this visualization task. If `false`, it will be skipped.
+    *   `"source_image_id"`: (String) Refers to the `image_id` from an `image_configurations` entry. This specifies the original image context (e.g., for background, scale).
+    *   `"source_param_set_id"`: (String) Refers to the `param_set_id` from a `cellpose_parameter_configurations` entry. This identifies the segmentation parameters used to generate the mask that will be visualized.
+    *   `"source_segmentation_scale_factor"`: (Float or `null`, Optional) The scale factor that was applied to the image *before* it was segmented, if any. This should match the `scale_factor` in the `rescaling_config` of the corresponding `image_configurations` entry that produced the mask. Use `1.0` or `null` if no rescaling was applied prior to segmentation. This is crucial for correctly aligning masks with original image data if rescaling was involved.
+    *   `"source_processing_unit_display_name"`: (String) The filename (without path) of the specific image unit that was segmented and whose mask will be used for visualization. This could be the original image filename (if no tiling/rescaling for segmentation), a rescaled image filename (e.g., `"image_scaled_0_5.tif"`), or a tile filename (e.g., `"tile_r0_c0.tif"`). This name is used to locate the correct `_mask.tif` file within the experiment's results directory.
+    *   `"source_segmentation_is_tile"`: (Boolean) Set to `true` if the `source_processing_unit_display_name` refers to a tile that was segmented. Set to `false` if it refers to a whole image (original or rescaled) that was segmented. This helps in deriving the correct path to the mask file.
+    *   `"mapped_transcripts_csv_path"`: (String) Path to the CSV file containing mapped transcript data. This file should typically include columns for transcript coordinates (e.g., 'x', 'y' or 'global_x', 'global_y'), gene names (e.g., 'gene'), and the cell ID to which each transcript was assigned (e.g., 'cell_id'). An example path: `"data/processed/mapped/my_experiment/mapped_transcripts.csv".
+    *   `"genes_to_visualize"`: (List of Strings) A list of gene names (e.g., `["GeneA", "GeneB", "GeneC"]`) for which expression data will be plotted. These gene names must exist in the provided `mapped_transcripts_csv_path`.
+    *   `"output_subfolder_name"`: (String) The name of the subfolder where the generated visualization images for this task will be saved. This folder will be created under the main visualization output directory (typically `data/results/visualizations/`). E.g., `"exp1_dapi_channel_genes"`.
+    *   `"visualization_params"`: (Object, Optional) Additional parameters to customize the visualization appearance.
+        *   `"background_image_path_override"`: (String or `null`, Optional) Full path to a specific image to use as the background for the visualization. If `null` or omitted, the script will attempt to use the `original_image_filename` from the linked `image_configurations`.
+        *   `"mask_alpha"`: (Float, 0.0-1.0, Optional) Opacity of the cell segmentation mask outlines. Default: `0.3`.
+        *   `"dot_size"`: (Integer, Optional) Size of the dots representing transcripts. Default: `5`.
+        *   `"dot_alpha"`: (Float, 0.0-1.0, Optional) Opacity of the transcript dots. Default: `0.5`.
+        *   `"image_brightness_factor"`: (Float, Optional) Multiplier to adjust the brightness of the background image. Default: `1.0`.
+        *   `"crop_to_segmentation_area"`: (Boolean, Optional) If `true`, the visualization will be cropped to the extent of the segmentation mask. Default: `false`.
+    **Example:**
+    ```json
+    "visualization_tasks": [
+      {
+        "task_id": "vis_exp1_image_dapi_genes_ab",
+        "is_active": true,
+        "source_image_id": "experiment1_image_dapi",
+        "source_param_set_id": "cyto2_default_diam30",
+        "source_segmentation_scale_factor": 0.5,
+        "source_processing_unit_display_name": "image_channel_0_scaled_0_5.tif",
+        "source_segmentation_is_tile": false,
+        "mapped_transcripts_csv_path": "data/processed/mapped/experiment1_image_dapi_cyto2_default_diam30/mapped_transcripts.csv",
+        "genes_to_visualize": ["GeneA", "GeneB"],
+        "output_subfolder_name": "exp1_dapi_genes_ab_on_scaled_seg",
+        "visualization_params": {
+          "mask_alpha": 0.4,
+          "dot_size": 3,
+          "image_brightness_factor": 1.2
+        }
+      },
+      {
+        "task_id": "vis_exp1_image_cells_gene_c_tiled",
+        "is_active": true,
+        "source_image_id": "experiment1_image_cells",
+        "source_param_set_id": "nuclei_custom_diam15",
+        "source_segmentation_scale_factor": 1.0, // Or null, assuming segmentation was on original scale for tiles
+        "source_processing_unit_display_name": "tile_r0_c0.tif", // Example specific tile
+        "source_segmentation_is_tile": true,
+        "mapped_transcripts_csv_path": "data/processed/mapped/experiment1_image_cells_tile_r0_c0_nuclei_custom_diam15/mapped_transcripts_tile_r0_c0.csv",
+        "genes_to_visualize": ["GeneC"],
+        "output_subfolder_name": "exp1_cells_gene_c_tile_r0_c0",
+        "visualization_params": {
+          "background_image_path_override": "data/raw/images/experiment1/tiles/tile_r0_c0_background.tif", // Optional: if you have specific tile backgrounds
+          "dot_alpha": 0.7,
+          "crop_to_segmentation_area": true
+        }
+      }
+    ]
+    ```
 
 *   **`mapping_tasks` (List of Objects):**
     Define transcript-to-cell mapping tasks. Each task processes one transcript file against one segmentation mask.
@@ -333,67 +383,4 @@ python -m src.segmentation_pipeline --config parameter_sets.json
 **Command-line arguments:**
 *   `--config <path>`: Path to your JSON configuration. Default: `parameter_sets.json`.
 *   `--log_level <LEVEL>`: Overrides JSON `default_log_level`.
-*   `--max_processes <N>`: Overrides JSON `max_processes`.
-
-Outputs (masks, summaries) are typically saved to `data/processed/segmentation/`. Check `run_log.json` in the same base output directory.
-
-### Step 3: Stitch Tiled Segmentations (If Tiling Was Used)
-```bash
-python -m src.stitch_masks <original_image_id> <param_set_id> <output_directory_for_stitched_mask> --config parameter_sets.json
-# Example output directory: data/processed/segmentation/my_experiment/stitched_masks/
-# Add --scale_factor_applied if appropriate.
-```
-
-### Step 4: Map Transcripts to Cells
-This script maps transcript coordinates to segmented cell IDs using a specified mask.
-Configuration is managed via `mapping_tasks` in `parameter_sets.json`.
-
-Execute from the project root:
-```bash
-python -m src.map_transcripts_to_cells --config parameter_sets.json
-```
-Or, to run a specific active task:
-```bash
-python -m src.map_transcripts_to_cells --config parameter_sets.json --task_id your_mapping_task_id
-```
-
-**Command-line arguments:**
-*   `--config <path>`: Path to your JSON configuration file. Default: `parameter_sets.json`.
-*   `--task_id <ID>`: (Optional) Run only the specified mapping task ID from the JSON file. If omitted, all active tasks in `mapping_tasks` are run.
-*   `--log_level <LEVEL>`: Set the logging level. Overrides JSON `default_log_level` from `global_segmentation_settings`.
-
-Outputs (mapped transcripts CSV, feature-by-cell matrix CSV) are saved to the `output_base_dir` specified in each task configuration (e.g., `data/processed/mapped/your_task_output/`).
-
-### Step 5: Visualize Gene Expression
-Ensure `visualization_tasks` are defined in `parameter_sets.json`.
-```bash
-python -m src.visualize_gene_expression --config parameter_sets.json
-# Or --task_id <your_task_id> for a specific task.
-```
-Outputs are saved in `data/results/visualizations/<task_output_subfolder_name>/`.
-
-### Step 6: Generate Summary Image of Segmentations (Optional)
-```bash
-python -m src.create_summary_image --config parameter_sets.json
-```
-*Output typically to `data/results/visualizations/` or `data/processed/segmentation/`.*
-
-
-## Troubleshooting
-*   **Import Errors:** Always run scripts as Python modules from the project root (e.g., `python -m src.script_name`).
-*   **Configuration Issues:** Double-check paths in `parameter_sets.json` (especially `original_image_filename`, `mapped_transcripts_csv_path`) and ensure they correctly point to your files within the `data/` directory structure or other specified locations.
-*   **Logging:** Use `--log_level DEBUG` for verbose output. Check console, `run_log.json`, and individual job summary files.
-*   **File Not Found:** Verify all paths. Default output locations for segmentation are influenced by `RESULTS_DIR_BASE` in `src/file_paths.py` – ensure this points where you expect (e.g., into `data/processed/segmentation/`).
-*   **GPU Usage:** For Cellpose, ensure correct installation and settings for `USE_GPU` (in parameter sets) and `USE_GPU_IF_AVAILABLE` (global). For single GPU, set `max_processes: 1`.
-
-## Testing
-
-This project uses `pytest`. Ensure development dependencies are installed.
-
-To run all tests, from the project root:
-```bash
-pytest
-```
-Verbose output: `pytest -v`
-Specific file: `pytest tests/functional/test_segmentation_pipeline_flow.py`
-Specific test: `pytest -k "test_function_name"`
+*   `--max_processes <N>`: Overrides JSON `
