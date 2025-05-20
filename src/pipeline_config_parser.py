@@ -6,7 +6,7 @@ import traceback
 import logging
 from .pipeline_utils import clean_filename_for_dir, rescale_image_and_save, construct_full_experiment_id
 from .tile_large_image import tile_image
-from .file_paths import IMAGE_DIR_BASE, TILED_IMAGE_OUTPUT_BASE, RESCALED_IMAGE_CACHE_DIR
+from .file_paths import IMAGE_DIR_BASE, TILED_IMAGE_OUTPUT_BASE, RESCALED_IMAGE_CACHE_DIR, PROJECT_ROOT
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ def load_and_expand_configurations(param_json_file_path):
             logger.warning(f"Image config '{image_id_base}' missing 'original_image_filename'. Skipping.")
             continue
         
-        original_image_path = os.path.join(IMAGE_DIR_BASE, original_image_filename)
+        original_image_path = os.path.join(PROJECT_ROOT, original_image_filename)
         if not os.path.exists(original_image_path):
             logger.warning(f"Original image {original_image_path} for config '{image_id_base}' not found. Skipping this image config.")
             continue
