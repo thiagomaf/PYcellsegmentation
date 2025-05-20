@@ -286,12 +286,11 @@ This is the main control file, located in the project root. Update it to point t
     Define tasks for generating visualizations of gene expression overlaid on segmentation masks and background images. Each object in this list configures one such visualization task.
     *   `"task_id"`: (String) A unique identifier for this visualization task (e.g., `"exp1_dapi_gene_set1_viz"`).
     *   `"is_active"`: (Boolean) Set to `true` to run this visualization task. If `false`, it will be skipped.
-    *   `"source_image_id"`: (String) Refers to the `image_id` from an `image_configurations` entry. This specifies the original image context (e.g., for background, scale).
+    *   `"source_image_id"`: (String) Refers to the `image_id` from an `image_configurations` entry. This specifies the original image context (e.g., for background, scale) and is used to derive the segmentation scale factor.
     *   `"source_param_set_id"`: (String) Refers to the `param_set_id` from a `cellpose_parameter_configurations` entry. This identifies the segmentation parameters used to generate the mask that will be visualized.
-    *   `"source_segmentation_scale_factor"`: (Float or `null`, Optional) The scale factor that was applied to the image *before* it was segmented, if any. This should match the `scale_factor` in the `rescaling_config` of the corresponding `image_configurations` entry that produced the mask. Use `1.0` or `null` if no rescaling was applied prior to segmentation. This is crucial for correctly aligning masks with original image data if rescaling was involved.
     *   `"source_processing_unit_display_name"`: (String) The filename (without path) of the specific image unit that was segmented and whose mask will be used for visualization. This could be the original image filename (if no tiling/rescaling for segmentation), a rescaled image filename (e.g., `"image_scaled_0_5.tif"`), or a tile filename (e.g., `"tile_r0_c0.tif"`). This name is used to locate the correct `_mask.tif` file within the experiment's results directory.
     *   `"source_segmentation_is_tile"`: (Boolean) Set to `true` if the `source_processing_unit_display_name` refers to a tile that was segmented. Set to `false` if it refers to a whole image (original or rescaled) that was segmented. This helps in deriving the correct path to the mask file.
-    *   `"mapped_transcripts_csv_path"`: (String) Path to the CSV file containing mapped transcript data. This file should typically include columns for transcript coordinates (e.g., 'x', 'y' or 'global_x', 'global_y'), gene names (e.g., 'gene'), and the cell ID to which each transcript was assigned (e.g., 'cell_id'). An example path: `"data/processed/mapped/my_experiment/mapped_transcripts.csv".
+    *   `"mapped_transcripts_csv_path"`: (String) Path to the CSV file containing mapped transcript data. This file should typically include columns for transcript coordinates (e.g., 'x', 'y' or 'global_x', 'global_y'), gene names (e.g., 'gene'), and the cell ID to which each transcript was assigned (e.g., 'cell_id'). An example path: `"data/processed/mapped/my_experiment/mapped_transcripts.csv"`.
     *   `"genes_to_visualize"`: (List of Strings) A list of gene names (e.g., `["GeneA", "GeneB", "GeneC"]`) for which expression data will be plotted. These gene names must exist in the provided `mapped_transcripts_csv_path`.
     *   `"output_subfolder_name"`: (String) The name of the subfolder where the generated visualization images for this task will be saved. This folder will be created under the main visualization output directory (typically `data/results/visualizations/`). E.g., `"exp1_dapi_channel_genes"`.
     *   `"visualization_params"`: (Object, Optional) Additional parameters to customize the visualization appearance.
@@ -309,7 +308,6 @@ This is the main control file, located in the project root. Update it to point t
         "is_active": true,
         "source_image_id": "experiment1_image_dapi",
         "source_param_set_id": "cyto2_default_diam30",
-        "source_segmentation_scale_factor": 0.5,
         "source_processing_unit_display_name": "image_channel_0_scaled_0_5.tif",
         "source_segmentation_is_tile": false,
         "mapped_transcripts_csv_path": "data/processed/mapped/experiment1_image_dapi_cyto2_default_diam30/mapped_transcripts.csv",
@@ -326,7 +324,6 @@ This is the main control file, located in the project root. Update it to point t
         "is_active": true,
         "source_image_id": "experiment1_image_cells",
         "source_param_set_id": "nuclei_custom_diam15",
-        "source_segmentation_scale_factor": 1.0, // Or null, assuming segmentation was on original scale for tiles
         "source_processing_unit_display_name": "tile_r0_c0.tif", // Example specific tile
         "source_segmentation_is_tile": true,
         "mapped_transcripts_csv_path": "data/processed/mapped/experiment1_image_cells_tile_r0_c0_nuclei_custom_diam15/mapped_transcripts_tile_r0_c0.csv",
@@ -383,4 +380,4 @@ python -m src.segmentation_pipeline --config parameter_sets.json
 **Command-line arguments:**
 *   `--config <path>`: Path to your JSON configuration. Default: `parameter_sets.json`.
 *   `--log_level <LEVEL>`: Overrides JSON `default_log_level`.
-*   `--max_processes <N>`: Overrides JSON `
+*   `--max_processes <N>`: Overrides JSON `max_processes`.
