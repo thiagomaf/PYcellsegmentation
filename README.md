@@ -137,6 +137,7 @@ This project offers a suite of tools that can be used as a cohesive pipeline or 
         # Create the virtual environment (e.g., named .venv)
         python -m venv .venv
         # Activate the virtual environment
+        Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
         .venv\Scripts\activate
         ```
         *Note: If `python` is not recognized, you might need to use `py -m venv .venv` or ensure Python is in your PATH.*
