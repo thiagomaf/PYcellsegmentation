@@ -130,7 +130,9 @@ This project offers a suite of tools that can be used as a cohesive pipeline or 
 
 1.  **Clone the Repository.**
 2.  **Set up a Python Virtual Environment:**
+
     It's highly recommended to use a virtual environment to manage project dependencies. This isolates the project's requirements from your global Python installation.
+
     *Important: Virtual environments are not generally transportable between computers or different path locations. You should create a new virtual environment and install dependencies on each machine where you set up the project.*
 
     *   **Windows (PowerShell/Command Prompt):**
@@ -443,6 +445,9 @@ These are the main control files, located in the project root.
             *   `"dot_alpha"`: (Float, 0.0-1.0, Optional) Opacity of the transcript dots. Default: `0.5`.
             *   `"image_brightness_factor"`: (Float, Optional) Multiplier to adjust the brightness of the background image. Default: `1.0`.
             *   `"crop_to_segmentation_area"`: (Boolean, Optional) If `true`, the visualization will be cropped to the extent of the segmentation mask. Default: `false`.
+            *   `"log_scale_counts_for_colormap"`: (Boolean, Optional) If `true`, transcript counts per cell will be log-transformed (`log(1+count)`) before being mapped to the colormap. This can help visualize differences in lower expression ranges when some cells have very high counts. Default: `false`.
+            *   `"colormap_min_percentile"`: (Float, 0-100, Optional) The percentile of (log-transformed if enabled, non-zero) cell counts to use as the minimum for the colormap scaling. E.g., `5.0` would mean the colormap starts at the 5th percentile of expression. Default: `0.0` (uses the actual minimum observed value).
+            *   `"colormap_max_percentile"`: (Float, 0-100, Optional) The percentile of (log-transformed if enabled, non-zero) cell counts to use as the maximum for the colormap scaling. E.g., `95.0` would mean the colormap ends at the 95th percentile of expression. Default: `100.0` (uses the actual maximum observed value).
     **Example:**
     ```json
     "visualization_tasks": {
@@ -460,7 +465,10 @@ These are the main control files, located in the project root.
           "visualization_params": {
             "mask_alpha": 0.4,
             "dot_size": 3,
-            "image_brightness_factor": 1.2
+            "image_brightness_factor": 1.2,
+            "log_scale_counts_for_colormap": true,
+            "colormap_min_percentile": 5.0,
+            "colormap_max_percentile": 95.0
           }
         },
         {
