@@ -129,8 +129,31 @@ This project offers a suite of tools that can be used as a cohesive pipeline or 
 ## Installation
 
 1.  **Clone the Repository.**
-2.  **Create and Activate a Python Virtual Environment** (e.g., using `venv` or `conda`).
+2.  **Set up a Python Virtual Environment:**
+    It's highly recommended to use a virtual environment to manage project dependencies. This isolates the project's requirements from your global Python installation.
+
+    *   **Windows (PowerShell/Command Prompt):**
+        ```bash
+        # Create the virtual environment (e.g., named .venv)
+        python -m venv .venv
+        # Activate the virtual environment
+        .venv\Scripts\activate
+        ```
+        *Note: If `python` is not recognized, you might need to use `py -m venv .venv` or ensure Python is in your PATH.*
+
+    *   **macOS / Linux (bash/zsh):**
+        ```bash
+        # Create the virtual environment (e.g., named .venv)
+        python3 -m venv .venv
+        # Activate the virtual environment
+        source .venv/bin/activate
+        ```
+        *Note: Depending on your system, you might need to use `python` instead of `python3`.*
+
+    You should see the environment name (e.g., `(.venv)`) prefixed to your shell prompt once activated. To deactivate, simply type `deactivate`.
+
 3.  **Install Dependencies:**
+    Once your virtual environment is activated, install the required packages:
     ```bash
     pip install -r requirements.txt
     ```
