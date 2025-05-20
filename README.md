@@ -55,10 +55,10 @@ While the scripts can be orchestrated by their respective configuration files fo
     *   `--viz_config`: Path to the visualization config (contains `visualization_tasks`). Defaults to `visualization_config.json` in the project root.
     *   `--task_id`: (Optional) Specific visualization task ID to run.
 
-*   **Create Segmentation Summary Image (`src/create_summary_image.py`)**:
+*   **Create Segmentation Summary Image (`src/create_segmentation_summary.py`)**:
     Generates a comparative image of segmentations from different parameter sets, showing consistency. This script typically summarizes segmentations of the original (non-tiled, non-rescaled) images.
     ```bash
-    python -m src.create_summary_image --config path/to/processing_config.json --results_dir path/to/results_folder --output_filename summary.png
+    python -m src.create_segmentation_summary --config path/to/processing_config.json --results_dir path/to/results_folder --output_filename summary.png
     ```
     *   `--config`: Path to the processing configuration JSON (default: `processing_config.json` in project root). Used to identify active image configurations and Cellpose parameters.
     *   `--results_dir`: Base directory where segmentation results (experiment folders with masks) are stored (default: `results/` in project root). The script expects subfolders here named `<image_id>_<param_set_id>`.
@@ -109,7 +109,7 @@ This project offers a suite of tools that can be used as a cohesive pipeline or 
     *   Loads segmentation masks, background images, and mapped transcripts.
     *   Generates PNG images, typically saved to `data/results/visualizations/<task_output_subfolder_name>/`.
 
-8.  **`(Optional)` Summary Visualization (`src/create_summary_image.py`)**:
+8.  **`(Optional)` Summary Visualization (`src/create_segmentation_summary.py`)**:
     *   Analyzes segmentation results to generate consensus/consistency images, typically saved to `data/results/visualizations/` or `data/processed/segmentation/`.
 
 ## Features
@@ -195,7 +195,7 @@ project_root/
 │   ├── file_paths.py         # Defines default base paths (can be configured)
 │   ├── stitch_masks.py         # Stitches tiled segmentation masks
 │   ├── map_transcripts_to_cells.py # Maps transcripts to segmented cells
-│   ├── create_summary_image.py   # Creates summary visualizations of segmentations
+│   ├── create_segmentation_summary.py   # Creates summary visualizations of segmentations
 │   └── preprocess_ometiff.py   # Utility for pre-processing OME-TIFFs
 ├── tests/                    # Automated tests
 │   ├── unit/
@@ -236,7 +236,7 @@ These are the main control files, located in the project root.
     ```json
     {
       "visualization_tasks": {
-        "default_genes_to_visualize": ["GlobalGeneX", "GlobalGeneY"],
+        "default_genes_to_visualize": ["FullGeneID1", {"MyGeneAlias": "FullGeneID2"}, "FullGeneID3"],
         "tasks": [
           { /* Task 1 details */ },
           { /* Task 2 details */ }
@@ -423,10 +423,14 @@ These are the main control files, located in the project root.
     ]
     ```
 
-*   **`visualization_tasks` (in `visualization_config.json`, Object):**
-    Configures all gene expression visualization operations. This object contains a global default for genes to visualize and a list of specific visualization tasks.
-    *   `"default_genes_to_visualize"`: (List of Strings, Optional, e.g. `["GeneX", "GeneY"]`) If provided, this list of genes will be used for any task in the `tasks` list below that does not specify its own `genes_to_visualize`.
-    *   `"tasks"`: (List of Objects) Each object in this list defines a specific visualization task.
+*   **`visualization_tasks` (in `visualization_config.json`)**:
+    The main object containing all settings for gene expression visualization.
+    *   **`default_genes_to_visualize`**: (Optional) This field specifies genes to be visualized by default if a task does not define its own `genes_to_visualize` list. It supports multiple formats for flexibility:
+        *   **As a list of strings:** Each string is the full actual gene ID (e.g., `["medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0448621", "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0197771"]`). In this case, the actual gene ID will also be used as the display name.
+        *   **As a dictionary:** Keys are user-friendly display names (aliases) and values are the full actual gene IDs (e.g., `{"MtNIN": "medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0448621", "PantherGene": "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0197771"}`).
+        *   **As a mixed list:** A list containing both actual gene ID strings and single-entry dictionaries where the key is the alias and the value is the actual ID (e.g., `["medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0448621", {"MyCustomName": "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0197771"}]`).
+        The display name (alias or the actual ID if no alias is given) will be used in plot titles and logs, while the actual gene ID is always used for data lookup and filename generation.
+    *   **`tasks`**: An array of objects, each defining a specific visualization job.
         *   `"task_id"`: (String) A unique identifier for this visualization task (e.g., `"exp1_dapi_gene_set1_viz"`).
         *   `"is_active"`: (Boolean) Set to `true` to run this visualization task. If `false`, it will be skipped.
         *   `"source_image_id"`: (String) Refers to the `image_id` from an `image_configurations` entry. This specifies the original image context (e.g., for background, scale) and is used to derive the segmentation scale factor.
@@ -436,9 +440,13 @@ These are the main control files, located in the project root.
             *   **For tiled segmentations:** This field is **mandatory** and must specify the exact tile filename (e.g., `"tile_r0_c0.tif"`) whose mask is to be used. (Whether a segmentation is considered tiled is determined by the `apply_tiling` setting in the `segmentation_options` of the linked `image_configuration`).
             *   This name is crucial for locating the correct `_mask.tif` file.
         *   `"mapped_transcripts_csv_path"`: (String) Path to the CSV file containing mapped transcript data. This file should typically include columns for transcript coordinates (e.g., 'x', 'y' or 'global_x', 'global_y'), gene names (e.g., 'gene'), and the cell ID to which each transcript was assigned (e.g., 'cell_id'). An example path: `"data/processed/mapped/my_experiment/mapped_transcripts.csv"`.
-        *   `"genes_to_visualize"`: (List of Strings, Optional) A list of gene names (e.g., `["GeneA", "GeneB", "GeneC"]`) for which expression data will be plotted. These gene names must exist in the provided `mapped_transcripts_csv_path`. If not provided for a specific task, the `default_genes_to_visualize` (defined at the parent `visualization_tasks` level) will be used. If neither is defined, no genes will be plotted for that task.
+        *   **`genes_to_visualize`**: (Optional) Specifies genes for this particular task, overriding `default_genes_to_visualize`. The format is the same as for `default_genes_to_visualize`, allowing:
+            *   A list of actual gene ID strings.
+            *   A dictionary of `{"DisplayName": "ActualGeneID", ...}`.
+            *   A mixed list of strings and single-entry dictionaries `{"DisplayName": "ActualGeneID"}`.
+            If omitted, `default_genes_to_visualize` from the global `visualization_tasks` scope will be used.
         *   `"output_subfolder_name"`: (String) The name of the subfolder where the generated visualization images for this task will be saved. This folder will be created under the main visualization output directory (typically `data/results/visualizations/`). E.g., `"exp1_dapi_channel_genes"`.
-        *   `"visualization_params"`: (Object, Optional) Additional parameters to customize the visualization appearance.
+        *   `"visualization_params"`: (Object, Optional) Parameters to control the appearance of the visualization.
             *   `"background_image_path_override"`: (String or `null`, Optional) Full path to a specific image to use as the background for the visualization. If `null` or omitted, the script will attempt to use the `original_image_filename` from the linked `image_configurations`.
             *   `"mask_alpha"`: (Float, 0.0-1.0, Optional) Opacity of the cell segmentation mask outlines. Default: `0.3`.
             *   `"dot_size"`: (Integer, Optional) Size of the dots representing transcripts. Default: `5`.
