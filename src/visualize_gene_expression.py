@@ -346,20 +346,60 @@ if __name__ == "__main__":
 
         source_image_id = task.get("source_image_id")
         source_param_set_id = task.get("source_param_set_id")
-        source_processing_unit_name = task.get("source_processing_unit_name")
+        # source_processing_unit_name is now potentially derived
+        # source_segmentation_scale_factor is removed from task, derived by get_job_info_and_paths
         mapped_transcripts_csv_rel_path = task.get("mapped_transcripts_csv_path")
         genes_to_visualize = task.get("genes_to_visualize")
         output_subfolder_name = task.get("output_subfolder_name", task_id_str) # Default to task_id if not specified
+        source_segmentation_is_tile = task.get("source_segmentation_is_tile", False) # Default to False
+
+        # Derive source_processing_unit_name if not provided and not a tiled job
+        source_processing_unit_name = task.get("source_processing_unit_name")
+        image_config_for_task = image_configurations.get(source_image_id)
+
+        if not image_config_for_task:
+            logger.warning(f"Skipping task '{task_id_str}': Source image_id '{source_image_id}' not found in image_configurations.")
+            continue
+
+        if not source_processing_unit_name:
+            if source_segmentation_is_tile:
+                logger.warning(f"Skipping task '{task_id_str}': 'source_processing_unit_display_name' is mandatory for tiled segmentations (when source_segmentation_is_tile is true) but was not provided.")
+                continue
+            else:
+                # Derive for non-tiled
+                original_fname = image_config_for_task.get("original_image_filename")
+                if not original_fname:
+                    logger.warning(f"Skipping task '{task_id_str}': Cannot derive source_processing_unit_name because 'original_image_filename' is missing in image_config '{source_image_id}'.")
+                    continue
+                
+                rescaling_cfg = image_config_for_task.get("segmentation_options", {}).get("rescaling_config")
+                scale_factor = 1.0
+                if rescaling_cfg and "scale_factor" in rescaling_cfg:
+                    sf_from_config = rescaling_cfg["scale_factor"]
+                    if isinstance(sf_from_config, (int, float)) and 0 < sf_from_config <= 1.0:
+                        scale_factor = sf_from_config
+                
+                if scale_factor != 1.0:
+                    base, ext = os.path.splitext(os.path.basename(original_fname))
+                    scale_factor_str_file = str(scale_factor).replace('.', '_')
+                    source_processing_unit_name = f"{base}_scaled_{scale_factor_str_file}{ext}" # Match naming convention
+                    logger.info(f"  Derived source_processing_unit_name for non-tiled task '{task_id_str}': {source_processing_unit_name} (scale: {scale_factor})")
+                else:
+                    source_processing_unit_name = os.path.basename(original_fname)
+                    logger.info(f"  Derived source_processing_unit_name for non-tiled task '{task_id_str}': {source_processing_unit_name} (no rescaling)")
+        
+        # Ensure source_segmentation_is_tile is consistent if source_processing_unit_name was provided
+        # This is a bit tricky because a user might provide a tile name for source_processing_unit_name
+        # and set source_segmentation_is_tile to false. The derivation logic above handles the 'not provided' case.
+        # For now, we trust the user's source_segmentation_is_tile if source_processing_unit_name IS provided.
+        # If source_processing_unit_name was derived, source_segmentation_is_tile would have been False.
 
         if not all([source_image_id, source_param_set_id, source_processing_unit_name, mapped_transcripts_csv_rel_path, genes_to_visualize]):
-            logger.warning(f"Skipping task '{task_id_str}': Missing one or more required fields: source_image_id, source_param_set_id, source_processing_unit_name, mapped_transcripts_csv_path, genes_to_visualize."); continue
+            logger.warning(f"Skipping task '{task_id_str}': Missing one or more required fields after potential derivation: source_image_id, source_param_set_id, source_processing_unit_name, mapped_transcripts_csv_path, genes_to_visualize."); continue
 
-        image_config_for_mpp = image_configurations.get(source_image_id)
-        if not image_config_for_mpp:
-            logger.warning(f"Skipping task '{task_id_str}': Source image_id '{source_image_id}' not found in image_configurations."); continue
-        
-        mpp_x_original = image_config_for_mpp.get("mpp_x")
-        mpp_y_original = image_config_for_mpp.get("mpp_y")
+        # image_config_for_mpp is already fetched as image_config_for_task
+        mpp_x_original = image_config_for_task.get("mpp_x")
+        mpp_y_original = image_config_for_task.get("mpp_y")
         if mpp_x_original is None or mpp_y_original is None:
             logger.warning(f"Skipping task '{task_id_str}': mpp_x or mpp_y not found for image_id '{source_image_id}' in image_configurations."); continue
         
