@@ -351,19 +351,23 @@ if __name__ == "__main__":
         mapped_transcripts_csv_rel_path = task.get("mapped_transcripts_csv_path")
         genes_to_visualize = task.get("genes_to_visualize")
         output_subfolder_name = task.get("output_subfolder_name", task_id_str) # Default to task_id if not specified
-        source_segmentation_is_tile = task.get("source_segmentation_is_tile", False) # Default to False
+        # source_segmentation_is_tile is now derived from image_config_for_task
 
-        # Derive source_processing_unit_name if not provided and not a tiled job
         source_processing_unit_name = task.get("source_processing_unit_name")
         image_config_for_task = image_configurations.get(source_image_id)
 
         if not image_config_for_task:
             logger.warning(f"Skipping task '{task_id_str}': Source image_id '{source_image_id}' not found in image_configurations.")
             continue
+        
+        # Determine if the source image for this task was configured for tiling
+        segmentation_opts = image_config_for_task.get("segmentation_options", {})
+        tiling_params = segmentation_opts.get("tiling_parameters", {})
+        image_was_configured_for_tiling = tiling_params.get("apply_tiling", False)
 
         if not source_processing_unit_name:
-            if source_segmentation_is_tile:
-                logger.warning(f"Skipping task '{task_id_str}': 'source_processing_unit_display_name' is mandatory for tiled segmentations (when source_segmentation_is_tile is true) but was not provided.")
+            if image_was_configured_for_tiling:
+                logger.warning(f"Skipping task '{task_id_str}': 'source_processing_unit_display_name' is mandatory when the linked image_configuration (id: {source_image_id}) has apply_tiling=true, but was not provided.")
                 continue
             else:
                 # Derive for non-tiled
@@ -372,7 +376,7 @@ if __name__ == "__main__":
                     logger.warning(f"Skipping task '{task_id_str}': Cannot derive source_processing_unit_name because 'original_image_filename' is missing in image_config '{source_image_id}'.")
                     continue
                 
-                rescaling_cfg = image_config_for_task.get("segmentation_options", {}).get("rescaling_config")
+                rescaling_cfg = segmentation_opts.get("rescaling_config") # Already within segmentation_opts
                 scale_factor = 1.0
                 if rescaling_cfg and "scale_factor" in rescaling_cfg:
                     sf_from_config = rescaling_cfg["scale_factor"]
@@ -382,17 +386,16 @@ if __name__ == "__main__":
                 if scale_factor != 1.0:
                     base, ext = os.path.splitext(os.path.basename(original_fname))
                     scale_factor_str_file = str(scale_factor).replace('.', '_')
-                    source_processing_unit_name = f"{base}_scaled_{scale_factor_str_file}{ext}" # Match naming convention
+                    source_processing_unit_name = f"{base}_scaled_{scale_factor_str_file}{ext}" 
                     logger.info(f"  Derived source_processing_unit_name for non-tiled task '{task_id_str}': {source_processing_unit_name} (scale: {scale_factor})")
                 else:
                     source_processing_unit_name = os.path.basename(original_fname)
                     logger.info(f"  Derived source_processing_unit_name for non-tiled task '{task_id_str}': {source_processing_unit_name} (no rescaling)")
         
-        # Ensure source_segmentation_is_tile is consistent if source_processing_unit_name was provided
-        # This is a bit tricky because a user might provide a tile name for source_processing_unit_name
-        # and set source_segmentation_is_tile to false. The derivation logic above handles the 'not provided' case.
-        # For now, we trust the user's source_segmentation_is_tile if source_processing_unit_name IS provided.
-        # If source_processing_unit_name was derived, source_segmentation_is_tile would have been False.
+        # At this point, source_processing_unit_name is set (either from task or derived for non-tiled)
+        # image_was_configured_for_tiling tells us the context from image_configurations.
+        # The get_job_info_and_paths function will use image_config_for_task and source_processing_unit_name
+        # to further determine paths and the effective is_tiled_job status for mask finding.
 
         if not all([source_image_id, source_param_set_id, source_processing_unit_name, mapped_transcripts_csv_rel_path, genes_to_visualize]):
             logger.warning(f"Skipping task '{task_id_str}': Missing one or more required fields after potential derivation: source_image_id, source_param_set_id, source_processing_unit_name, mapped_transcripts_csv_path, genes_to_visualize."); continue
