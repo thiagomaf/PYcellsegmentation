@@ -113,7 +113,8 @@ def process_ome_tiff(ome_tiff_path, output_dir, series_index=0,
                                                     target_time=time_index)
 
             if plane_2d is not None:
-                filename_parts = [output_prefix]
+                original_filename_base = os.path.splitext(os.path.basename(ome_tiff_path))[0]
+                filename_parts = [original_filename_base]
                 if series_index is not None: filename_parts.append(f"s{series_index}")
                 if channel_index is not None: filename_parts.append(f"c{channel_index}")
                 if z_index is not None: filename_parts.append(f"z{z_index}")
