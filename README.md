@@ -14,6 +14,10 @@ The pipeline generally follows these steps:
 
 2.  **`(Optional)` Image Pre-processing (`src/preprocess_ometiff.py`)**:
     *   Extracts relevant 2D planes from complex OME-TIFFs (e.g., Xenium) as standard TIFF files. Output these to a working directory, ideally within `data/processed/` or a subfolder of `data/raw/images/` before referencing them in `parameter_sets.json`.
+    *   **Example Usage:**
+        ```bash
+        python src/preprocess_ometiff.py path/to/your/input.ome.tif path/to/output_directory --channel 0 --zplane 5 --prefix my_experiment
+        ```
 
 3.  **Main Configuration in `parameter_sets.json`**:
     *   **`image_configurations`**: Defines original images, their unique IDs, paths (pointing to files in `data/raw/images/` or pre-processed locations), activity status, microns-per-pixel (`mpp_x`, `mpp_y`), and `segmentation_options` (including `rescaling_config` and `tiling_parameters`).
