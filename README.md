@@ -170,6 +170,54 @@ This is the main control file, located in the project root. Update it to point t
         *   `"apply_segmentation"`: Boolean.
         *   `"rescaling_config"`: { `"scale_factor"`, `"interpolation"` }
         *   `"tiling_parameters"`: { `"apply_tiling"`, `"tile_size_xy_microns"`, `"overlap_microns"` }
+    **Example:**
+    ```json
+    "image_configurations": [
+      {
+        "image_id": "experiment1_image_dapi",
+        "original_image_filename": "data/raw/images/experiment1/image_channel_0.tif",
+        "is_active": true,
+        "mpp_x": 0.21,
+        "mpp_y": 0.21,
+        "segmentation_options": {
+          "apply_segmentation": true,
+          "rescaling_config": {
+            "scale_factor": 0.5,
+            "interpolation": "INTER_NEAREST"
+          },
+          "tiling_parameters": {
+            "apply_tiling": false
+          }
+        }
+      },
+      {
+        "image_id": "experiment1_image_cells",
+        "original_image_filename": "data/raw/images/experiment1/image_channel_1.tif",
+        "is_active": true,
+        "mpp_x": 0.21,
+        "mpp_y": 0.21,
+        "segmentation_options": {
+          "apply_segmentation": true,
+          "rescaling_config": null,
+          "tiling_parameters": {
+            "apply_tiling": true,
+            "tile_size_xy_microns": 500,
+            "overlap_microns": 50
+          }
+        }
+      },
+      {
+        "image_id": "experiment2_image_simple",
+        "original_image_filename": "data/raw/images/experiment2/another_image.ome.tif",
+        "is_active": false,
+        "mpp_x": 1.0,
+        "mpp_y": 1.0,
+        "segmentation_options": { 
+            "apply_segmentation": false 
+        }
+      }
+    ]
+    ```
 
 *   **`cellpose_parameter_configurations` (List of Objects):**
     Define sets of Cellpose parameters.
