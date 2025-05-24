@@ -14,7 +14,7 @@ import json
 
 # Internal imports from src
 from .file_paths import PROJECT_ROOT, RESULTS_DIR_BASE # Assuming RESULTS_DIR_BASE is where segmentation outputs are
-from .pipeline_utils import setup_logging, construct_full_experiment_id, get_mask_path_from_experiment_id
+from .pipeline_utils import setup_logging, construct_full_experiment_id, construct_mask_path # Changed import
 
 logger = logging.getLogger(__name__)
 
@@ -270,7 +270,7 @@ def map_transcripts_for_task(task_config, all_image_configurations):
             processing_unit_name_for_tile=derived_processing_unit_name if image_was_configured_for_tiling else None,
             is_tile=image_was_configured_for_tiling 
         )
-        actual_mask_path = get_mask_path_from_experiment_id(RESULTS_DIR_BASE, experiment_id_final, derived_processing_unit_name)
+        actual_mask_path = construct_mask_path(RESULTS_DIR_BASE, experiment_id_final, derived_processing_unit_name)
         logger.info(f"  Task '{task_id}': Derived mask path: {actual_mask_path}")
 
     if not actual_mask_path or not os.path.exists(actual_mask_path):

@@ -7,6 +7,7 @@ import traceback
 import logging
 from .file_paths import RESULTS_DIR_BASE
 import time
+import tifffile
 
 logger = logging.getLogger(__name__)
 
@@ -30,42 +31,43 @@ def segment_image_worker(job_params_dict):
     processing_unit_name = job_params_dict.get("processing_unit_name")
     experiment_id = job_params_dict.get("experiment_id_final")
     
+    segmentation_should_run = job_params_dict.get("segmentation_step_should_run", True) # Default to True if key is missing
+
     # Log the start of processing for this worker
     logger.info(f"Worker starting for Experiment ID: {experiment_id}, Image Unit: {processing_unit_name}")
     logger.info(f"  Image path: {image_path}")
+    logger.info(f"  Segmentation step should run: {segmentation_should_run}")
 
-    if job_params_dict.get("segmentation_skipped") is True:
-        # Use the specific keys from pipeline_config_parser for mask lookup
-        mask_folder_exp_id = job_params_dict.get("experiment_id_for_mask_folder")
-        mask_file_base = job_params_dict.get("mask_filename_base")
-        
-        # Get the scaled unit name for logging what this job *is* processing (intensity wise)
-        current_run_scaled_unit_name = job_params_dict.get("scaled_unit_name_for_current_run", processing_unit_name) # Fallback to old key for safety
-
-        if not mask_folder_exp_id or not mask_file_base:
-            logger.error(f"  Error: Segmentation skipped, but missing 'experiment_id_for_mask_folder' or 'mask_filename_base' in job params for {current_run_scaled_unit_name}.")
-            return {"status": "error", "experiment_id": experiment_id, "unit": current_run_scaled_unit_name, "error": "Missing params for pre-existing mask lookup"}
-
-        logger.info(f"  Segmentation skipped for current run unit '{current_run_scaled_unit_name}'. Attempting to use pre-existing mask.")
-        logger.info(f"    Looking for mask folder ID: '{mask_folder_exp_id}', Mask base name: '{mask_file_base}'")
-
-        output_dir_for_mask = os.path.join(RESULTS_DIR_BASE, mask_folder_exp_id)
-        mask_filename = f"{mask_file_base}_mask.tif"
-        expected_mask_path = os.path.join(output_dir_for_mask, mask_filename)
+    if not segmentation_should_run:
+        logger.info(f"  Segmentation step is SKIPPED for {processing_unit_name} (Exp ID: {experiment_id}) as per configuration.")
+        # Construct the expected mask path based on how an active segmentation would save it.
+        output_dir_for_experiment = os.path.join(RESULTS_DIR_BASE, experiment_id)
+        mask_filename_part = f"{os.path.splitext(processing_unit_name)[0]}_mask.tif" # Based on the (potentially scaled/tiled) processing unit name
+        expected_mask_path = os.path.join(output_dir_for_experiment, mask_filename_part)
 
         if os.path.exists(expected_mask_path):
-            logger.info(f"  Found pre-existing mask: {expected_mask_path}")
+            logger.info(f"  Found pre-existing mask at expected location: {expected_mask_path}")
+            # We can attempt to get num_cells if useful for downstream, otherwise just report success.
+            try:
+                mask_data = tifffile.imread(expected_mask_path)
+                num_cells_in_mask = len(np.unique(mask_data)) - 1 # -1 for background
+                logger.info(f"    Mask contains {num_cells_in_mask} cells.")
+            except Exception as e_read_mask:
+                logger.warning(f"    Could not read pre-existing mask {expected_mask_path} to count cells: {e_read_mask}")
+                num_cells_in_mask = -1 # Indicate unknown
+            
             return {
-                "status": "success", 
+                "status": "success_segmentation_skipped", 
                 "experiment_id": experiment_id, 
-                "unit": current_run_scaled_unit_name, 
+                "unit": processing_unit_name, 
                 "mask_path": expected_mask_path, 
-                "message": "Segmentation skipped; pre-existing mask found."
+                "num_cells": num_cells_in_mask,
+                "message": "Segmentation step skipped; pre-existing mask found at standard location."
             }
         else:
-            error_msg = f"Segmentation skipped, but pre-existing mask not found at: {expected_mask_path}"
+            error_msg = f"Segmentation step skipped, but pre-existing mask NOT FOUND at expected location: {expected_mask_path}"
             logger.error(error_msg)
-            return {"status": "error", "experiment_id": experiment_id, "unit": current_run_scaled_unit_name, "error": error_msg}
+            return {"status": "error_mask_not_found", "experiment_id": experiment_id, "unit": processing_unit_name, "error": error_msg}
 
     if not all([image_path, processing_unit_name, experiment_id]):
         error_msg = "Worker error: Missing critical parameters (image_path, processing_unit_name, or experiment_id)."
@@ -85,16 +87,21 @@ def segment_image_worker(job_params_dict):
             return {"status": "error", "experiment_id": experiment_id, "unit": processing_unit_name, "error": error_msg, "traceback": ""}
 
         model_choice = job_params_dict.get("MODEL_CHOICE", "cyto3")
-        diameter = job_params_dict.get("DIAMETER_FOR_CELLPOSE", 0) # 0 means cellpose estimates
+        # Get DIAMETER_FOR_CELLPOSE, which should have been calculated by the parser
+        diameter_for_eval = job_params_dict.get("DIAMETER_FOR_CELLPOSE") 
         use_gpu = job_params_dict.get("USE_GPU", False) # Default to False
 
         # Optional Cellpose parameters
-        flow_threshold = job_params_dict.get("FLOW_THRESHOLD") # Let Cellpose use its default if None
-        cellprob_threshold = job_params_dict.get("CELLPROB_THRESHOLD", 0.0) # Cellpose default is 0.0
-        min_size_from_config = job_params_dict.get("MIN_SIZE") # Get from config, could be None
+        flow_threshold = job_params_dict.get("FLOW_THRESHOLD") 
+        cellprob_threshold = job_params_dict.get("CELLPROB_THRESHOLD", 0.0) 
+        min_size_from_config = job_params_dict.get("MIN_SIZE") 
         force_grayscale = job_params_dict.get("FORCE_GRAYSCALE", True)
         
-        logger.info(f"  Model: {model_choice}, Diameter: {diameter}, GPU: {use_gpu}")
+        logger.info(f"  Model: {model_choice}, DIAMETER_FOR_CELLPOSE received by worker: {diameter_for_eval}, GPU: {use_gpu}")
+        # Log the original diameter from config as well, if available in job_params
+        original_diameter_from_config = job_params_dict.get("DIAMETER") # This is the unscaled one
+        if original_diameter_from_config is not None:
+            logger.info(f"    (Original DIAMETER from config was: {original_diameter_from_config})")
         logger.info(f"  Optional params - FlowThresh: {flow_threshold}, CellProbThresh: {cellprob_threshold}, MinSize (from config): {min_size_from_config}, ForceGrayscale: {force_grayscale}")
 
         model = models.CellposeModel(gpu=use_gpu, model_type=model_choice)
@@ -118,7 +125,7 @@ def segment_image_worker(job_params_dict):
         logger.info(f"  Running Cellpose segmentation for Experiment ID: {experiment_id} on {processing_unit_name}...")
         
         eval_params = {
-            "diameter": diameter,
+            "diameter": diameter_for_eval, # Use the (potentially scaled) diameter
             "channels": channels,
             "flow_threshold": flow_threshold,
             "cellprob_threshold": cellprob_threshold
@@ -162,7 +169,8 @@ def segment_image_worker(job_params_dict):
             "image_path_processed": image_path,
             "mask_output_path": mask_output_path,
             "cellpose_model": model_choice,
-            "input_diameter_arg": diameter, # If 0, Cellpose auto-estimated. Actual value not easily available from eval() in new versions.
+            "input_diameter_arg": job_params_dict.get("DIAMETER"), # Log the original diameter from config
+            "diameter_used_for_eval": diameter_for_eval, # Log the actual diameter passed to model.eval()
             "params_used": {
                 "flow_threshold": flow_threshold,
                 "cellprob_threshold": cellprob_threshold,

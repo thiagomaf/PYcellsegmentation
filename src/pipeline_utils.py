@@ -6,6 +6,8 @@ import tifffile
 import numpy as np
 import traceback
 import logging
+import logging.config
+import sys
 
 from .file_paths import RESCALED_IMAGE_CACHE_DIR, IMAGE_DIR_BASE, RESULTS_DIR_BASE, PROJECT_ROOT
 
@@ -425,6 +427,37 @@ def get_image_mpp_and_path_from_config(all_image_configs, target_image_id, targe
     logger.error(f"Image ID '{target_image_id}' not found in any image_configurations{processing_unit_context}.")
     return None, None, None, None
 
+def setup_logging(level=logging.INFO, config_path=None, log_to_file=False, log_file_path="pipeline.log"):
+    """
+    Sets up logging for the application.
+    Allows configuration from a file or basic setup.
+    """
+    if config_path and os.path.exists(config_path):
+        try:
+            logging.config.fileConfig(config_path, disable_existing_loggers=False)
+            logger.info(f"Logging configured from file: {config_path}")
+        except Exception as e:
+            # Fallback to basic config if file config fails
+            logging.basicConfig(level=level, 
+                                format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                                stream=sys.stdout)
+            logger.error(f"Failed to load logging config from {config_path}: {e}. Using basic stdout logging.")
+    else:
+        handlers = [logging.StreamHandler(sys.stdout)]
+        if log_to_file:
+            # Ensure the directory for the log file exists
+            log_dir = os.path.dirname(log_file_path)
+            if log_dir and not os.path.exists(log_dir):
+                os.makedirs(log_dir, exist_ok=True)
+            handlers.append(logging.FileHandler(log_file_path, mode='a')) # Append mode
+
+        logging.basicConfig(level=level,
+                            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                            handlers=handlers)
+        if config_path: # Log if specified config path was not found
+             logger.warning(f"Logging configuration file not found: {config_path}. Using basic logging.")
+        logger.info("Basic logging configured for stdout" + (f" and file: {log_file_path}" if log_to_file else "") + f". Level: {logging.getLevelName(level)}")
+
 __all__ = [
     "clean_filename_for_dir",
     "get_cv2_interpolation_method",
@@ -435,5 +468,6 @@ __all__ = [
     "construct_full_experiment_id",
     "construct_mask_path",
     "normalize_to_8bit_for_display",
-    "get_image_mpp_and_path_from_config"
+    "get_image_mpp_and_path_from_config",
+    "setup_logging"
 ]

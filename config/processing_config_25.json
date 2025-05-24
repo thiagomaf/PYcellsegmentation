@@ -1,0 +1,112 @@
+{
+  "global_segmentation_settings": {
+    "default_log_level": "INFO",
+    "max_processes": 1,
+    "FORCE_GRAYSCALE": true,
+    "USE_GPU_IF_AVAILABLE": false 
+  },
+  
+  "image_configurations": [
+    {
+      "image_id": "5A",
+      "original_image_filename": "data/raw/images/sample_5/5A_morphology_focus.ome.tif",
+      "is_active": true,
+      "mpp_x": 0.2125,
+      "mpp_y": 0.2125,
+      "segmentation_options": {
+        "apply_segmentation": false,
+        "rescaling_config": {
+          "scale_factor": 0.25,
+          "interpolation": "INTER_AREA"
+        },
+        "tiling_parameters": {
+          "apply_tiling": false
+        }
+      }
+    },
+    {
+      "image_id": "5B",
+      "original_image_filename": "data/raw/images/sample_5/5B_morphology_focus.ome.tif",
+      "is_active": true,
+      "mpp_x": 0.2125,
+      "mpp_y": 0.2125,
+      "segmentation_options": {
+        "apply_segmentation": false,
+        "rescaling_config": {
+          "scale_factor": 0.25,
+          "interpolation": "INTER_AREA"
+        },
+        "tiling_parameters": {
+          "apply_tiling": false
+        }
+      }
+    },
+    {
+      "image_id": "5C",
+      "original_image_filename": "data/raw/images/sample_5/5C_morphology_focus.ome.tif",
+      "is_active": true,
+      "mpp_x": 0.2125,
+      "mpp_y": 0.2125,
+      "segmentation_options": {
+        "apply_segmentation": false,
+        "rescaling_config": {
+          "scale_factor": 0.25,
+          "interpolation": "INTER_AREA"
+        },
+        "tiling_parameters": {
+          "apply_tiling": false
+        }
+      }
+    }
+  ],
+
+  "cellpose_parameter_configurations": [
+    {
+      "param_set_id": "Cellpose_DefaultDiam",
+      "is_active": true,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": null,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true
+      }
+    }
+  ],
+  
+  "mapping_tasks": [
+    {
+      "task_id": "map_5A_25",
+      "is_active": true,
+      "description": "Map transcripts for 5A - scale factor 0.25.",
+      "source_image_id": "5A",
+      "source_param_set_id": "Cellpose_DefaultDiam",
+      "source_segmentation_is_tile": false,
+      "input_transcripts_path": "data/raw/transcripts/sample_5/5A_morphology_focus.ome.transcripts.parquet",
+      "output_base_dir": "data/processed/mapped/sample_5/5A_25",
+      "mask_path_override": null
+    },
+    {
+      "task_id": "map_5B_25",
+      "is_active": true,
+      "description": "Map transcripts for 5B - scale factor 0.25.",
+      "source_image_id": "5B",
+      "source_param_set_id": "Cellpose_DefaultDiam",
+      "source_segmentation_is_tile": false,
+      "input_transcripts_path": "data/raw/transcripts/sample_5/5B_morphology_focus.ome.transcripts.parquet",
+      "output_base_dir": "data/processed/mapped/sample_5/5B_25",
+      "mask_path_override": null
+    },
+    {
+      "task_id": "map_5C_25",
+      "is_active": true,
+      "description": "Map transcripts for 5C - scale factor 0.25.",
+      "source_image_id": "5C",
+      "source_param_set_id": "Cellpose_DefaultDiam",
+      "source_segmentation_is_tile": false,
+      "input_transcripts_path": "data/raw/transcripts/sample_5/5C_morphology_focus.ome.transcripts.parquet",
+      "output_base_dir": "data/processed/mapped/sample_5/5C_25",
+      "mask_path_override": null
+    }
+  ]
+}

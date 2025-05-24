@@ -5,6 +5,7 @@ import numpy as np
 import cv2
 from cellpose import io as cellpose_io
 from cellpose import plot as cellpose_plot
+import tifffile
 
 import matplotlib
 matplotlib.use('Agg') # <--- ADD THIS to set a non-interactive backend BEFORE pyplot import
@@ -23,9 +24,12 @@ from .pipeline_utils import (
 )
 from .file_paths import (
     PROJECT_ROOT, # Import for resolving config path if needed when run as script
-    IMAGE_DIR_BASE,
+    RESULTS_DIR_RELATIVE_TO_PROJECT,
+    VISUALIZATION_CONFIG_FILENAME,
+    PROCESSING_CONFIG_FILENAME,
+    IMAGE_DIR_BASE, # Added for constructing potential image paths
+    RESCALED_IMAGE_CACHE_DIR, # <<< ADDED IMPORT
     TILED_IMAGE_OUTPUT_BASE,
-    RESCALED_IMAGE_CACHE_DIR,
     RESULTS_DIR_BASE
 ) # Import from new file_paths
 
@@ -365,10 +369,15 @@ def get_job_info_and_paths(param_sets_path, target_image_id, target_param_set_id
     
     # Determine the base name of the image unit (original or rescaled if scale < 1.0) before tiling
     # This helps identify if target_processing_unit_name is a tile or the main (potentially rescaled) image
-    base_name_after_potential_rescale = original_image_filename
+    original_image_basename = os.path.basename(original_image_filename)
+    base_name_after_potential_rescale = original_image_basename # Default to basename
+
     if applied_scale_factor != 1.0:
         scale_factor_str_file = str(applied_scale_factor).replace('.', '_')
-        base_name_after_potential_rescale = f"{os.path.splitext(original_image_filename)[0]}_scaled_{scale_factor_str_file}.tif"
+        # base_name_after_potential_rescale = f"{os.path.splitext(original_image_filename)[0]}_scaled_{scale_factor_str_file}.tif" # Incorrect: should be .tif, not hardcoded
+        # Corrected:
+        base, ext = os.path.splitext(original_image_basename)
+        base_name_after_potential_rescale = f"{base}_scaled_{scale_factor_str_file}{ext}"
         
         expected_rescaled_path = os.path.join(RESCALED_IMAGE_CACHE_DIR, target_image_id, base_name_after_potential_rescale) # Uses imported RESCALED_IMAGE_CACHE_DIR
         if os.path.exists(expected_rescaled_path):
@@ -430,6 +439,129 @@ def get_job_info_and_paths(param_sets_path, target_image_id, target_param_set_id
 
     return path_of_image_unit_for_segmentation, mask_path, applied_scale_factor, original_source_image_full_path, experiment_id_for_results_folder
 
+def _load_and_prepare_background_image(
+    path_to_load: str, 
+    is_multi_plane_tiff: bool, 
+    selected_plane_index: int = 0, 
+    apply_clahe: bool = False, 
+    clahe_clip_limit: float = 2.0, 
+    clahe_tile_grid_size: tuple = (8, 8),
+    target_processing_unit_name: str = None, # For logging and constructing save path
+    mask_data_shape: tuple = None, # (height, width) of the corresponding mask
+    original_image_path_if_fallback: str = None, # Full path to the original, unscaled image
+    rescaled_cache_dir: str = None, # Path to RESCALED_IMAGE_CACHE_DIR
+    source_image_id: str = None, # source_image_id for constructing cache save path
+    scale_factor_for_mpp: float = 1.0 # The scale factor applied to the image unit (e.g. 0.5 for 50%)
+    ):
+    """
+    Loads the background image, optionally selects a plane, normalizes, and applies CLAHE.
+    If mask_data_shape is provided and dimensions do not match path_to_load,
+    and path_to_load is the original_image_path_if_fallback, it attempts to rescale
+    the original image, save it to the cache, and use it.
+    """
+    img_raw = None # Initialize
+    try:
+        img_raw = tifffile.imread(path_to_load)
+    except Exception as e:
+        logger.error(f"Failed to load image with tifffile from {path_to_load}: {e}")
+        logger.error(traceback.format_exc())
+        return None, None # Return None for both if loading fails
+
+    if img_raw is None: # This check might be redundant if tifffile raises error, but good for safety
+        logger.error(f"Failed to load background image from: {path_to_load} (tifffile.imread returned None or failed prior)")
+        return None, None
+
+    logger.info(f"Successfully loaded background image {path_to_load} with tifffile. Shape: {img_raw.shape}, dtype: {img_raw.dtype}")
+
+    current_img_for_processing = img_raw
+
+    # --- On-the-fly Rescaling Logic ---
+    if mask_data_shape and rescaled_cache_dir and source_image_id and target_processing_unit_name and path_to_load == original_image_path_if_fallback and "_scaled_" in target_processing_unit_name:
+        original_h, original_w = current_img_for_processing.shape[:2]
+        mask_h, mask_w = mask_data_shape[:2]
+
+        dimensions_mismatch = (original_h != mask_h or original_w != mask_w)
+
+        if dimensions_mismatch:
+            logger.warning(f"Background image {path_to_load} (shape: {current_img_for_processing.shape[:2]}) "
+                           f"does not match mask shape ({mask_data_shape[:2]}). "
+                           f"Attempting to rescale original to match mask for unit '{target_processing_unit_name}'.")
+            
+            try:
+                resized_img = cv2.resize(current_img_for_processing, (mask_w, mask_h), interpolation=cv2.INTER_AREA)
+                logger.info(f"Successfully resized original image from {(original_h, original_w)} to {(mask_h, mask_w)}.")
+
+                cache_subdir = os.path.join(rescaled_cache_dir, source_image_id)
+                if not os.path.exists(cache_subdir):
+                    os.makedirs(cache_subdir, exist_ok=True)
+                save_path_for_rescaled = os.path.join(cache_subdir, target_processing_unit_name)
+                
+                try:
+                    tifffile.imwrite(save_path_for_rescaled, resized_img, imagej=True)
+                    logger.info(f"Saved newly rescaled background image to: {save_path_for_rescaled}")
+                    current_img_for_processing = resized_img
+                    path_to_load = save_path_for_rescaled # Update for logging consistency
+                except Exception as e:
+                    logger.error(f"Failed to save rescaled image to {save_path_for_rescaled}: {e}")
+                    logger.warning("Proceeding with originally loaded image despite failed rescale save.")            
+            except Exception as e:
+                logger.error(f"Error during on-the-fly rescaling of background image: {e}")
+                logger.warning("Proceeding with originally loaded image despite failed rescale.")
+    # --- End On-the-fly Rescaling Logic ---
+
+    # At this point, current_img_for_processing is either the original loaded image
+    # or the rescaled version if on-the-fly rescaling occurred and was successful.
+    # img_raw remains the initially loaded image, before any rescaling or plane selection.
+
+    final_image_for_display = current_img_for_processing # Start with this
+
+    # Handle multi-plane TIFFs (operating on final_image_for_display)
+    if final_image_for_display.ndim > 2 and is_multi_plane_tiff:
+        if selected_plane_index < final_image_for_display.shape[0]: # Assuming ZxHxW or CxHxW where first dim is planes
+            final_image_for_display = final_image_for_display[selected_plane_index, :, :]
+            logger.info(f"  Selected plane {selected_plane_index} from multi-plane image. New shape: {final_image_for_display.shape}")
+        else:
+            logger.error(f"  Error: selected_plane_index {selected_plane_index} is out of bounds for image with shape {final_image_for_display.shape}. Using first plane (0).")
+            final_image_for_display = final_image_for_display[0, :, :]
+            logger.info(f"  Selected plane 0 (fallback) from multi-plane image. New shape: {final_image_for_display.shape}")
+    elif final_image_for_display.ndim > 2 and not is_multi_plane_tiff:
+        # If it's still multi-dimensional but not marked as multi-plane TIFF (e.g. HxWxC)
+        # We assume it's in a format that normalize_to_8bit_for_display can handle or it's an error.
+        # For HxWxC, normalization should handle it. For other unexpected >2D, normalization might pick a plane or fail.
+        logger.info(f"  Image is {final_image_for_display.ndim}D but not flagged as multi-plane TIFF. Proceeding with normalization on shape {final_image_for_display.shape}.")
+
+
+    # Normalize to 8-bit for display (operates on final_image_for_display)
+    # Note: normalize_to_8bit_for_display can handle 2D or 3D (HWC, BGR/RGB)
+    final_image_for_display_8bit = normalize_to_8bit_for_display(final_image_for_display)
+    if final_image_for_display_8bit is None:
+        logger.error("  Failed to normalize image to 8-bit for display.")
+        return None, None 
+    
+    # Apply CLAHE if requested (operates on final_image_for_display_8bit, which should be 2D grayscale for CLAHE)
+    if apply_clahe:
+        if final_image_for_display_8bit.ndim == 2: # CLAHE typically on grayscale
+            clahe_filter = cv2.createCLAHE(clipLimit=clahe_clip_limit, tileGridSize=clahe_tile_grid_size)
+            final_image_for_display_8bit = clahe_filter.apply(final_image_for_display_8bit)
+            logger.info(f"  Applied CLAHE. Clip: {clahe_clip_limit}, Grid: {clahe_tile_grid_size}")
+        elif final_image_for_display_8bit.ndim == 3: # If it's color, apply to L channel of LAB
+            try:
+                img_lab = cv2.cvtColor(final_image_for_display_8bit, cv2.COLOR_RGB2LAB)
+                l_channel, a_channel, b_channel = cv2.split(img_lab)
+                clahe_filter = cv2.createCLAHE(clipLimit=clahe_clip_limit, tileGridSize=clahe_tile_grid_size)
+                cl_channel = clahe_filter.apply(l_channel)
+                merged_lab = cv2.merge((cl_channel, a_channel, b_channel))
+                final_image_for_display_8bit = cv2.cvtColor(merged_lab, cv2.COLOR_LAB2RGB)
+                logger.info(f"  Applied CLAHE to L-channel of RGB image. Clip: {clahe_clip_limit}, Grid: {clahe_tile_grid_size}")
+            except Exception as e_clahe_color:
+                logger.warning(f"  Could not apply CLAHE to color image: {e_clahe_color}. Proceeding without CLAHE.")
+        else:
+            logger.warning(f"  Cannot apply CLAHE: image is not 2D grayscale or 3D RGB after normalization (shape: {final_image_for_display_8bit.shape}). Skipping CLAHE.")
+
+    # The first return value is the fully processed image for display.
+    # The second return value (img_raw) is the *original* image loaded by tifffile,
+    # before any plane selection, rescaling, or normalization. This can be used for consistent MPP calculations if needed.
+    return final_image_for_display_8bit, img_raw
 
 if __name__ == "__main__":
     # Setup basic logging for direct script running
@@ -478,8 +610,14 @@ if __name__ == "__main__":
 
     visualization_tasks_object = viz_config_data.get("visualization_tasks", {})
     default_genes_global = visualization_tasks_object.get("default_genes_to_visualize", [])
+    default_genes_global_parsed = [] # Initialize as empty list
     if default_genes_global:
         logger.info(f"Found default_genes_to_visualize: {default_genes_global}")
+        default_genes_global_parsed = _parse_gene_visualization_list(default_genes_global)
+        if not default_genes_global_parsed and default_genes_global: # Log if parsing non-empty global spec led to empty list
+             logger.warning(f"  default_genes_to_visualize was provided but resulted in an empty parsed list: {default_genes_global}")
+    else:
+        logger.info("No default_genes_to_visualize found in visualization config.")
 
     individual_tasks_list = visualization_tasks_object.get("tasks", [])
     if not individual_tasks_list:
@@ -517,27 +655,35 @@ if __name__ == "__main__":
         task_id_str = task.get("task_id", f"unnamed_task_{task_idx+1}")
         logger.info(f"\n--- Processing Visualization Task: {task_id_str} ---")
 
-        genes_for_this_task = task.get("genes_to_visualize") 
-        if genes_for_this_task is None: 
-            genes_for_this_task = default_genes_global 
-            if genes_for_this_task: 
-                 logger.info(f"  Task '{task_id_str}': Using default_genes_to_visualize: {genes_for_this_task}")
-        else:
-            logger.info(f"  Task '{task_id_str}': Using task-specific genes_to_visualize: {genes_for_this_task}")
-
-        if not genes_for_this_task: 
-            logger.warning(f"  Task '{task_id_str}': No genes specified for visualization. Plotting may be skipped or empty.")
-            genes_for_this_task = [] 
+        # Define and parse genes first to get final_genes_to_process
+        genes_spec_for_task = task.get("genes_to_visualize") 
+        final_genes_to_process = [] # Initialize
+        if genes_spec_for_task is not None: 
+            logger.info(f"  Task '{task_id_str}': Using task-specific genes_to_visualize spec: {genes_spec_for_task}")
+            final_genes_to_process = _parse_gene_visualization_list(genes_spec_for_task)
+        elif default_genes_global_parsed: # Ensures we check the parsed list
+            logger.info(f"  Task '{task_id_str}': Using (parsed) default_genes_to_visualize: {default_genes_global_parsed}") # Logs the list of tuples
+            final_genes_to_process = default_genes_global_parsed
+        else: 
+            logger.info(f"  Task '{task_id_str}': No specific or default genes to visualize.")
+            # final_genes_to_process remains an empty list
         
-        genes_to_visualize = genes_for_this_task
-
+        # Logging block for raw specs (informational)
+        raw_spec_for_logging = task.get("genes_to_visualize") 
+        if raw_spec_for_logging is None: 
+            raw_spec_for_logging = default_genes_global 
+            if raw_spec_for_logging: 
+                 logger.info(f"  Task '{task_id_str}': Using default_genes_to_visualize (raw spec for logging): {raw_spec_for_logging}")
+        else:
+            logger.info(f"  Task '{task_id_str}': Using task-specific genes_to_visualize (raw spec for logging): {raw_spec_for_logging}")
+        
+        # Now get other task parameters
         source_image_id = task.get("source_image_id")
         source_param_set_id = task.get("source_param_set_id")
         mapped_transcripts_csv_rel_path = task.get("mapped_transcripts_csv_path")
         output_subfolder_name = task.get("output_subfolder_name", task_id_str) 
 
         source_processing_unit_name = task.get("source_processing_unit_name")
-        # image_config_for_task is now sourced from the loaded image_configurations dict from processing_config.json
         image_config_for_task = image_configurations.get(source_image_id)
 
         if not image_config_for_task:
@@ -574,8 +720,9 @@ if __name__ == "__main__":
                     source_processing_unit_name = os.path.basename(original_fname)
                     logger.info(f"  Derived source_processing_unit_name for non-tiled task '{task_id_str}': {source_processing_unit_name} (no rescaling)")
         
-        if not all([source_image_id, source_param_set_id, source_processing_unit_name, mapped_transcripts_csv_rel_path, genes_to_visualize]):
-            logger.warning(f"Skipping task '{task_id_str}': Missing one or more required fields OR no genes to visualize were resolved. Check: source_image_id, source_param_set_id, source_processing_unit_name, mapped_transcripts_csv_path, genes_to_visualize."); continue
+        # Now all components of the check should be defined.
+        if not all([source_image_id, source_param_set_id, source_processing_unit_name, mapped_transcripts_csv_rel_path, final_genes_to_process is not None]): # Check final_genes_to_process itself, not its truthiness for the all() check if empty list is okay
+            logger.warning(f"Skipping task '{task_id_str}': Missing one or more required fields OR no genes to visualize were resolved. Check: source_image_id, source_param_set_id, source_processing_unit_name, mapped_transcripts_csv_path, final_genes_to_process."); continue
 
         mpp_x_original = image_config_for_task.get("mpp_x")
         mpp_y_original = image_config_for_task.get("mpp_y")
@@ -598,7 +745,7 @@ if __name__ == "__main__":
                 logger.error(f"Error creating output dir {task_output_dir} for task '{task_id_str}': {e}"); continue
         
         # get_job_info_and_paths now needs the path to the processing config for its _get_image_config_from_params call
-        background_image_to_display_path, segmentation_mask_path, scale_factor_applied, _, experiment_folder_id = get_job_info_and_paths(
+        background_image_to_display_path, segmentation_mask_path, scale_factor_applied, original_source_image_full_path, experiment_folder_id = get_job_info_and_paths(
             proc_config_full_path, # Pass the processing config path here
             source_image_id, 
             source_param_set_id, 
@@ -635,6 +782,73 @@ if __name__ == "__main__":
             else: # background_image_to_display_path itself might be None if get_job_info_and_paths had issues earlier
                  logger.warning(f"  Warning: No valid background image path derived by get_job_info_and_paths.")
 
+        # Attempt 2: Use the original image specified in the image_config for the source image unit
+        if actual_background_image_to_load is None and original_source_image_full_path:
+            if os.path.exists(original_source_image_full_path):
+                actual_background_image_to_load = original_source_image_full_path
+                logger.info(f"  Task '{task_id_str}' - Using derived background image (from original_image_filename in image_config): {actual_background_image_to_load}")
+            else:
+                logger.warning(f"Original image '{original_source_image_full_path}' from image_config not found. Will try segmentation unit image next.")
+
+        # Attempt 3: Fallback to the (potentially rescaled) image unit that was used for segmentation/mask generation
+        if actual_background_image_to_load is None and path_of_image_unit_for_segmentation:
+            if os.path.exists(path_of_image_unit_for_segmentation):
+                actual_background_image_to_load = path_of_image_unit_for_segmentation
+                logger.info(f"  Task '{task_id_str}' - Using fallback background image (segmentation input unit): {actual_background_image_to_load}")
+            else:
+                logger.warning(f"Fallback segmentation unit image '{path_of_image_unit_for_segmentation}' not found.")
+
+        if not actual_background_image_to_load:
+            logger.error(f"  Task '{task_id_str}' - Critical: No suitable background image found. Cannot proceed with visualization.")
+            continue
+
+        logger.info(f"  Task '{task_id_str}' - Confirmed background image for overlay: {actual_background_image_to_load} (Derived scale factor for MPP: {scale_factor_applied})")
+        
+        # --- Load Segmentation Mask FIRST --- 
+        seg_mask = None
+        if not segmentation_mask_path or not os.path.exists(segmentation_mask_path):
+            logger.warning(f"Skipping task '{task_id_str}': Segmentation mask path invalid or file does not exist: {segmentation_mask_path}"); continue
+        try:
+            seg_mask = cellpose_io.imread(segmentation_mask_path)
+            logger.info(f"  Successfully loaded segmentation mask: {segmentation_mask_path} with shape {seg_mask.shape}")
+        except Exception as e_mask_load:
+            logger.error(f"Error loading segmentation mask {segmentation_mask_path}: {e_mask_load}")
+            logger.error(traceback.format_exc())
+            continue # Skip task if mask cannot be loaded
+        # --- End Mask Loading ---
+
+        # Load the chosen background image using the specialized function
+        display_background_raw = None 
+        raw_background_for_mpp_calc_not_used_here = None # Placeholder for the second return value we might not directly use here.
+
+        # --- Replace manual loading with call to _load_and_prepare_background_image ---
+        if actual_background_image_to_load and seg_mask is not None: # seg_mask needed for mask_data_shape
+            display_background_raw, raw_background_for_mpp_calc_not_used_here = _load_and_prepare_background_image(
+                path_to_load=actual_background_image_to_load,
+                is_multi_plane_tiff=image_config_for_task.get("segmentation_options", {}).get("is_multi_plane_tiff", False), # Get from image config
+                selected_plane_index=image_config_for_task.get("segmentation_options", {}).get("selected_plane_for_segmentation", 0), # Get from image config
+                apply_clahe=task_viz_params.get("apply_clahe_to_background", False), # from task_viz_params
+                clahe_clip_limit=task_viz_params.get("clahe_clip_limit", 2.0),
+                clahe_tile_grid_size=tuple(task_viz_params.get("clahe_tile_grid_size", [8,8])),
+                target_processing_unit_name=source_processing_unit_name, # This is the unit name for the current task
+                mask_data_shape=seg_mask.shape, 
+                original_image_path_if_fallback=original_source_image_full_path, # From get_job_info_and_paths
+                rescaled_cache_dir=RESCALED_IMAGE_CACHE_DIR,
+                source_image_id=source_image_id, # From task config
+                scale_factor_for_mpp=scale_factor_applied # From get_job_info_and_paths
+            )
+            if display_background_raw is not None:
+                 logger.info(f"  Background image prepared using _load_and_prepare_background_image. Shape: {display_background_raw.shape}, Dtype: {display_background_raw.dtype}")
+            else:
+                logger.error(f"  _load_and_prepare_background_image returned None for {actual_background_image_to_load}.")
+        elif not actual_background_image_to_load:
+            logger.error("  Cannot load background: actual_background_image_to_load is not defined.")
+        elif seg_mask is None: # Should be caught earlier, but as a safeguard
+            logger.error("  Cannot prepare background: seg_mask is None (needed for mask_data_shape).")
+        # --- End replacement ---
+        
+        if display_background_raw is None:
+            logger.warning(f"Skipping task '{task_id_str}': display_background_raw is None after _load_and_prepare_background_image call."); continue
 
         if not segmentation_mask_path or not experiment_folder_id: # These are critical from get_job_info_and_paths
             logger.warning(f"Skipping task '{task_id_str}': Could not determine mask_path or experiment_folder_id from configuration."); continue
@@ -661,12 +875,6 @@ if __name__ == "__main__":
              logger.warning(f"Warning for task '{task_id_str}': Effective MPP is zero, cannot plot dots. Check scale factor and original MPP."); plot_dots_flag = False
 
         mapped_df = load_mapped_transcripts(mapped_transcripts_full_path)
-        seg_mask = cellpose_io.imread(segmentation_mask_path)
-        display_background_raw = cv2.imread(actual_background_image_to_load, cv2.IMREAD_ANYCOLOR | cv2.IMREAD_ANYDEPTH) # Use the confirmed path
-
-        if mapped_df is None or seg_mask is None or display_background_raw is None:
-            logger.warning(f"Skipping task '{task_id_str}': Error loading one or more critical input files for visualization (MappedDF: {mapped_df is not None}, Mask: {seg_mask is not None}, BackgroundRaw: {display_background_raw is not None} from {actual_background_image_to_load})."); continue
-            
         display_background_8bit = normalize_to_8bit_for_display(display_background_raw)
         if display_background_8bit is None:
             logger.error(f"Skipping task '{task_id_str}': Failed to normalize background image to 8-bit (normalize_to_8bit_for_display returned None)."); continue
@@ -693,7 +901,7 @@ if __name__ == "__main__":
         y_offset = task.get("y_offset_microns", 0.0)
         colormap = task.get("colormap", "viridis")
 
-        for display_name, actual_id in genes_for_this_task: 
+        for display_name, actual_id in final_genes_to_process: 
             # Construct filename based on actual_id's short form
             short_actual_gene_name = actual_id.split('.')[-1]
             safe_short_actual_gene_name = clean_filename_for_dir(short_actual_gene_name)

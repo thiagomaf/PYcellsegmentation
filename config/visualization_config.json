@@ -1,0 +1,67 @@
+{  
+    "visualization_tasks": {
+      "default_genes_to_visualize": {
+        "MtNIN":      "medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0448621",
+        "MtLb1":      "medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0435611",
+        "MtLEC4":     "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0197771",
+        "MtUMAMIT14": "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0160171",
+        "MtENOD12":   "medtr.A17.gnm5.ann1_6.MtrunA17Chr3g0082981",
+        "MtENOD11":   "medtr.A17.gnm5.ann1_6.MtrunA17Chr3g0082991",
+        "MtPIN6":     "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0159341"
+      },
+      "tasks": [
+        {
+          "task_id": "5A_viz",
+          "is_active": true,
+          "source_image_id": "5A",
+          "source_param_set_id": "Cellpose_DefaultDiam",
+          "mapped_transcripts_csv_path": "data/processed/mapped/sample_5/5A/mapped_transcripts_mapped_transcripts.csv",
+          "output_subfolder_name": "5A",
+          "visualization_params": {
+            "log_scale_counts_for_colormap": true,
+            "colormap_min_percentile": 5.0,
+            "colormap_max_percentile": 95.0
+          }
+        },
+        {
+          "task_id": "5B_viz",
+          "is_active": true,
+          "source_image_id": "5B",
+          "source_param_set_id": "Cellpose_DefaultDiam",
+          "mapped_transcripts_csv_path": "data/processed/mapped/sample_5/5B/mapped_transcripts_mapped_transcripts.csv",
+          "output_subfolder_name": "5B",
+          "visualization_params": {
+            "log_scale_counts_for_colormap": true,
+            "colormap_min_percentile": 5.0,
+            "colormap_max_percentile": 95.0
+          }
+        },
+        {
+          "task_id": "5C_viz",
+          "is_active": true,
+          "source_image_id": "5C",
+          "source_param_set_id": "Cellpose_DefaultDiam",
+          "mapped_transcripts_csv_path": "data/processed/mapped/sample_5/5C/mapped_transcripts_mapped_transcripts.csv",
+          "output_subfolder_name": "5C",
+          "visualization_params": {
+            "log_scale_counts_for_colormap": true,
+            "colormap_min_percentile": 5.0,
+            "colormap_max_percentile": 95.0
+          }
+        },
+        {
+          "task_id": "test",
+          "is_active": false,
+          "source_image_id": "test_img",
+          "source_param_set_id": "Cellpose_DefaultDiam",
+          "mapped_transcripts_csv_path": "results/test_img_Cellpose_DefaultDiam_scaled_0_25/mapping_results/5B_morphology_focus.ome_s0_25_with_cell_ids.csv",
+          "output_subfolder_name": "test_viz",
+          "visualization_params": {
+            "log_scale_counts_for_colormap": true,
+            "colormap_min_percentile": 5.0,
+            "colormap_max_percentile": 95.0
+          }
+        }
+      ]
+    }
+  }

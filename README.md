@@ -398,14 +398,14 @@ These are the main control files, located in the project root.
     **Example:**
     ```json
     "mapping_tasks": [
-      {
+    {
         "task_id": "map_exp1_non_tiled_rescaled",
-        "is_active": true,
+      "is_active": true,
         "description": "Map transcripts for experiment1 using segmentation from pset1 on a rescaled image (unit name derived).",
         "source_image_id": "experiment1_image_dapi", // Assumes this image_config has rescaling defined
         "source_param_set_id": "cyto2_default_diam30",
         // "source_processing_unit_display_name" is omitted, will be derived e.g., to "image_channel_0_scaled_0_5.tif"
-        "input_transcripts_path": "data/raw/transcripts/experiment1/transcripts.parquet",
+      "input_transcripts_path": "data/raw/transcripts/experiment1/transcripts.parquet",
         "output_base_dir": "data/processed/mapped/exp1_dapi_map/",
         "output_prefix": "mapped_transcripts_dapi"
       },
