@@ -3,15 +3,21 @@ pip
 autopep8
 
 # App
-flask
+#flask
 cellpose
-opencv-python
-scikit-image
-matplotlib
+
 tifffile
 imagecodecs[all]
-pandas
+
+opencv-python
+scikit-image
+
 scipy
 pyarrow
+
+matplotlib
+
+pandas
+
 pytest
 pytest-mock
