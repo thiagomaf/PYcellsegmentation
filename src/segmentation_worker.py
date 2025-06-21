@@ -104,7 +104,26 @@ def segment_image_worker(job_params_dict):
             logger.info(f"    (Original DIAMETER from config was: {original_diameter_from_config})")
         logger.info(f"  Optional params - FlowThresh: {flow_threshold}, CellProbThresh: {cellprob_threshold}, MinSize (from config): {min_size_from_config}, ForceGrayscale: {force_grayscale}")
 
+        # Force model reloading to avoid caching issues between different model types
+        import torch
+        if hasattr(torch, 'cuda') and torch.cuda.is_available():
+            torch.cuda.empty_cache()  # Clear GPU cache if using GPU
+        
         model = models.CellposeModel(gpu=use_gpu, model_type=model_choice)
+        logger.info(f"  Created new CellposeModel instance for model_type: {model_choice}")
+        
+        # Verify model was loaded correctly
+        if hasattr(model, 'diam_mean'):
+            logger.info(f"  Model diam_mean: {model.diam_mean}")
+        if hasattr(model, 'net') and hasattr(model.net, 'state_dict'):
+            # Log a hash of the first few parameters to verify different models
+            state_dict = model.net.state_dict()
+            if state_dict:
+                first_key = next(iter(state_dict.keys()))
+                first_param = state_dict[first_key]
+                param_hash = hash(first_param.cpu().numpy().tobytes()) if hasattr(first_param, 'cpu') else hash(str(first_param))
+                logger.info(f"  Model parameter hash (first layer): {param_hash}")
+        logger.info(f"  Model type verification: {getattr(model, 'model_type', 'unknown')}")
         
         # Prepare channels: if grayscale and 3D, expand dims for Cellpose
         channels = [0,0] # Default for grayscale
