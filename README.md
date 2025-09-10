@@ -55,6 +55,16 @@ While the scripts can be orchestrated by their respective configuration files fo
     *   `--viz_config`: Path to the visualization config (contains `visualization_tasks`). Defaults to `visualization_config.json` in the project root.
     *   `--task_id`: (Optional) Specific visualization task ID to run.
 
+*   **Analyze Segmentation Results (Simple) (`src/simple_cellpose_analysis.py`)**:
+    Provides a lightweight, text-only analysis of segmentation results. It calculates basic metrics (cell count, area statistics) without requiring plotting libraries. It prints a summary table to the console and saves a detailed CSV file. This is useful for quick, dependency-free analysis.
+    ```bash
+    python src/simple_cellpose_analysis.py --config path/to/processing_config.json
+    ```
+    *   `--config`: Path to the processing configuration JSON file. This is the recommended way to specify which results to analyze.
+    *   `--results_dir`: Directory where segmentation results are stored (default: `results`).
+    *   `--filter_pattern`: (Optional) If not using `--config`, you can specify a text pattern (e.g., "comparison") to find result directories by name.
+    *   `--output_csv`: (Optional) Specify the full path for the output CSV file. If omitted, a name is generated automatically based on the config file name.
+
 *   **Create Segmentation Summary Image (`src/create_segmentation_summary.py`)**:
     Generates a comparative image of segmentations from different parameter sets, showing consistency. This script typically summarizes segmentations of the original (non-tiled, non-rescaled) images.
     ```bash
@@ -63,6 +73,20 @@ While the scripts can be orchestrated by their respective configuration files fo
     *   `--config`: Path to the processing configuration JSON (default: `processing_config.json` in project root). Used to identify active image configurations and Cellpose parameters.
     *   `--results_dir`: Base directory where segmentation results (experiment folders with masks) are stored (default: `results/` in project root). The script expects subfolders here named `<image_id>_<param_set_id>`.
     *   `--output_filename`: (Optional) Filename for the output summary PNG image (default: `segmentation_summary_consistency.png`). Saved in the directory specified by `--results_dir`.
+
+*   **Create Individual Segmentation Overlays (`src/create_individual_overlays.py`)**:
+    Generates high-quality, individual overlay images for each image-model combination. This is ideal for detailed inspection and creating figures. Each output image shows the background image with a semi-transparent segmentation mask overlaid, and includes a scale bar.
+    ```bash
+    python src/create_individual_overlays.py --config path/to/processing_config.json --force_8bit --brightness_factor 1.5 --color "#FFFF00"
+    ```
+    *   `--config`: **(Required)** Path to the processing configuration JSON file. The script processes every active image/model combination defined in this file.
+    *   `--results_dir`: Directory where segmentation results are stored (default: `results`).
+    *   `--output_dir`: Directory to save the final overlay images (default: `results/individual_overlays`).
+    *   `--alpha`: Controls the transparency of the cell masks (e.g., `0.3` for high transparency). Default: `0.4`.
+    *   `--force_8bit`: If included, uses a robust percentile-based 8-bit conversion to improve contrast of the background image. Recommended for 16-bit source images. Default: off.
+    *   `--brightness_factor`: Multiplier to adjust background image brightness (e.g., `1.5` for 50% brighter). Default: `1.0`.
+    *   `--color`: Sets the color of the segmentation masks. Use `"multi"` (default) for randomly colored individual cells, or a hex string (e.g., `"#FFFF00"`) for a uniform color.
+    *   `--zoom_factor`, `--zoom_x`, `--zoom_y`: Use all three to zoom in on a specific region. `--zoom_factor` (e.g., `2.0` for 2x), and `--zoom_x`/`--zoom_y` for the center coordinates (in pixels) of the zoom.
 
 ## Core Components & Workflow
 This project offers a suite of tools that can be used as a cohesive pipeline or as individual components. The typical automated workflow involves these general stages:

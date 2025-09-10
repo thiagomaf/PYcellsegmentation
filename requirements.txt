@@ -4,6 +4,7 @@ autopep8
 
 # App
 #flask
+#cellpose==3.0.10 # DO NOT REMOVE, this is the version that accepts choosing models
 cellpose
 
 tifffile

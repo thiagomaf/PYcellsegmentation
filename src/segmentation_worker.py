@@ -8,6 +8,7 @@ import logging
 from .file_paths import RESULTS_DIR_BASE
 import time
 import tifffile
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -105,7 +106,6 @@ def segment_image_worker(job_params_dict):
         logger.info(f"  Optional params - FlowThresh: {flow_threshold}, CellProbThresh: {cellprob_threshold}, MinSize (from config): {min_size_from_config}, ForceGrayscale: {force_grayscale}")
 
         # Force model reloading to avoid caching issues between different model types
-        import torch
         if hasattr(torch, 'cuda') and torch.cuda.is_available():
             torch.cuda.empty_cache()  # Clear GPU cache if using GPU
         
@@ -121,7 +121,8 @@ def segment_image_worker(job_params_dict):
             if state_dict:
                 first_key = next(iter(state_dict.keys()))
                 first_param = state_dict[first_key]
-                param_hash = hash(first_param.cpu().numpy().tobytes()) if hasattr(first_param, 'cpu') else hash(str(first_param))
+                # Cast to a more common dtype like float32 before converting to numpy to avoid BFloat16 error
+                param_hash = hash(first_param.cpu().to(torch.float32).numpy().tobytes()) if hasattr(first_param, 'cpu') else hash(str(first_param))
                 logger.info(f"  Model parameter hash (first layer): {param_hash}")
         logger.info(f"  Model type verification: {getattr(model, 'model_type', 'unknown')}")
         

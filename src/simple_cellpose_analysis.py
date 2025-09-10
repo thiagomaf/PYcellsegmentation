@@ -34,9 +34,10 @@ def load_config_and_get_param_sets(config_path):
     
     return param_set_ids, config_name
 
-def load_mask_basic_metrics(mask_path):
+def load_mask_basic_metrics(mask_path, mpp=None):
     """
     Load a segmentation mask and compute basic metrics without external dependencies.
+    Converts area to µm² if mpp is provided.
     """
     if not os.path.exists(mask_path):
         print(f"Warning: Mask file not found: {mask_path}")
@@ -66,6 +67,13 @@ def load_mask_basic_metrics(mask_path):
         area = np.sum(cell_mask)
         cell_areas.append(area)
     
+    # Convert areas to µm² if mpp is available
+    units = "pixels"
+    if mpp and mpp > 0 and cell_areas:
+        px_to_um2 = mpp * mpp
+        cell_areas = [area * px_to_um2 for area in cell_areas]
+        units = "µm²"
+
     metrics = {
         'num_cells': num_cells,
         'mean_cell_area': np.mean(cell_areas) if cell_areas else 0,
@@ -73,160 +81,182 @@ def load_mask_basic_metrics(mask_path):
         'std_cell_area': np.std(cell_areas) if cell_areas else 0,
         'min_cell_area': np.min(cell_areas) if cell_areas else 0,
         'max_cell_area': np.max(cell_areas) if cell_areas else 0,
-        'total_segmented_area': np.sum(mask > 0),
-        'mask_shape': mask.shape
+        'total_segmented_area': np.sum(cell_areas) if cell_areas else 0,
+        'mask_shape': mask.shape,
+        'units': units
     }
     
     return metrics
 
-def analyze_comparison_results(results_dir="results", filter_pattern="comparison", param_set_ids=None):
+def analyze_comparison_results(results_dir="results", config=None, filter_pattern="comparison"):
     """
     Analyze comparison results and print summary.
+    If a config is provided, it will be used to find results and convert units to µm².
     
     Args:
         results_dir (str): Directory containing segmentation results
-        filter_pattern (str): Pattern to filter result directories (used if param_set_ids is None)
-        param_set_ids (list): Specific parameter set IDs to look for in directory names
+        config (dict): Loaded processing config JSON.
+        filter_pattern (str): Pattern to filter result directories (used if config is None)
     """
-    if param_set_ids:
-        # Look for directories containing any of the parameter set IDs
-        comparison_dirs = []
-        for d in os.listdir(results_dir):
-            if any(param_id in d for param_id in param_set_ids):
-                comparison_dirs.append(d)
-    else:
-        # Use the filter pattern
-        comparison_dirs = [d for d in os.listdir(results_dir) if filter_pattern in d]
-    
     results_data = []
-    
-    for comp_dir in comparison_dirs:
-        dir_path = os.path.join(results_dir, comp_dir)
-        
-        # Extract model name and parameter info from directory name
-        if 'cyto2' in comp_dir:
-            model = 'cyto2'
-        elif 'cyto3' in comp_dir:
-            model = 'cyto3'
-        elif 'nuclei' in comp_dir:
-            # For nuclei comparisons, extract the specific parameter set
-            if 'nuclei_1' in comp_dir:
-                model = 'nuclei_diam_40'
-            elif 'nuclei_2' in comp_dir:
-                model = 'nuclei_diam_30'
-            elif 'nuclei_3' in comp_dir:
-                model = 'nuclei_diam_20'
-            else:
-                model = 'nuclei'
-        else:
-            # Try to extract model from parameter set ID in directory name
-            for model_type in ['cyto', 'nuclei', 'livecell']:
-                if model_type in comp_dir.lower():
-                    model = model_type
-                    break
-            else:
-                # If no recognizable model type, use a cleaned directory name
-                model = comp_dir.replace('5A_', '').replace('_scaled_0_5', '')
-                if not model:
+
+    if config:
+        # --- Config-driven approach (more robust and enables unit conversion) ---
+        image_configs = {img['image_id']: img for img in config.get('image_configurations', []) if img.get('is_active', True)}
+        param_configs = {param['param_set_id']: param for param in config.get('cellpose_parameter_configurations', []) if param.get('is_active', True)}
+
+        for image_id, image_config in image_configs.items():
+            for param_set_id, param_config in param_configs.items():
+                
+                # Determine scale factor to find correct directory and effective MPP
+                scale_factor = 1.0
+                rescaling_config = image_config.get('segmentation_options', {}).get('rescaling_config')
+                if rescaling_config:
+                    scale_factor = rescaling_config.get('scale_factor', 1.0)
+                
+                scale_str = f"_scaled_{str(scale_factor).replace('.', '_')}" if scale_factor != 1.0 else ""
+                experiment_id = f"{image_id}_{param_set_id}{scale_str}"
+                result_dir = os.path.join(results_dir, experiment_id)
+
+                if not os.path.exists(result_dir):
                     continue
+                
+                # Calculate effective MPP for unit conversion
+                original_mpp = image_config.get('mpp_x')
+                effective_mpp = original_mpp / scale_factor if original_mpp and scale_factor != 0 else None
+
+                # Find mask file
+                mask_files = [f for f in os.listdir(result_dir) if f.endswith('_mask.tif')]
+                if not mask_files:
+                    print(f"No mask file found in {result_dir}")
+                    continue
+                
+                mask_path = os.path.join(result_dir, mask_files[0])
+                
+                # Compute metrics (will be in µm² if effective_mpp is valid)
+                metrics = load_mask_basic_metrics(mask_path, mpp=effective_mpp)
+                if metrics is None:
+                    continue
+                
+                model_name = param_config['cellpose_parameters']['MODEL_CHOICE']
+                result_entry = {
+                    'model': model_name,
+                    'experiment_id': experiment_id,
+                    'mask_path': mask_path,
+                    **metrics
+                }
+                results_data.append(result_entry)
         
-        # Find mask file
-        mask_files = [f for f in os.listdir(dir_path) if f.endswith('_mask.tif')]
-        if not mask_files:
-            print(f"No mask file found in {dir_path}")
-            continue
+    else:
+        # --- Fallback: scan directory with filter pattern (pixel units only) ---
+        comparison_dirs = [d for d in os.listdir(results_dir) if filter_pattern in d]
         
-        mask_path = os.path.join(dir_path, mask_files[0])
-        
-        # Load summary JSON
-        summary_files = [f for f in os.listdir(dir_path) if f.endswith('_segmentation_summary.json')]
-        summary_data = {}
-        if summary_files:
-            summary_path = os.path.join(dir_path, summary_files[0])
-            with open(summary_path, 'r') as f:
-                summary_data = json.load(f)
-        
-        # Compute metrics
-        metrics = load_mask_basic_metrics(mask_path)
-        if metrics is None:
-            continue
-        
-        # Combine all data
-        result_entry = {
-            'model': model,
-            'experiment_id': comp_dir,
-            'mask_path': mask_path,
-            **metrics
-        }
-        
-        # Add summary data
-        if 'params_used' in summary_data:
-            result_entry['diameter_used'] = summary_data.get('diameter_used_for_eval', 'auto')
-            result_entry['min_size'] = summary_data['params_used'].get('min_size', 15)
-            result_entry['cellprob_threshold'] = summary_data['params_used'].get('cellprob_threshold', 0.0)
-        
-        results_data.append(result_entry)
-    
+        for comp_dir in comparison_dirs:
+            dir_path = os.path.join(results_dir, comp_dir)
+            
+            # Extract model name
+            model = comp_dir # Simplified model name extraction
+            for m in ['cyto2', 'cyto3', 'nuclei']:
+                if m in comp_dir:
+                    model = m
+                    break
+            
+            mask_files = [f for f in os.listdir(dir_path) if f.endswith('_mask.tif')]
+            if not mask_files:
+                continue
+            
+            mask_path = os.path.join(dir_path, mask_files[0])
+            metrics = load_mask_basic_metrics(mask_path, mpp=None) # No MPP available
+            if metrics is None:
+                continue
+            
+            summary_files = [f for f in os.listdir(dir_path) if f.endswith('_segmentation_summary.json')]
+            summary_data = {}
+            if summary_files:
+                with open(os.path.join(dir_path, summary_files[0]), 'r') as f:
+                    summary_data = json.load(f)
+
+            result_entry = { 'model': model, 'experiment_id': comp_dir, 'mask_path': mask_path, **metrics }
+            if 'params_used' in summary_data:
+                result_entry['diameter_used'] = summary_data.get('diameter_used_for_eval', 'auto')
+                result_entry['min_size'] = summary_data['params_used'].get('min_size', 15)
+            results_data.append(result_entry)
+
     return results_data
 
 def print_comparison_table(data):
     """
     Print a formatted comparison table.
     """
+    if not data:
+        return
+
     print("\n" + "="*80)
     print("CELLPOSE MODEL COMPARISON RESULTS")
     print("="*80)
     
+    # Determine units from the first data entry
+    units = data[0].get('units', 'pixels')
+    header_unit_str = f"({units})"
+    
     # Print header
-    print(f"{'Model':<10} {'Cells':<8} {'Mean Area':<12} {'Std Area':<12} {'Total Area':<12} {'Diameter':<10}")
-    print("-" * 80)
+    print(f"{'Model':<20} {'Cells':<8} {'Mean Area':<18} {'Std Area':<18} {'Total Area':<18} {'Diameter':<10}")
+    print(f"{'':<20} {'':<8} {header_unit_str:<18} {header_unit_str:<18} {header_unit_str:<18} {'(px)':<10}")
+    print("-" * 95)
     
     # Print data rows
     for row in data:
-        print(f"{row['model']:<10} "
+        print(f"{row['experiment_id']:<20} "
               f"{row['num_cells']:<8} "
-              f"{row['mean_cell_area']:<12.1f} "
-              f"{row['std_cell_area']:<12.1f} "
-              f"{row['total_segmented_area']:<12} "
+              f"{row['mean_cell_area']:<18.1f} "
+              f"{row['std_cell_area']:<18.1f} "
+              f"{row['total_segmented_area']:<18.1f} "
               f"{str(row.get('diameter_used', 'auto')):<10}")
     
-    print("\n" + "="*80)
+    print("\n" + "="*95)
     print("DETAILED ANALYSIS:")
-    print("="*80)
+    print("="*95)
     
     for row in data:
-        print(f"\n{row['model'].upper()} MODEL:")
+        units = row.get('units', 'pixels')
+        print(f"\n{row['experiment_id'].upper()}:")
         print(f"  - Cells detected: {row['num_cells']}")
-        print(f"  - Mean cell area: {row['mean_cell_area']:.1f} pixels")
-        print(f"  - Cell area range: {row['min_cell_area']:.0f} - {row['max_cell_area']:.0f} pixels")
-        print(f"  - Total segmented area: {row['total_segmented_area']} pixels")
+        print(f"  - Mean cell area: {row['mean_cell_area']:.1f} {units}")
+        print(f"  - Cell area range: {row['min_cell_area']:.1f} - {row['max_cell_area']:.1f} {units}")
+        print(f"  - Total segmented area: {row['total_segmented_area']:.1f} {units}")
         print(f"  - Image dimensions: {row['mask_shape']}")
-        print(f"  - Diameter used: {row.get('diameter_used', 'auto')}")
-        print(f"  - Min size threshold: {row.get('min_size', 'N/A')}")
+        print(f"  - Diameter used: {row.get('diameter_used', 'auto')} px")
+        print(f"  - Min size threshold: {row.get('min_size', 'N/A')} px")
 
 def save_results_csv(data, output_path="results/cellpose_comparison_results.csv"):
     """
     Save results to CSV file.
     """
+    if not data:
+        return
+
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    
+    units = data[0].get('units', 'pixels')
     
     with open(output_path, 'w') as f:
         # Write header
-        headers = ['Model', 'Cells_Detected', 'Mean_Cell_Area', 'Std_Cell_Area', 
-                  'Min_Cell_Area', 'Max_Cell_Area', 'Total_Segmented_Area', 
-                  'Diameter_Used', 'Min_Size_Threshold']
+        headers = ['Experiment_ID', 'Model', 'Cells_Detected', f'Mean_Cell_Area_({units})', f'Std_Cell_Area_({units})', 
+                  f'Min_Cell_Area_({units})', f'Max_Cell_Area_({units})', f'Total_Segmented_Area_({units})', 
+                  'Diameter_Used_(px)', 'Min_Size_Threshold_(px)']
         f.write(','.join(headers) + '\n')
         
         # Write data
         for row in data:
             values = [
+                row['experiment_id'],
                 row['model'],
                 str(row['num_cells']),
-                f"{row['mean_cell_area']:.1f}",
-                f"{row['std_cell_area']:.1f}",
-                str(row['min_cell_area']),
-                str(row['max_cell_area']),
-                str(row['total_segmented_area']),
+                f"{row['mean_cell_area']:.2f}",
+                f"{row['std_cell_area']:.2f}",
+                f"{row['min_cell_area']:.2f}",
+                f"{row['max_cell_area']:.2f}",
+                f"{row['total_segmented_area']:.2f}",
                 str(row.get('diameter_used', 'auto')),
                 str(row.get('min_size', 'N/A'))
             ]
@@ -239,7 +269,7 @@ def main():
     
     parser = argparse.ArgumentParser(description="Analyze Cellpose model comparison results")
     parser.add_argument("--config", default=None,
-                       help="Path to JSON config file to analyze results for (e.g., config/processing_config_comparison.json)")
+                       help="Path to JSON config file to analyze results for (e.g., config/processing_config_comparison.json). Enables unit conversion to µm².")
     parser.add_argument("--results_dir", default="results", 
                        help="Directory containing segmentation results (default: results)")
     parser.add_argument("--filter_pattern", default="comparison",
@@ -252,39 +282,35 @@ def main():
     print(f"Analyzing Cellpose model comparison results...")
     print(f"Results directory: {args.results_dir}")
     
+    config = None
+    output_path = args.output_csv
+
     # Determine what to analyze
     if args.config:
         # Load config file and get parameter set IDs
-        param_set_ids, config_name = load_config_and_get_param_sets(args.config)
-        if not param_set_ids:
-            print(f"No active parameter sets found in config: {args.config}")
-            return
-        
-        print(f"Config file: {args.config}")
-        print(f"Parameter sets to analyze: {param_set_ids}")
+        print(f"Loading config file: {args.config}")
+        with open(args.config, 'r') as f:
+            config = json.load(f)
         
         # Analyze results based on parameter set IDs
-        data = analyze_comparison_results(args.results_dir, param_set_ids=param_set_ids)
+        data = analyze_comparison_results(args.results_dir, config=config)
         
         # Generate output filename based on config
-        if args.output_csv:
-            output_path = args.output_csv
-        else:
+        if not output_path:
+            config_name = os.path.splitext(os.path.basename(args.config))[0]
             output_path = f"results/{config_name}_analysis_results.csv"
     else:
         # Use filter pattern approach
-        print(f"Filter pattern: {args.filter_pattern}")
-        data = analyze_comparison_results(args.results_dir, args.filter_pattern)
+        print(f"Filter pattern: {args.filter_pattern}. Units will be in pixels.")
+        data = analyze_comparison_results(args.results_dir, config=None, filter_pattern=args.filter_pattern)
         
-        if args.output_csv:
-            output_path = args.output_csv
-        else:
+        if not output_path:
             output_path = "results/cellpose_comparison_results.csv"
     
     if not data:
         print("No comparison results found!")
         if args.config:
-            print(f"Searched for directories containing parameter set IDs: {param_set_ids}")
+            print(f"Searched for result directories based on active configurations in {args.config}")
         else:
             print(f"Searched for directories containing '{args.filter_pattern}' in {args.results_dir}")
         return

@@ -1,0 +1,632 @@
+In Situ Hybridization Protocols (Molecular Methods in Biology, Springer Nature)
+Chapter Title
+Plant-Compatible Xenium In Situ: Optimised Protocol for Spatial Transcriptomics in Medicago truncatula Roots and Nodules
+
+Authors
+Min-Yao Jhu1,*, Jo Heffer2, Alex Deamer2, Thiago Alexandre Moraes1
+
+1Crop Science Centre, Department of Plant Sciences, University of Cambridge, Cambridge, United Kingdom
+2Cancer Research UK Cambridge Institute, Cambridge, United Kingdom
+
+*Corresponding author: Min-Yao Jhu
+email: myj23@cam.ac.uk
+
+Running Head 
+Plant-Compatible Xenium In Situ Protocol for Medicago
+
+Abstract
+Elucidating the spatial and temporal regulation of gene expression during plant organogenesis is crucial for enabling precise crop improvement strategies that incorporate beneficial traits into crops while avoiding adverse effects. Root nodules, specialised organs formed in symbiosis with nitrogen-fixing bacteria, provide a valuable system to study cell-type-specific gene networks in a symbiosis-induced developmental context. However, capturing these dynamics at cellular resolution in intact plant tissues remains technically challenging. Spatial transcriptomics technologies developed for animal systems are often not directly transferable to plant tissues due to fundamental differences in tissue composition between plants and animals, including rigid and heterogeneous plant cell walls, high cell wall autofluorescence, and large vacuoles in plant cells that complicate probe access and signal detection.
+To address these challenges, we present an optimised protocol for applying the Xenium in situ platform to formalin-fixed paraffin-embedded (FFPE) sections of plant tissues, including Medicago truncatula roots and nodules. Key technical adaptations include customised tissue preparation, optimised section thickness, hybridisation conditions, post-Xenium staining, imaging, and downstream image analysis, all tailored specifically for plant samples. To mitigate autofluorescence and enhance detection sensitivity, we employed a strategic approach to codeword selection during probe design. Furthermore, we developed a modular probe design approach combining a 380-gene standalone panel with a 100-gene add-on panel. This design allows flexibility for addressing diverse research questions and includes orthologous gene sequences from two Medicago ecotypes, ensuring compatibility for downstream functional validation using mutant lines available in both genetic backgrounds. We validated the protocol across nodules at multiple developmental stages using both the 50-gene panel targeting mature nodule cell identity and the extended 480-gene panel, which includes markers across different cell types and developmental stages, as well as genes of interest identified from prior single-cell and bulk RNA-seq analyses. This optimised workflow provides a reproducible and scalable method for high-resolution spatial transcriptomics in plant tissues, establishing a robust foundation for adaptation to other plant species and developmental systems.
+
+Key Words
+Medicago truncatula, Xenium in situ, Spatial transcriptomics, Nodule development, Plant organogenesis, Formalin-fixed paraffin-embedded (FFPE), Autofluorescence, Probe design
+1 Introduction
+Certain plants have developed extraordinary adaptive traits that allow them to thrive under conditions such as nutrient deficiency, notably through the ability to fix atmospheric nitrogen (N2) via symbiosis with bacteria in root nodules. These capabilities present a substantial opportunity to boost agricultural productivity (1). However, unravelling the genetic foundations conferring these adaptive advantages has been challenging through traditional genetics or bulk RNA sequencing methods. This difficulty arises because the emergence of such traits often involves altering the regulatory mechanisms of genes that are otherwise conserved, leading to novel spatial or temporal gene expression patterns—a phenomenon observed across both the plant and animal kingdoms. For example, genes that typically play a role in lateral root development have been repurposed in some plants to facilitate the formation of nitrogen-fixing nodules (2). 
+The potential agricultural benefits of these adaptive traits are immense, but identifying the precise genetic mechanisms that underlie their development poses a formidable challenge. These traits often result from evolutionary changes that modify the developmental fate of particular cell types. For instance, cells in the cortex, endodermis, and pericycle can be reprogrammed from their original role in lateral root formation to create nitrogen-fixing nodules. Pinpointing the transcriptional differences in cell lineage that lead to such divergent developmental outcomes is crucial in unravelling how distinct organ structures and functionalities emerge. Traditional approaches to studying cell lineage regulation in plant development have primarily focused on analysing individual genes, often employing targeted mutations. However, these methods, including bulk RNA sequencing, lack the resolution to observe changes in gene expression patterns at the cellular level. Creating a detailed atlas covering the organogenesis of Medicago nodules, which form a mutualistic symbiosis with nitrogen-fixing rhizobia, is essential for understanding the complex interplay of cell types within. Grasping the development and differentiation of various cell lineages into distinct cell types and functions is a pivotal initial step in deciphering the gene regulatory networks that drive the formation of this specialised organ.
+Single-cell RNA-sequencing (scRNA-seq) has revolutionised plant research by allowing scientists to group cells into populations with similar molecular characteristics, facilitating a deeper understanding of cell types and their conditions (3). As these technologies evolve, offering higher throughput and sensitivity, they enable cells to be categorised with unprecedented detail. However, scRNA-seq dissociates tissues and loses spatial relationships—information that is essential for understanding organogenesis, particularly when we encounter cell populations that fall outside our existing knowledge of plant cell histology and physiology. As discussed in previous studies (4), examining the molecular identity of these cell populations and their spatial arrangement within plant tissues is essential to fully comprehend their roles and interactions. One of the go-to methods for mapping the spatial distribution of cell population markers discovered through single-cell transcriptomics is using transgenic reporter lines, which express fluorescent proteins driven by the predicted promoters of target genes. Although effective for demonstrating individual gene promoter activity, this method struggles with complex tissues because cell identity often depends on the expression of multiple genes. Additionally, generating transgenic plants is time-consuming, and the artificial expression may not reflect true gene activity due to missing genomic context, like enhancer-promoter interactions. Similarly, while in situ hybridisation offers a partial solution by addressing some limitations, it lacks the ability to analyse many genes simultaneously due to its low multiplexing capabilities. Hence, comprehensive spatial gene expression analysis, crucial for understanding cell functions and interactions, requires examining a broad spectrum of genes at the single-cell level.
+The advent of spatial transcriptomics is set to overcome these obstacles by providing detailed insights into both the molecular composition and the physical locations of cells within complex tissues (5, 6). Spatial transcriptomics techniques, such as spatially barcoded arrays (7–9) and multiplexed fluorescence in situ hybridisation (FISH) (4, 10), enable the study of extensive gene sets along with their spatial contexts. This advancement is particularly significant in plant research, opening new possibilities for exploring the complex interplay of plant cells and tissues (4, 7–10). However, the task of investigating complex gene regulatory networks during plant organogenesis, within their native spatial contexts, remains challenging. Adapting spatial transcriptomics methods from animal to plant tissues is especially difficult due to the unique structure of plant cell walls and the presence of large vacuoles within plant cells.
+To overcome these difficulties, we present an optimised protocol for spatial transcriptomics in plants using the Xenium in situ platform (10x Genomics). Xenium is a highly sensitive, multiplexed, fluorescence-based in situ sequencing method capable of detecting hundreds of transcripts at subcellular resolution in formalin-fixed paraffin-embedded (FFPE) sections. While Xenium has been successfully applied in animal systems, this is the first detailed protocol tailored for use in plant tissues. Using Medicago truncatula root nodules—a complex, symbiosis-induced organ formed at the plant–bacteria interface—as a model, we introduce a suite of plant-specific optimisations, including modifications in probe design, tissue preparation, sectioning, hybridisation, imaging, and cell segmentation. 
+Plant cell walls exhibit strong autofluorescence, which varies in intensity and emission spectrum depending on species, tissue type, and cell wall composition. By analysing autofluorescence spectra and excluding channels most affected by it during codeword selection, we improved transcript detection accuracy. These optimisations increased the high-quality transcript detection rate from approximately 75% to 95%. Additionally, the heterogeneous texture of plant tissues, due to variable cell wall composition, the presence of large vacuoles, diverse cell shapes and sizes, and rigid structures such as xylem, complicates sectioning. We therefore optimised tissue processing and section thickness to minimise tissue detachment, tearing, and compression artefacts.
+Moreover, traditional cell segmentation methods used in animal tissues often rely on DAPI nuclear staining with radial expansion, which assumes round or elliptical cell geometry. This approach is not well-suited to plant cells, which often have irregular or polygonal shapes. We found that leveraging the inherent autofluorescence of plant cell walls, captured through fluorescence lifetime imaging microscopy (FLIM) and tau gating on a confocal microscope, provides a robust boundary signal for segmentation. This method significantly improved segmentation quality in plant tissues, enabling more accurate spatial mapping of transcript data to individual cells.
+We validated this protocol across multiple stages of nodule development using both a 50-gene panel enriched for mature nodule cell-type markers and a 480-gene panel composed of a 380-gene standalone panel with a 100-gene add-on module. These panels target a broad range of developmental regulators, cell identity markers, and candidate genes identified in prior bulk and single-cell transcriptomic studies. While demonstrated in nodules, the protocol is broadly applicable to other plant tissues and systems requiring high-resolution spatial gene expression analysis.
+By enabling high-resolution, multiplexed spatial transcriptomics in plant FFPE sections, our optimised Xenium protocol fills a critical methodological gap. It provides a scalable and reproducible workflow for studying plant development and gene regulation in situ, opening new opportunities for fundamental research and translational applications in crop improvement.
+
+2 Materials
+2.1 Probe Design
+2.1.1 Software and Resources
+*  10x Genomics Xenium Designer
+Web-based tool used for probe design and panel submission.
+* Reference Genome Information
+Transcriptome reference files for the target species, e.g., Medicago truncatula mRNA FASTA file.
+* Gene Expression Datasets
+Single-cell RNA-seq data (ideally from the same species, tissue type, and developmental stage). Files should be in .h5 format for compatibility with expression filtering and probe design.
+* Target Gene List
+A curated list of target genes including both transcript IDs (must match the reference genome annotation) and gene names.
+2.2 Tissue Fixation and Paraffin Block Preparation
+2.2.1 Reagents and Solutions 
+* 1× PBS Buffer: 10 mM phosphate, 137 mM NaCl, 2.7 mM KCl (pH 7.2–7.4)
+* Fixative (4% paraformaldehyde)
+* Glutaraldehyde (GA, 25%)
+* Ethanol (10%, 30%, 50%, 70%, 90%, 100%)
+* Histo-Clear II
+* Paraplast Xtra (melted, 58–60 °C)
+* MQ water (autoclaved and de-gassed)
+2.2.2 Equipment and Tools 
+* Glass vials
+* Vacuum desiccator
+* Embedding molds
+* Heating plate (60 °C)
+* Dissecting microscope
+* Ice or cooling plate
+2.3 Paraffin Sectioning and Section Slide Preparation 
+2.3.1 Reagents and Solutions
+* RNaseZap
+2.3.2 Equipment and Tools
+* Microtome with disposable blades 
+* Sectioning implements - forceps, brush, slide rack, ice tray
+* Sectioning trimming implements – razor blade, cutting mat, lamp
+* Waterbath (45°C) filled with Milli-Q water
+* Slides: Xenium slide (room temperature, remove from freezer 30 minutes before) and standard slides
+* Microscope
+* Oven (42°C)
+* Desiccator 
+2.4 Probe Hybridization and Processing Xenium Slides
+2.4.1 Reagents and Solutions
+* RNaseAWAY
+* Lint-free Laboratory Wipes
+* Nuclease-free Water
+* 10x PBS, pH 7.4
+* Tween-20, 10%
+* Urea, 8M
+* TE Buffer, pH 8.0
+* Ethanol, 100%
+* DMSO, 100%
+* KCL, 2M
+* Isopropanol, 100%
+* Xenium Thermocycler Adaptor V1
+* Xenium Slides & Sample Prep Reagents V1 (2 slides, 2 rxns) PN-1000460
+o Xenium Slide
+o Xenium Cassette V1
+o Xenium Cassette Lids
+o Xenium FFPE Tissue Enhancer
+o Perm Enzyme B
+o Probe Hybridisation Buffer
+o Post-Hybridisation Wash Buffer
+o Ligation Buffer
+o Ligation Enzyme A
+o Ligation Enzyme B
+o Amplification Mix
+o Amplification Enzyme
+o Autofluorescence Mix
+o Reducing Agent B
+o Nuclei Staining Buffer
+* Xenium Decoding Consumables (1 run, 2 slides) PN-1000487
+o Extraction Tip
+o Pipette Tips
+o Xenium Buffer Caps
+o Xenium Objective Wetting Consumable
+o #1 Deionised Water Bottle
+o #2 Xenium Sample Wash Buffer A Bottle
+o #3 Xenium Sample Wash Buffer B Bottle
+o #4 Probe Removal Buffer Bottle
+*  Xenium Decoding Reagents (1 run, 2 slides) PN-1000461
+o Xenium Decoding Reagent Module A
+o Xenium Decoding Reagent Module B
+* Xenium 380 gene Standalone Custom Probes 
+* Xenium 100 gene Add-on Custom Probes
+2.4.2 Equipment and Tools
+* Xenium analyser 
+* Xenium Compatible Thermocycler (Bio-Rad C1000 Touch™ Thermal Cycler with 96-Deep Well Reaction Module)
+* P1000 Pipette + Low Retention Tips
+* P200 Pipette + Low Retention Tips
+* P20 Pipette + Low Retention Tips
+* Pipette Boy
+* 50ml/ 10ml/ 5ml Stripettes
+* 500ml Glass Bottle
+* 500ml Measuring Cylinder
+* 50ml/ 15ml Falcon Tubes
+* 5ml/ 1.5ml Low-bind Eppendorf Tubes
+* Xenium Adhesive Seals
+* Scissors
+* Forceps
+2.5 Post-Xenium H&E Staining 
+2.5.1 Reagents and Solutions
+* Quencher removal solution
+* Milli-Q water
+* Harris haematoxylin
+* Tap water
+* 2% Acid alcohol (add 2M Hydrochloric Acid to 70% ethanol to create a 2% solution)
+* Eosin
+* Ethanol 50% + 0.1% Tween 20 
+* Ethanol 70% + 0.1% Tween 20
+* Ethanol 100%
+* Xylene
+* Distrene Plasticiser Xylene (DPX)
+2.5.2 Equipment and Tools
+* Weighing scale
+* Reagent pots
+* Slide rack
+* Automated stainer (Leica ST5020)
+* Automated coverslipper (Leica CV5030)
+Note: Any automated stainer and coverslipper can be used; if none are available, staining and coverslipping can be done manually.  
+2.6 Post-Xenium Confocal Imaging 
+* Leica Stellaris 8 FALCON FLIM Microscope
+2.7 Post-Xenium Image Segmentation and Transcript Realignment 
+1. Software:
+* Python environment and Cellpose: Version 2.0 or later is recommended. 
+* Python packages: A Python environment (e.g., Python 3.8+) with standard scientific libraries such as:
+* tifffile, imagecodecs: For reading and writing image files, including TIFF, OME-TIFF metadata, and other formats.
+* numpy, scipy, pyarrow: For numerical operations.
+* scikit-image, opencv-python: For image processing tasks (though Cellpose handles much internally).
+* matplotlib: For data visualization tasks.
+* pandas: For handling tabular data if manipulating image metadata or results.
+2. Hardware
+* CPU: Cellpose can run on standard CPUs but performs faster on GPUs.
+* GPU (Recommended): Use an NVIDIA GPU with CUDA support for efficient processing of large images or batches.
+* RAM: 8–32?GB+ recommended, depending on image size. 
+
+3 Methods
+3.1 Probe Design for Xenium Panel
+10x Genomics currently offers several pre-designed Xenium panels for human and mouse samples. These include options for Xenium v1 chemistry (247–380 gene targets) and Xenium 5k chemistry (up to 5,000 targets). For other organisms, such as plants, users can generate a standalone custom panel (up to 480 genes) or a combined panel comprising a pre-designed panel with an additional custom add-on (up to 100 genes).
+Since our material is from a plant species (Medicago), we designed a standalone custom panel containing 50 target genes for our initial two Xenium slide experiments. This panel was tailored to include key marker genes for specific cell types. Based on the initial results, we then developed an expanded custom panel consisting of 380 genes, along with a compatible 100-gene add-on panel, for a total of 480 genes. This tiered design enables us to retain a core set of cell–type–specific marker genes in the 380-gene panel, while also allowing flexibility for future experiments by adding new gene sets relevant to specific research questions through the 100-gene add-on panel.
+3.1.1 Target Gene Selection
+1. Define Experimental Objectives: Select genes of interest based on your biological question (e.g., genes involved in nodule development). Prepare a gene list with gene IDs that correspond to the reference genome version used for probe design.
+2. Use Transcriptomic Resources: Utilize single-cell RNA-seq data to identify cell-type marker genes. These markers can serve as internal quality controls to validate spatial transcriptomic results and allow cross-referencing with existing datasets.
+3. Exclude Extremely Highly Expressed Genes (EHEGs): As Xenium In Situ uses fluorescence-based imaging to detect transcripts, avoid over-representation of transcripts from EHEGs, which can cause optical crowding. Include EHEGs only if they are essential to your biological hypothesis.
+4. Expression Range Guidelines: Ideally, target genes should:
+* Have an average expression between 0.1–100 mean transcripts per cell.
+* Avoid expression levels above 100 transcripts per cell due to the risk of optical crowding. 
+* Based on our experience, genes with low expression (below 0.1 transcripts per cell) can still be detected by Xenium if they exhibit cell–type–specific expression patterns, as the platform has high sensitivity. However, if a gene is both lowly expressed and lacks cell type specificity, the detected signal may be difficult to interpret and less biologically meaningful.
+5. Prioritise Informative Targets: Give preference to genes with cell-type- or state-specific expression, as these offer more spatial resolution and biological interpretability.
+3.1.2 Codeword optimisation
+1. Assess Autofluorescence: Use a confocal or fluorescence microscope to image practice FFPE sections (before and after H&E staining). Check for strong cell wall autofluorescence specific to your species and tissue type.
+2. Adjust Fluorophore Channel Usage: If strong autofluorescence is present, identify its dominant wavelength range and avoid assigning frequently used codeword channels in that range. Request custom channel allocation in your design notes if needed.
+3. Consider Pilot Panel: If feasible, begin with a small pilot panel (e.g., 50 genes) to evaluate optical crowding, autofluorescence impact, and detection sensitivity. Use these insights to refine your design before scaling up to a full panel.
+4. Plan for Optical Crowding: As panel size increases, consider the combined effects of autofluorescence, tissue structure, and transcript abundance. Strategically distribute EHEGs and avoid clustering highly expressed targets within the same channel group.
+3.1.3 Panel Submission and Review
+1. Format Gene List: Use the 10x Genomics template for gene list submission. Ensure that gene IDs match the selected reference genome assembly.
+2. Submit Panel Design: Upload your formatted gene list to the Xenium Design Portal. Indicate any special requests regarding codeword/channel usage based on autofluorescence analysis.
+3. Review QC Report:
+* Check the number of probe pairs designed per gene (ideally ?8). Genes with fewer probes may have reduced detection efficiency.
+* Examine the QC flags for predicted optical crowding, especially for EHEGs. Consider removing flagged genes unless they are essential to your hypothesis.
+4. Finalise and Order Panel: Confirm your final gene list based on QC feedback. Panel manufacturing typically takes ~4 weeks after submission.
+3.2 Tissue Fixation and Paraffin Block Preparation
+3.2.1 Buffer Preparation
+Day 1: Preparing Fixative Solution
+1. To prepare 30 mL of fixative solution, add 80 ?L of 1 N NaOH to 24 mL of water in a glass beaker. This step helps adjust the pH for dissolving paraformaldehyde (PFA).
+2. Warm the solution slightly in a microwave. Heat for 10 seconds, repeating 4 times, and mix well after each round.
+3. Add 1.2 g PFA to the warm solution. Stir continuously until the PFA fully dissolves. The solution may appear cloudy initially, but it will clear upon complete dissolution.
+4. Cool the PFA solution on ice until it reaches 4°C.
+5. Add 300 ?L glutaraldehyde (GA) (25%) and stir gently. Make sure to cool down the PFA solution before adding GA.
+6. Finally, add 6 mL of 5× PBS to the mixture to achieve the desired buffer strength.
+7. Dispense the fixative into clean glass vials and keep them on ice to maintain freshness.
+3.2.2 Harvesting and Tissue Fixation
+Day 1: Fixing Plant Samples
+1. Harvest Medicago truncatula nodules at the desired developmental stage. (Fig. 1)
+2. Place plant tissues into the prepared fixative. Ensure the fixative volume is at least 10× the tissue volume for effective penetration.
+3. Apply a vacuum (~500 mm Hg or ~0.065 MPa) to the samples while keeping them on ice. Hold the vacuum for 20 minutes, release it slowly, and repeat this process 4 times. This step removes air pockets, allowing the fixative to penetrate the tissues fully.
+4. Incubate the samples at 4 °C overnight (at least 12–16 hours) to allow complete fixation.
+Notes: The vacuum time and strength might need to be adjusted depending on the samples that you are working with. Please observe the condition of your sample; a fully penetrated sample should sink to the bottom after the vacuum.
+3.2.3 Tissue Dehydration
+Day 2: Dehydration
+1. Remove the fixative from the tissues using a pipette.
+2. Pass the tissues through a graded ethanol series at room temperature (RT) to dehydrate them (Fig. 1):
+o 10% ethanol: 30 minutes
+o 30% ethanol: 30 minutes
+o 50% ethanol: 30 minutes
+o 70% ethanol: 30 minutes
+o 90% ethanol: 30 minutes
+o 100% ethanol: 1 hour × 3
+3. After the final ethanol step, transfer the samples to a fresh 100% ethanol solution and incubate at 4 °C overnight.
+Note: Ensure the paraplast is melted at 58–60 °C overnight in preparation for the infiltration steps.
+3.2.4 Paraffin Infiltration
+Day 3–6: Infiltration (Fig. 1)
+1. Remove ethanol from the samples and replace it with Histo-Clear in a stepwise manner:
+o Day 3:
+* 3:1 ethanol:Histo-Clear, 1 hour
+* 1:1 ethanol:Histo-Clear, 1 hour
+* 1:3 ethanol:Histo-Clear, 1 hour
+* 100% Histo-Clear, 1 hour × 3
+o Immerse tissues in a 1:3 mixture of paraplast:Histo-Clear and incubate overnight at 60 °C.
+2. Continue replacing the solution with increasing concentrations of paraplast:
+o Day 4: 1:2, 1:1, 3:1 paraplast:Histo-Clear (3 hours each), ending with 100% paraplast overnight at 60 °C.
+o Day 5–6: Replace with fresh 100% paraplast every 3 hours, incubating overnight at 60 °C.
+Note: Always ensure sufficient melted paraplast for each infiltration step.
+3.2.5 Paraffin Embedding
+Day 7: Embedding (Fig. 1)
+1. Pre-warm embedding moulds on a heating plate set to 60 °C.
+2. Gently stir the tissues in melted paraplast to ensure an even coating, then pour the mixture into the mould.
+3. Use a needle or forceps to orient the plant tissues for sectioning (Fig. 1).
+4. Allow the mould to cool on a bench or a cooling plate until the bottom solidifies, then transfer to the ice to speed up solidification.
+5. Once fully hardened, remove the paraffin block from the mould and store it at 4 °C in a sealed bag.
+Note: As the Medicago samples used were very small, 2 samples were embedded in each block to increase the opportunity to capture the correct region of interest. 
+3.3 Paraffin Sectioning and Section Slide Preparation 
+Day 8: Sectioning and section collection
+Note: all equipment should be cleaned with RNaseZap prior to sectioning and between each tissue sample.
+3.3.1 Tissue Block Trimming
+1. Pre-chill the block on the ice tray, then mount it onto the microtome.
+2. Use the microtome to trim the block to remove the outer layer of wax.
+3.3.2 Paraffin sectioning
+3. Once the tissue has appeared at the surface of the block, take a few sections at 8–10 ?m (note 1) (Fig. 2). 
+4. Using the forceps, lay these sections on the cutting mat, separate the first section from the others using the razor blade and float it onto the water bath (Fig. 2).
+5. Dip a standard slide into the water bath and collect the section onto it. View this section under the microscope to check that the correct region of interest is present.
+6. If the correct region is not present, discard the sections on the cutting mat and repeat the previous 3 steps, each time checking one section with the microscope (note 2).
+7. Once the region of interest has been identified, return to the sections on the cutting mat, separate one section using a razor blade, and if needed, trim the surrounding wax (note 3) (Fig. 2).
+3.3.3 Section Placement on Xenium Slides
+8. Float the section on the 45 °C Milli-Q water bath for 5 – 10 seconds (note 4), then dip the Xenium slide into the bath to collect the section, ensuring to leave space for other sections if needed (Fig. 2).
+9. Repeat the process for additional sections on the slide. When collecting further sections, do not dip previous sections below the waterline to keep their quality. 
+Note 1: The recommended section thickness given in the 10X protocol is 5?m; however, this should be optimised for tissue type, and 8- 10?m was proven to yield better results for plant tissue. 
+Note 2: The region of interest in the Medicago tissue was specific, aiming precisely for the centre of the nodule. It was also very small, necessitating this cautious approach. If working with a larger region of interest, the intermediate sections may not need checking. 
+Note 3: Wax should be trimmed to fit the entire section within the Xenium capture area. If multiple sections are to be collected on one Xenium slide, further wax may need to be trimmed so that there is space for the subsequent sections.
+Note 4: Optimal floating time for different tissue types should be tested and optimised prior to Xenium sectioning. 5 – 10 seconds was found to be optimal for Medicago tissue, as longer times resulted in splitting of the vasculature tissue. 
+3.3.4 Section drying and storage
+1. Air dry Xenium slides for 30 minutes at room temperature in a slide rack.
+2. Bake the slides for 3 hours at 42°C.
+3. Transfer the slides to a closed container and dry them overnight in a desiccator at room temperature to ensure complete drying.
+Note: slides can remain in the desiccator for up to 4 weeks before continuing.
+3.3.5 Deparaffinization
+1. Remove the slides from the desiccator, transfer to a slide rack, and bake in the oven for 2h at 60°C
+2. Allow slide to return to room temperature, approximately 10 minutes
+3. Pass the slides through a series of reagent baths to deparaffinise them:
+o Xylene: 10 minutes
+o Xylene: 10 minutes
+o 100% ethanol: 3 minutes
+o 100% ethanol: 3 minutes
+o 96% ethanol: 3 minutes
+o 96% ethanol: 3 minutes
+o 70% ethanol: 3 minutes
+o Nuclease-free water: 20 seconds
+3.4 Probe Hybridisation and Processing Xenium Slides
+3.4.1 Buffer and Solution Preparation
+Day 1:
+1. 1x PBS: 10x PBS pH 7.4, Nuclease-free Water. Prepare a 50 mL tube of fresh 1x PBS each day by combining 45 mL of nuclease-free water and 5 mL of 10x PBS. Maintain at room temperature. 
+2. PBS-T: 1x PBS, 10% Tween-20, Nuclease-free Water. Prepare 20 mL of fresh PBS-T each day by mixing 19.9 mL of 1x PBS and 100 µL of 10% Tween-20 for the Hybridisation workflow. Make up 1 L by adding 895 mL nuclease-free water, 100 mL 10x PBS and 5 mL 10% Tween-20 for the Xenium Loading Protocol. Maintain at room temperature. 
+3. Diluted Perm Enzyme B: 1x PBS, Perm Enzyme B. Make up 1ml by using 998µl of 1x PBS and 2µl of Perm Enzyme B. Maintain at room temperature.
+4. Decrosslinking Buffer: Xenium FFPE Tissue Enhancer, Urea 8M, Diluted Perm Enzyme B. For 2 slides + 10%, aliquot 1,017.5µl of FFPE Tissue Enhancer, then add 68.8µl of Urea 8M and top-off with 13.8µl of Diluted Perm Enzyme B. Maintain at room temperature in the dark.
+Day 2:
+5. Prepare fresh 1x PBS and PBS-T as above.
+6. 70% Ethanol: 100% Ethanol, Nuclease-free Water. Make up 2ml by adding 1540µl 100% Ethanol and topping off with 660µl nuclease-free water.
+7. 70% Isopropanol: 100% Isopropanol, Nuclease-free Water. Make up 5ml by adding 3500µl 100% Isopropanol and topping off with 1500µl nuclease-free water.
+8. Xenium Probe Removal Buffer: Nuclease-free Water, DMSO 100%, KCl 2M, 10% Tween-20. Prepare in a fume hood. Using a glass bottle, add 139.5 mL of nuclease-free water, then add 150 mL of DMSO. The reaction will become warm during this step. Add 7.5ml of KCl and finally, 3ml of 10% Tween-20, mix by gentle swirling or inversion (ensure lid is secure) before transferring to the #4 Xenium Probe Removal Buffer Bottle, buffer might become warm, maintain in a fume hood at room temperature for 30 minutes to let the buffer cool down.
+3.4.2 Custom Probe Panel Preparation
+1. Xenium Standalone Custom Probes, Xenium Add-on Custom Probes, TE Buffer pH 8.0. Centrifuge custom probe panel tubes to ensure lyophilised material is at the bottom of the tube, then resuspend according to Table 1.
+2. Ensure the cap is firmly on after resuspension, then vortex for 30 seconds and maintain at room temperature for 5 minutes.
+3. Centrifuge briefly, then aliquot into 2 reaction (70µl) volumes. If slightly off, then do not worry, as the reaction volume in the probe hybridisation step requires 66µl.
+4. Label the aliquots and store at -20°C. 
+5. For each custom or add-on panel, a .json file format with a unique code name is generated. This file is required for the 10X Xenium Instrument to correctly set up the run and generate the results.  Make sure the Xenium Custom Probe Panel(s) .json file is uploaded onto the Xenium Instrument and check it is correct prior to starting the run.
+Thermal Cycler Programs
+When placing the Xenium Cassettes on the Xenium Thermocycler Adaptor V1, ensure they sit securely. After closing the lid, adjust the lid until an audible click is heard. This ensures the slides remain in place on the adaptor and the lids are securely attached to the cassettes. It is advisable to set up these programs in your thermal cycler(s) prior to starting the workflow. Please see Tables 2 and 3 for the protocols, where the reaction volume is set at 100µl:
+3.4.3 Decrosslinking
+Before starting, clean all surfaces, micropipettes, and pipette controllers with RNase AWAY and ensure all glassware used is autoclaved. Ensure you are wearing the correct personal protective equipment (PPE), including a lab coat and gloves. All volumes listed in these methods are prepared for 2 Xenium Slides, but more can be prepared and stored according to sections 3.4.9 and 3.4.10.
+1. Decrosslinking is a crucial step when working with formalin-fixed embedded material, enabling accurate probe hybridisation by reversing the covalent bonds formed between DNA, RNA, and proteins during the fixation step. When slides are undergoing the deparaffinization process, prepare all buffers for Decrosslinking and Probe Hybridisation steps, 1x PBS, PBS-T, Decrosslinking Buffer and Xenium Cassettes.
+2. Remove the slides from the glass Coplin jars containing nuclease-free water and wipe the back of the slides with lint-free laboratory wipes to remove any remaining water drops. Place slides in the Xenium Cassettes with the top clicking into place, then gently aliquot 500µl 1x PBS into the corner of the sample area without touching or damaging the tissue section(s).
+3. Place the Xenium Thermocycler Adaptor V1 in the thermal cycler and start the decrosslinking protocol listed in Table 4 to equilibrate to the required temperature:
+4. Remove the 1x PBS from the slides and add 500 µL of Decrosslinking Buffer, avoiding bubbles. Gently tap the slides on the lab bench to ensure even coverage.
+5. Place a Xenium Cassette Lid on the Xenium Cassette, place the cassette on the thermal cycler at 22°C and skip the “Hold” step to begin the Decrosslinking.
+6. During this incubation, retrieve the Probe Hybridisation reagents and follow the preparation and handling steps for each:
+a. Probe Hybridisation Buffer: Thaw at room temperature for ~15 minutes, then check for precipitate and invert till clear. Maintain at room temperature.
+b. Xenium Standalone and Add-on Probe Resuspended Aliquots: Thaw and maintain at room temperature.
+c. Preheat a heat block to 95°C
+7. Once the Decrosslinking Protocol is finished, retrieve the Xenium Cassettes from the thermal cycler.
+8. Remove the Xenium Cassette Lids and remove all Decrosslinking Buffer from the sample area, then discard the old lids. Ensure there has been no tissue detachment at this step; if there has been, then stop and consult 10x Genomics Support. 
+9. Add 500µl of PBS-T to the well and incubate for 1 minute at room temperature, then remove all PBS-T.
+10. Repeat step 9 twice for a total of 3 washes.
+11. Add 500µl of PBS-T to the well.
+3.4.4 Probe Hybridisation
+Xenium employs the use of padlock probes, which are connected left and right-hand probes with a target-specific sequence in the middle (Fig. 3). This target-specific sequence allows cyclical fluorescent oligonucleotides to bind, be imaged and generate a sequential colour barcode which corresponds to the pre-established “codeword” of each target.
+1. Place an aliquot of each of the probe panels in the heat block at 95°C for 2 minutes, immediately after remove to ice for 1 minute, then maintain on ice.
+2. Prepare the Probe Hybridisation Mix as per Table 5 by adding in the order listed, pipette mix 15 times, and centrifuge briefly, then maintain at room temperature.
+3. Prepare a thermal cycler with the Probe Hybridisation Protocol listed in Table 6 and start the Pre-equilibrate step. 
+4. Remove all the PBS-T, aspirate remaining buffer using a P20 tilting the cassette to ensure all buffer is removed.
+5. Add 500µl of the Probe Hybridisation Mix to the sample area without introducing bubbles and gently tap the cassette on the bench to even the coverage.
+6. Apply a new Xenium Cassette Lid, then place it on the pre-equilibrated thermal cycler.
+7. Skip the Pre-equilibrate step to initiate the overnight Probe Hybridisation.
+Note: If planning to load the Xenium Slides onto the Xenium Analyser the next day, retrieve the Decoding Reagent Module B from the -20°C storage and place it at 4°C overnight.
+3.4.5 Post-Hybridisation Wash
+The post-hybridisation wash uses a gentle detergent incubation to remove any unbound probes to prevent background noise generation.
+1. Retrieve the Post-Hybridisation Wash Buffer and thaw at room temperature for 30 minutes. Then, vortex and centrifuge briefly. Maintain at room temperature.
+2. Prepare fresh 1x PBS and PBS-T; do not use any leftovers from the previous day.
+3. For the next wash steps, remove and add buffers quickly. When working with 2 slides, remove and add buffers to 1 slide at a time.
+4. Open the thermal cycler lid and check for slide cracks or leaked fluid. If there are any signs of leakage or glass cracks, contact 10x Genomics support immediately.
+5. Retrieve the Xenium Cassettes and remove and discard the Xenium Cassette Lids.
+6. Remove all Probe Hybridisation Mix from the corner of the sample area and immediately add 500 µL PBS-T. Incubate for 1 minute at room temperature.
+7. Remove all PBS-T and add 500µl PBS-T, incubate for 1 minute at room temperature, and while incubating, prepare a thermal cycler with the following incubation protocol and start the Pre-equilibrate step (Table 7).
+8. Remove all PBS-T and add 500µl to the sample area without introducing bubbles.
+9. Apply a new Xenium Cassette Lid on each cassette and on the pre-heated thermal cycler before closing the lid and skipping the Pre-equilibrate step.
+10. During this incubation, retrieve the Probe Ligation reagents and follow the preparation and handling steps for each:
+a. Probe Ligation Buffer: Thaw at room temperature for ~15 minutes, pipette mix and centrifuge briefly. Maintain at room temperature.
+b. Ligation Enzyme A: Pipette mix and centrifuge briefly. Maintain on ice. Ligation Enzyme B: Pipette mix and centrifuge briefly. Maintain on ice.
+3.4.6 Ligation
+Once the padlock probes are bound and the unbound probes are washed away, a ligase is added to link the left and right hands of the probe, creating a circular product used as a template for the subsequent amplification.
+1. Prepare the Ligation Mix by adding the reagents in the order listed in Table 8. Then, pipette the mix 10 times and centrifuge briefly. Maintain on ice.
+2. Remove Xenium Cassette(s) from thermal cycler and remove the Xenium Cassette Lids.
+3. Remove all Post-Hybridisation Wash Buffer and discard the Lids.
+4. Immediately add 500µl PBS-T and incubate for 1 minute at room temperature. Remove all PBS-T.
+5. Repeat step 4 once more.
+6. Add 500?l PBS-T. Incubate for 1 min at room temperature.
+7. During final incubation, prepare a thermal cycler with the Ligation protocol listed in Table 9 and start the Pre-equilibrate step.
+8. Remove all PBS-T, use a P20 to aspirate remaining PBS-T from the corners of the well.
+9. Add 500?l Ligation Mix to each well and apply a new Xenium Cassette Lid.
+10. Place cassette(s) on pre-heated thermal cycler, close the lid and skip the Pre-equilibrate step to initiate the protocol.
+Once you begin this incubation, retrieve the Amplification Mix and thaw it on ice. Once thawed, vortex then centrifuge and return to ice.
+3.4.7 Amplification
+The circular template undergoes rolling circular amplification to enhance the signal on the Xenium Analyser, ensuring that hundreds of copies of the barcode are resolved at the same spot.
+1. Retrieve the Amplification Enzyme immediately before use. Pipette the mix, then centrifuge briefly and maintain on ice.
+2. Prepare the Amplification Master Mix by adding the reagents in the order listed in Table 10. Then, pipette the mix 10 times and centrifuge briefly. Maintain on ice:
+3. Remove Xenium Cassette(s) from thermal cycler and remove the Xenium Cassette Lids.
+4. Remove all Ligation Mix and discard the Lids.
+5. Immediately add 500µl PBS-T and incubate for 1 minute at room temperature. Remove all PBS-T.
+6. Repeat step 5 once more.
+7. Add 500?l PBS-T. Incubate for 1 min at room temperature.
+8. During final incubation, prepare a thermal cycler with the Amplification protocol listed in Table 11 and start the Pre-equilibrate step:
+9. Remove all PBS-T, and use a P20 to remove any remaining PBS-T.
+10. Add 500µl Amplification Master Mix to the well and apply a new Xenium Cassette Lid.
+11. Place cassette(s) on pre-heated thermal cycler, close the lid and skip the Pre-equilibrate step to initiate the protocol. 
+12. With 20 minutes remaining on this incubation, retrieve the Autofluorescence Mix and begin thawing in a thermomixer set to 37°C and 300 revolutions per minute (rpm) for 15 minutes, then cool to room temperature for 5 minutes. Once thawed, vortex and then centrifuge, maintaining at room temperature.
+13. Retrieve Reducing Agent B and (if completing protocol up to section 3.4.10 on the same day) Nuclei Staining Buffer, thaw both at room temperature, then vortex and centrifuge briefly. Maintain at room temperature.
+3.4.8 Post Amplification Wash
+The additional wash removes the amplification master mix to prevent interaction with the subsequent quenching.
+1. Remove Xenium Cassette(s) from thermal cycler and remove the Xenium Cassette Lids.
+2. Remove all Amplification Mix and discard the Lids.
+3. Immediately add 500µl TE Buffer pH 8.0 and incubate for 1 minute at room temperature. Remove all TE Buffer.
+4. Repeat step 3 once.
+5. Add 500µl TE Buffer pH 8.0. Incubate for 1 min at room temperature.
+3.4.9 Autofluorescence Quenching
+Autofluorescence is the background signal generated by the tissue and workflow; this is quenched to augment the signal-to-noise ratio on the Xenium Analyser, ensuring high-quality data is generated.
+1. Prepare the solutions in Table 12.
+
+2. Remove all TE Buffer.
+3. Immediately add 1,000µl PBS-T and incubate for 1 minute at room temperature. Remove all PBS-T.
+4. Repeat step 3 twice for a total of 3 washes 
+5. Add 500µl Diluted Reducing Agent B and apply a new Xenium Cassette Lid, then incubate for 10 minutes at room temperature.
+6. Remove but keep the Xenium Cassette Lid and remove all Diluted Reducing Agent B.
+7. Add 1000µl 70% Ethanol and incubate for 1 minute at room temperature. Remove all 70% Ethanol.
+8. Add 1000µl 100% Ethanol and incubate for 1 minute at room temperature. Remove all 100% Ethanol.
+9. Repeat step 8 once more.
+10. Pipette mix the Autofluorescence Solution 5 times, then add 500 µL to each well and incubate for 10 minutes at room temperature in the dark.
+11. During the incubation, prepare a thermal cycler with the following Drying protocol (Table 13) and start the pre-equilibration.
+12. Remove and discard the Xenium Cassette Lids, then remove all Autofluorescence Solution.
+13. Add 1000µl 100% Ethanol and incubate for 2 minutes at room temperature. Remove all 100% Ethanol.
+14. Repeat step 13 twice more.
+15. Place the Xenium Cassette without a lid on the pre-equilibrated thermal cycler and skip the step to initiate the Drying protocol.
+16. Immediately remove the Xenium Cassette once the protocol has finished and add 1000µl 1X PBS, then incubate for 1 minute at room temperature in the dark.
+17. Remove all 1x PBS and add 1000µl PBS-T, then incubate for 2 minutes at room temperature in the dark.
+At this step, you can store slides at 4°C in the dark for 16-24 hours. Alternatively, continue immediately.
+3.4.10 Nuclei Staining
+A DAPI stain is used to stain the nuclei, which helps with both tissue/region of interest identification and cell segmentation.
+1. If stored, remove the Xenium Cassette Lid. Remove all PBS-T from the well, save the lid for use in the following indicated steps.
+2. Add 500?l Nuclei Staining Buffer and incubate 1 minute at room temperature in the dark.
+3. Remove Nuclei Staining Buffer.
+4. Add 1000µl PBS-T, then incubate for 1 minute at room temperature in the dark. Remove all PBS-T.
+5. Repeat step 4 twice more.
+6. Add 1000µl PBS-T.
+7. Proceed to 3.4.11 and 3.4.12 Reagent Preparation and Loading the Xenium or, at this point, slides can be stored for both <1 week at 4°C in the dark with a new Xenium Cassette Lid and replacement of PBS-T every 3 days, or at -20°C for up to 2 months after performing the following dehydration and cryoprotection steps:
+a. Prepare 10 mL 30% Glycerol in PBS
+b. Remove all PBS-T.
+c. Add 1000µl 70% Ethanol and incubate for 2 minutes at room temperature. Remove all 70% Ethanol.
+d. Repeat step c twice more.
+e. Remove slides from Xenium Cassette and place in a slide mailer containing 10ml 30% Glycerol in PBS.
+f. When ready to use, equilibrate the slide to room temperature for 30 minutes.
+g. Rinse mailer with 10 mL PBS-T three times.
+h. Remove slide from mailer and place in Xenium Cassette, add 1000µl PBS-T.
+3.4.11 Xenium V1 Workflow Reagent Preparation
+The Xenium Analyser requires several buffers to ensure in situ sequencing (ISS) is performed correctly, wherein fluorescent oligos are sequentially added, imaged and removed cyclically. These solutions are prepped alongside the decoding reagents and are loaded onto the machine.
+1. If Decoding Reagent Module B does not thaw at 4°C overnight, place it in a water bath at 37°C for 2.5 hours.
+2. If not, proceed immediately. If waiting to thaw, prepare successive buffers in the final 45 minutes.
+3. In the green Decoding Reagent Bottle 1, add 500 µl Nuclease-free Water.
+4. In a 1 L glass bottle, prepare 1x PBS-T using the following volumes (Table 14), then pour into the yellow Decoding Reagent Bottle 2.
+5. In the red Decoding Reagent Bottle 3, add 150µl Nuclease-free Water.
+6. In a fume hood, using a glass bottle, prepare the Xenium Probe Removal Buffer in the order listed in Table 15. Cap and invert the bottle 10 times to mix. It will become slightly warm, then pour into the blue Decoding Reagent Bottle 4 and maintain at room temperature for 30 minutes before proceeding:
+7. After the 30-minute incubation, replace all Decoding Reagent Bottle lids with the Xenium Buffer Caps.
+8. Start a Xenium run on the Xenium Analyser, which will initiate a ~5-minute self-check.
+9. Retrieve both the Decoding Reagent Modules A and B from 4°C storage, or Decoding Module B from the water bath if not thawed overnight. 
+10. Remove the mylar packaging and remove both lids and elastic bands, then mix by inverting 20 times.
+11. Centrifuge Decoding Reagent Module A at 2580 relative centrifugal force (rcf) for 10 minutes at room temperature, then place on ice.
+12. Centrifuge Decoding Reagent Module B at 300 rcf for 1 minute at room temperature, then maintain at room temperature.
+3.4.12 Loading the Xenium Analyser and Initiating a Run
+1. Retrieve the Decoding Consumables.
+2. Once the Xenium self-check has completed, fill in the necessary run and Cassette information:
+a. Run Name.
+b. Select V1 or Prime workflow.
+c. Select whether the cell segmentation kit was used.
+d. Which on-board analysis version do you wish to use (should be maintained within a project.)
+e. Add Xenium Cassette information, including Sample Name and Xenium Slide ID.
+f. The Pre-loaded or Custom Panel you wish to use.
+3. The Xenium Analyser door will unlock and provide instructions on loading the reagents, with more detailed instructions and a visual aid if selecting a specific consumable (Fig. 4).
+4. Place each of the Decoding Reagent Bottles (1-4) in the appropriate slots. It is imperative that the Decoding Reagent Bottles are placed in the correct positions and the Xenium Buffer Caps are engaged by lowering the stoppers and securing them to the Buffer Caps (Fig. 4).
+5. Slot the Decoding Modules A and B into their position, ensuring the orientation is correct and they sit flat.
+6. Unwrap and place the Pipette Tip Rack into its slot until you feel a click, ensuring the lid is removed.
+7. Place the Extraction Tip on the Liquid Handling Arm with a gentle twist, then place the Objective Wetting Consumable below it in the correct orientation.
+8. Ensure that there are no tips from previous runs in the Waste Tip Tray and that it is present and properly slotted.
+9. Spray the Xenium Cassette Stage with compressed air to clean.
+10. Use 70% isopropanol to clean the Cassette Stage.
+11. Use 70% isopropanol to clean the underside of the Xenium Slides you are loading, and wait a few seconds for it to dry, then confirm it is clean.
+12. Place the Xenium Slides in the correct location as dictated by your previous choice during the run set-up, such that the Slide IDs match and ensure they sit comfortably and are without cracks or leaks.
+13. Remove and store the Xenium Cassette Lids, then close the Xenium Cassette Stage Lid to lock the Slides in place.
+14. Use the screen to confirm all steps are complete, then shut the door.
+15. Press Continue, which will initiate a ~40-minute scan.
+16. After the scan has been completed, use the screen to select up to 8 areas of both Cassettes that contain regions of interest. You can assign names or IDs to these regions, and more can be added or analysed separately in the Xenium Explorer App (Fig. 5).
+17. There are a few available slider tools to change the intensity of the Nuclei and Autofluorescence stains to help identify regions or better define morphology (Fig. 5).
+18. Ensure no overlapping regions and all relevant tissue is captured, i.e. if tissue lies on the edge of a section, select all surrounding areas. 
+19. If present, significant debris will manifest as floating blurs; it is not recommended to continue and to contact 10x support.
+20. Once both Cassettes have regions selected, press continue.
+21. You will be asked to verify the run settings and Cassette details.
+22. Clicking “Start Run” will initiate the Xenium Run and provide a fairly accurate estimated time of completion.
+23. Once finished, select “Start Cleanup”, which will flush the fluidics. 
+24. After this is completed, the door will unlock, and the reagents and consumables can be disposed as per your institute guidelines.
+25. The Xenium Slides should be placed on a flat surface to remove the liquid over the slides and replaced with 1 ml of PBS-T and covered with the Cassette Lids you stored from step 13; you can then store them at 4°C for up to 1 week.
+26. The Xenium will have finished analysing the data and will generate files for each Region, not Cassette, which should be viewed to determine the quality of the run before starting downstream analysis.
+3.5 Post-Xenium Processing
+Tissue sections processed using the Xenium In Situ workflow remain largely intact post-run and are suitable for additional downstream applications. Common post-Xenium workflows include immunofluorescence (IF) staining and hematoxylin and eosin (H&E) staining to complement spatial transcriptomics with protein localisation or histological context. In this protocol, we used H&E staining for histological analysis and confocal microscopy to capture intrinsic cell wall autofluorescence, which aids in cell segmentation.
+3.5.1 Post-Xenium H&E Staining 
+Quencher removal
+1. Prepare the quencher removal solution:
+1. Weigh 17.4 mg of Sodium Hydrosulfite and add to 10 mL of Milli-Q water
+2. Close the container and vortex for 10 seconds
+2. Remove the slide from the Xenium cassette and pass through a series of reagent baths:
+1. Quencher removal solution: 10 minutes
+2. Milli-Q water: 1 minute
+3. Milli-Q water: 1 minute
+4. Milli-Q water: 1 minute
+H&E staining
+1. Load the slide onto the automated stainer, which will pass the slide through a series of pre-programmed reagent baths:
+1. Harris haematoxylin: 2 minutes
+2. Running tap water: 5 minutes
+3. 2% Acid alcohol: 20 seconds
+4. Running tap water: 5 minutes
+5. Eosin: 7 minutes
+6. Running tap water: 15 seconds
+7. Ethanol 50% + 0.1% Tween 20: 20 seconds
+8. Ethanol 70% + 0.1% Tween 20: 20 seconds
+9. Ethanol 100%: 30 seconds
+10. Ethanol 100%: 1 minute
+11. Xylene: 5 minutes
+12. Xylene: 5 minutes
+2. Load the slide onto the automated coverslipper, which will dispense DPX mountant onto the slide and place a coverslip on top. 
+Note: If the lab already has a working H&E protocol, it can be used in place of this method; however, it should be tested on the tissue prior to use on the Xenium slide.
+3.5.2 Post-Xenium Confocal Imaging 
+The default Xenium cell segmentation method, designed for animal tissues, typically uses DAPI-stained nuclei with radial expansion—an approach that assumes spherical or elliptical cell geometries. However, plant cells exhibit a wide range of irregular, polygonal shapes and sizes, making this strategy suboptimal for plant tissues.
+To improve segmentation, we recommend leveraging the intrinsic autofluorescence of plant cell walls, which can be captured using fluorescence lifetime imaging microscopy (FLIM) and tau gating on a confocal microscope. This provides a strong boundary signal, significantly enhancing segmentation accuracy. For plant species or tissue types with weak cell wall autofluorescence, cell wall-specific stains (e.g., Calcofluor White, Propidium Iodide, etc.) can be used to enhance boundary visibility in the images. This method allows more precise spatial mapping of transcripts to individual plant cells.
+3.5.2.1 Confocal Lambda-Lambda Scanning
+Lambda scans acquire spectral emission data across a broad range of wavelengths, generating detailed fluorescence profiles. Certain confocal microscopes (e.g., Leica SP8) are equipped with white light lasers (WLL) for flexible excitation and prism-based detectors for tunable emission collection. These features are ideal for characterizing the specific autofluorescence profile of your plant tissue and identifying optimal excitation/emission settings for imaging.
+For detailed instructions, refer to your microscope manufacturer's user manual for the lambda-lambda scan module.
+3.5.2.2 Confocal FLIM Imaging
+Once the optimal excitation and emission settings are identified, proceed with FLIM. This technique measures the fluorescence lifetime—the average time a fluorophore remains in an excited state before emitting a photon. FLIM generates images based on these lifetimes, with different colours representing different decay profiles.
+Use fluorescence decay curve fitting to extract lifetime parameters for your tissue. 
+Refer to your microscope's user manual for FLIM-specific acquisition and analysis procedures.
+3.5.2.3 Tau Gating and Tau Separation
+While FLIM is highly informative, full-slide FLIM scanning can be time-consuming. Once fluorescence lifetime parameters are established, apply Tau Gating and Tau Separation using those parameters to efficiently filter unwanted autofluorescence and capture full-section images with enhanced cell wall boundary signals.
+Please consult your microscope manufacturer’s documentation for guidance on using Tau Gating/Tau Separation or equivalent functions.
+3.5.3 Plant Cell Image Segmentation 
+Accurate segmentation of plant cells is essential for assigning transcripts to specific spatial compartments. While nuclei segmentation is readily handled by the default Xenium pipeline using the DAPI channel, plant tissues often require cell wall-based segmentation to better define true cell boundaries.
+This section describes a workflow using Cellpose, a deep-learning-based image segmentation tool, to segment plant cells from fluorescence images, both from the DAPI channel typically provided in Xenium morphology.ome.tif files and the cell wall autofluorescence images acquired by confocal microscope imaging. 
+3.5.3.1 Image Segmentation Overview and Rationale
+* Nuclear segmentation using the DAPI channel can be used when transcript assignment to nuclei is sufficient. The default Xenium segmentation is typically adequate.
+* Cell wall segmentation, however, is preferred when precise cell boundary delineation is needed. This is especially relevant for spatial context analyses and is more challenging in plant tissues due to autofluorescence and irregular cell shapes.
+Detailed code scripts and tutorials on installing and analysing are available on the GitHub repository: https://github.com/thiagomaf/PYcellsegmentation.
+3.5.3.2 Nuclei Segmentation (Default Approach)
+Xenium’s DAPI channel is typically sufficient for nuclei segmentation, which is suitable when per-nuclear transcript assignment is adequate.
+* Input: Xenium morphology.ome.tif file with DAPI channel.
+* Tool: Cellpose with the nuclei model, using grayscale input.
+* Recommended settings:
+o Estimate nuclear diameter in microns and convert to pixels using image metadata (µm/pixel).
+o Use moderate resolution levels (e.g., Level 2) for faster processing.
+This approach is robust and efficient, particularly for tissues where nuclei are evenly distributed and well-separated. However, it may not accurately reflect complex cell shapes in plant tissues.
+3.5.3.3 Cell Wall Segmentation (Recommended for Plants)
+Segmentation based on cell wall staining provides more anatomically accurate boundaries, especially in tissues with large, irregularly shaped or densely packed cells.
+* Input: Xenium morphology.ome.tif file with a fluorescent cell wall channel.
+* Tool: Cellpose with the cyto2 or cyto3 model, using grayscale input.
+* Workflow:
+1. Extract channel and resolution: Use preprocessing scripts to extract the appropriate image pyramid level and isolate the cell wall stain channel.
+2. Tiling (if needed): Large images should be tiled with overlapping margins to reduce memory usage and improve segmentation accuracy.
+3. Segmentation:
+* Set an approximate cell diameter in pixels (based on tissue type).
+* Tune Cellpose parameters such as flow_threshold, cellprob_threshold, and min_size for best results.
+4. Stitching: If tiling was used, stitch segmented tiles into a full mask image.
+* Advantages:
+o Captures true plant cell geometry.
+o Avoids assumptions based on nuclear position. Better suited for complex plant tissues.
+* Quality control:
+o Visualise results in Fiji, QuPath, or Napari by overlaying segmentation masks on the original image.
+o Adjust parameters and rerun segmentation if boundaries are poorly defined or cells are merged.
+3.5.4 Post-segmentation Analysis and Transcript Mapping
+After segmentation of plant cells or nuclei, the next step is to assign individual transcripts to segmented regions. This process enables the construction of a cell-by-gene expression matrix and downstream spatial analysis.
+3.5.4.1 Mapping Transcripts to Segmented Regions
+* Input requirements:
+o A segmentation mask image (e.g., from Cellpose), where each segmented cell or nucleus is labeled with a unique integer.
+o A transcript coordinate file from Xenium output (e.g., .parquet or .csv), containing X/Y spatial positions and gene identity for each transcript.
+* Transcript assignment:
+o Each transcript is mapped to a segmented region by checking whether its spatial coordinates fall within a labeled area in the mask.
+o Optionally, segmentation masks based on nuclei can be slightly expanded (e.g., by a few microns) to capture perinuclear transcripts if full cell boundaries are not available.
+* Output:
+o A mapped transcript table containing gene identity, cell/nucleus ID, and spatial coordinates.
+o A cell-by-gene count matrix, which forms the foundation for downstream spatial transcriptomic analysis.
+3.5.4.2 Quality Control and Visualisation
+* Segmentation QC: Overlay segmentation masks on the morphology image and check for accurate boundary definition.
+* Mapping QC: Visualise mapped transcripts over segmentation results to verify correct assignment, especially at region edges or in densely packed tissues.
+* Tools: Fiji, QuPath, and Napari can be used for both visual inspection and exploratory analysis.
+
+4 Notes
+1. Probe Design Considerations:
+Gene selection is crucial for successful Xenium profiling. Avoid genes with very short transcripts (<500 bp), low expression, or extensive isoform overlap. Use reference expression datasets to prioritize genes showing tissue- or stage-specific enrichment.
+2. Fixative Freshness:
+Paraformaldehyde fixative should be prepared fresh each time for optimal crosslinking efficiency. Always cool the PFA solution on ice before adding glutaraldehyde to prevent degradation.
+3. Vacuum Infiltration Efficiency:
+Apply and release the vacuum gradually to prevent tissue damage. Monitor whether tissues sink—this indicates successful infiltration. Adjust vacuum time based on tissue density or species.
+4. Tissue Orientation During Embedding:
+Proper orientation is critical for downstream sectioning. When embedding root or nodule samples, place them vertically to maximise the number of longitudinal sections obtained per block.
+5. Section Thickness Optimisation:
+Xenium performs best on 5–10 µm sections. Thicker sections (>10 µm) may compromise probe penetration, while thinner sections may lead to tissue collapse, loss, or detachment during processing. If feasible, we highly recommend conducting a preliminary test run to evaluate how section thickness affects target transcript detection. Autofluorescence from the plant cell wall and the specific properties of the genes selected for probe design can both influence signal quality.
+We suggest testing section thicknesses of 5?µm, 8?µm, and 10?µm. Use metrics such as high-quality transcript detection rate and the total number of high-quality transcripts detected to inform your decision. For Medicago nodules, we found that 8?µm and 10?µm sections yielded significantly better results than 5?µm in terms of target detection efficiency.
+6. Ribonuclease-Free Handling:
+Always use autoclaved or filtered MQ water, RNAse-free tips, and clean slides to reduce contamination. Use gloves and avoid talking directly over open slides when mounting tissue.
+7. Slide Storage Before Hybridisation:
+Store dried slides in a dust-free, low-humidity environment such as a desiccator. Slides can be stored up to 4 weeks, but longer storage may reduce signal strength.
+8. Autofluorescence Quenching:
+Plant tissues, especially root nodules, often exhibit high autofluorescence. Always include quenching steps prior to imaging to improve the signal-to-noise ratio.
+9. Quality Control (QC) with H&E or DAPI:
+Before proceeding with expensive hybridisation steps, perform H&E or DAPI staining to ensure tissue integrity and RNA preservation. This step also helps in adjusting the section thickness.
+10. Tissue Compression During Sectioning:
+If sections appear wrinkled or compressed, ensure the microtome blade is sharp and the paraffin block is at the correct cutting temperature. Chilling the block slightly before sectioning can help.
+
+5 References
+1. 	Jhu M-Y and Oldroyd GED (2023) Dancing to a different tune, can we switch from chemical to biological nitrogen fixation for sustainable food security? PLoS Biol 21:e3001982-
+2. 	Schiessl K, Lilley JLS, Lee T, et al (2019) NODULE INCEPTION Recruits the Lateral Root Developmental Program for Symbiotic Nodule Organogenesis in Medicago truncatula. 29:3657-3668.e5
+3. 	Conde D and Kirst M (2022) Decoding exceptional plant traits by comparative single-cell genomics. Trends Plant Sci 27:1095–1098
+4. 	Nobori T, Oliva M, Lister R, et al (2023) Multiplexed single-cell 3D spatial gene expression analysis in plant tissue using PHYTOMap. Nat Plants 9:1026–1033
+5. 	Janesick A, Shelansky R, Gottscho AD, et al (2023) High resolution mapping of the tumor microenvironment using integrated single-cell, spatial and in situ analysis. Nat Commun 14:8353
+6. 	Pour M and Yanai I (2022) New adventures in spatial transcriptomics. Dev Cell 57:1209–1210
+7. 	Liu C, Leng J, Li Y, et al (2022) A spatiotemporal atlas of organogenesis in the development of orchid flowers. Nucleic Acids Res 50:9724–9737
+8. 	Fu Y, Xiao W, Tian L, et al (2023) Spatial transcriptomics uncover sucrose post-phloem transport during maize kernel development. Nat Commun 14:7191
+9. 	Peirats-Llobet M, Yi C, Liew LC, et al (2023) Spatially resolved transcriptomic analysis of the germinating barley grain. Nucleic Acids Res 51:7798–7819
+10. 	Guillotin B, Rahni R, Passalacqua M, et al (2023) A pan-grass transcriptome reveals patterns of cellular divergence in crops. Nature 617:785–791
+ 
+
+Author Contributions
+MYJ initiated the project and wrote the abstract and introduction. MYJ, JH, AD, and TAM drafted the initial version of the methods section together. All authors reviewed and edited the manuscript and approved the final version for publication.
+Acknowledgements
+We thank Ania Piskorz for her valuable feedback, including the idea of comparing detection across different section thicknesses. We acknowledge the support from the 10x Genomics team for their assistance with custom Xenium panel design and data interpretation. M.Y.J. is supported by grants made to the University of Cambridge by the Bill and Melinda Gates Foundation and the UK Foreign, Commonwealth and Development Office (INV-006871) and Bill & Melinda Gates Agricultural Innovations (INV-57461) known as the Enabling Nutrient Symbioses in Agriculture (ENSA) project.
+Figure Captions 
+Fig. 1. Workflow of tissue sample harvesting and sample block preparation. (A) Overview of tissue preparation: Start with Medicago seed germination and growth, followed by spray inoculation with rhizobia. (B) Harvesting and fixation: Excise desired tissue samples, fix in paraformaldehyde (PFA) solution under vacuum for effective penetration, followed by dehydration. Samples can be stored long-term in 70% ethanol at ?20?°C until further processing. (C) Dehydration and paraffin infiltration: This chapter describes a primarily manual method for dehydration and paraffin infiltration, which is gentler and more easily optimised according to sample condition. While automated tissue processors are an alternative, a species- and tissue-specific optimised program is necessary. (D) Embedding: Fully paraffin-infiltrated samples are embedded by proper orientation in moulds, followed by histology cassette assembly and paraffin solidification. Solidified blocks can be stored at 4?°C until ready for paraffin sectioning.
+Fig 2. Sectioning and section collection workflow. (A) Paraffin sectioning, taking a few sections at 8-10?m. (B) Separating sections to be used for checking, or Xenium. (C) Checking the process to identify the region of interest. (D) Section collection onto the Xenium slide.  
+Fig. 3 Workflow for hybridisation, amplification, and detection of RNA targets using Xenium in situ. (A) A padlock probe hybridises to the RNA target, with left and right arms (red and blue) complementary to adjacent regions on the transcript. The top region (green) is a target-specific sequence. (B) Ligation of the probe generates a circular DNA molecule.
+(C) Rolling circle amplification of the circularised probe produces a concatemer containing multiple repeats of the target-specific sequence. (D) Fluorescently labelled detection oligonucleotides are introduced within the Xenium Analyser to hybridise to the amplified target sequence. (E) Sequential cycles of oligonucleotide hybridisation and imaging reveal a unique barcode (“codeword”) corresponding to each RNA target (1).
+Fig. 4 Loading interface of the Xenium Analyser. The interface displays a checklist of required reagents, each visualised in its designated position on the instrument. Selecting a checklist item reveals additional loading instructions. The first four rows require manual confirmation by the user, while the remaining three are automatically verified by the Xenium Analyser through onboard detection (2).
+Fig. 5 Post-scan region selection interface on the Xenium Analyser. This interface displays the scanned tissue section overlaid with a grid and imaged using the nuclear stain. Tools on the left panel allow users to pan, zoom, add grids to regions of interest, and remove grids selected in error. An additional tool enables viewing of the autofluorescence channel to identify problematic areas or debris. On the right, the region selector tool allows users to split sections or subregions into individual analysis units for downstream processing (2).
+Table Captions 
+Table 1. Volumes for resuspending Custom Probes based on kit reaction size.
+Custom Probe ResuspensionVolume of TE Buffer, pH 8.0 (?l)Kit Size4 Reaction Kit16 Reaction KitXenium Add-on140700Xenium Standalone140700
+Table 2. Thermal cycler programs for the first 3 protocol steps: Decrosslinking, Probe Hybridisation and Post-Hybridisation Wash.
+Protocol1. Decrosslinking2. Probe Hyb3. Post-Hyb Wash                  Lid Temp
+Step80°C50°C37°C or Off1.22°C – Hold50°C – Hold37°C – Hold2.80°C – 00:30:0050°C – 16:00:0037°C – 00:30:003.22°C – 00:10:0050°C – 08:00:0037°C – Hold4.22°C – Hold50°C – HoldN/A
+Table 3. Thermal cycler programs for the last 3 protocol steps: Ligation, Amplification and Autofluorescence Quenching.
+Protocol4. Ligation5. Amplification6. Quenching                  Lid Temp
+Step37°C or Off37°C or Off37°C or Off1.37°C – Hold30°C – Hold37°C – Hold2.37°C – 02:00:0030°C – 02:00:0037°C – 00:05:003.37°C – HoldN/AN/A4.N/AN/AN/A
+Table 4. The Decrosslinking thermal cycler program with details of each step.
+Lid TemperatureReaction VolumeRun Time80°C100µl40 MinutesStepTemperatureTimeHold22°CHoldDecrosslinking80°C00:30:00Re-equilibrate22°C00:10:00Hold22°CHold
+Table 5. The reagents and volumes required for 2 reactions of the Probe Hybridisation Mix. 
+Probe Hybridisation MixVolume for 2 Reactions + 5% (µl)Probe Hybridisation Buffer630TE Buffer, pH 8.0288Xenium Standalone Custom Probes66Xenium Add-on Custom Probes66Total1050
+Table 6. The Probe Hybridisation thermal cycler program with details of each step. A minimum of 16 hours is required for effective probe hybridisation.
+Lid TemperatureReaction VolumeRun Time50°C100µl16-24 HoursStepTemperatureTimePre-equilibrate50°CHoldProbe Hybridisation I50°C16:00:00Probe Hybridisation II50°C08:00:00Hold50°CHold
+Table 7. The Post-Hybridisation thermal cycler program with details of each step. 
+Lid TemperatureReaction VolumeRun Time37°C or Off100µl30 MinutesStepTemperatureTimePre-equilibrate37°CHoldPost-Hybridisation Wash37°C00:30:00Hold37°CHold
+Table 8. The reagents and volumes required for 2 reactions of the Ligation Mix.
+Ligation MixVolume for 2 Reactions + 10% (µl)Ligation Buffer962.5Ligation Enzyme A27.5Ligation Enzyme B110Total1100
+Table 9. The Ligation thermal cycler program with details of each step.
+Lid TemperatureReaction VolumeRun Time37°C or Off100µl2 HoursStepTemperatureTimePre-equilibrate37°CHoldLigation37°C02:00:00Hold37°CHold
+Table 10. The reagents and volumes required for 2 reactions of the Amplification Master Mix.
+Amplification Master MixVolume for 2 Reactions + 10% (µl)Amplification Mix990Amplification Enzyme110Total1100
+Table 11. The Amplification thermal cycler program with details of each step.
+Lid TemperatureReaction VolumeRun Time37°C or Off100µl2 HoursStepTemperatureTimePre-equilibrate30°CHoldAmplification30°C02:00:00
+Table 12. The reagents and volumes required for 2 reactions of the 3 Autofluorescence Quenching Solutions. A. Diluted Reducing Agent B: Add reagents in the listed order, then vortex and maintain them at room temperature. B. 70% Ethanol, add reagents in the listed order, then vortex and maintain at room temperature. C. Autofluorescence Solution: Add reagents in the listed order, then vortex and maintain at room temperature in the dark. 
+A. Diluted Reducing Agent BB. 70% EthanolC. Autofluorescence SolutionReagentVolume (µl)ReagentVolume (µl)ReagentVolume (µl)1x PBS1089NFW660100% Ethanol1089Reducing Agent B11100% Ethanol1540Autofluorescence Mix11Total1100Total2000Total1100
+Table 13. The Autofluorescence Quenching thermal cycler program with details of each step.
+Lid TemperatureReaction VolumeRun Time37°C or Off100µl5 MinutesStepTemperatureTimePre-equilibrate37°CHoldDrying37°C00:05:00
+Table 14. The reagents and volumes required for the Xenium Sample Wash Buffer A.
+Xenium Sample Wash Buffer A (1x PBS-T)Volume for 1L (ml)Nuclease-free Water89510x PBS, pH 7.4100Tween-20, 10%5Total1000
+Table 15. The reagents and volumes required for the Xenium Probe Removal Buffer.
+Xenium Probe Removal BufferVolume (ml)Nuclease-free Water139.5DMSO150KCL 2M7.5Tween-20, 10%3Total300
+
+2
+
+

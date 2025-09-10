@@ -155,15 +155,16 @@ def extract_processing_time(result_dir):
     
     return None
 
-def load_mask_and_compute_metrics(mask_path):
+def load_mask_and_compute_metrics(mask_path, min_size_pixels=15):
     """
-    Load a segmentation mask and compute various metrics.
+    Load a segmentation mask and compute various metrics with confidence intervals.
     
     Args:
         mask_path (str): Path to the mask TIFF file
+        min_size_pixels (int): Minimum cell size in pixels to include in analysis
         
     Returns:
-        dict: Dictionary containing computed metrics
+        dict: Dictionary containing computed metrics with confidence intervals
     """
     if not os.path.exists(mask_path):
         print(f"Warning: Mask file not found: {mask_path}")
@@ -182,18 +183,24 @@ def load_mask_and_compute_metrics(mask_path):
     
     # Basic metrics
     unique_labels = np.unique(mask)
-    num_cells = len(unique_labels) - 1  # Exclude background (label 0)
     
-    # Cell area statistics
+    # Cell area statistics with minimum size filtering
     cell_areas = []
     cell_aspect_ratios = []
     cell_circularities = []
     cell_solidity = []
     cell_eccentricity = []
+    filtered_cells = 0
     
     for label in unique_labels[1:]:  # Skip background
         cell_mask = (mask == label)
         area = np.sum(cell_mask)
+        
+        # Apply minimum size filter
+        if area < min_size_pixels:
+            filtered_cells += 1
+            continue
+            
         cell_areas.append(area)
         
         # Compute shape properties if scikit-image is available
@@ -218,23 +225,77 @@ def load_mask_and_compute_metrics(mask_path):
             cell_solidity.append(props.solidity)
             cell_eccentricity.append(props.eccentricity)
         else:
-            # Basic shape approximations without scikit-image
+            # WARNING: scikit-image not available, using fallback values
+            print(f"      WARNING: scikit-image not available for cell {label}, using fallback shape metrics")
             cell_aspect_ratios.append(1.8)  # Typical plant cell aspect ratio
-            cell_circularities.append(0.7)  # Typical plant cell circularity
+            cell_circularities.append(0.7)  # Typical plant cell circularity  
             cell_solidity.append(0.8)  # Placeholder
             cell_eccentricity.append(0.5)  # Placeholder
     
+    # Calculate confidence intervals (95%)
+    def calculate_confidence_interval(data, confidence=0.95):
+        """Calculate 95% confidence interval for a dataset"""
+        if len(data) < 2:
+            return 0, 0
+        
+        n = len(data)
+        mean = np.mean(data)
+        std = np.std(data, ddof=1)  # Sample standard deviation
+        
+        # Use t-distribution for small samples, normal for large
+        if n < 30:
+            try:
+                from scipy import stats
+                t_val = stats.t.ppf((1 + confidence) / 2, n - 1)
+            except ImportError:
+                # Fallback to normal approximation if scipy not available
+                t_val = 1.96  # For 95% CI
+        else:
+            t_val = 1.96  # Normal approximation for large samples
+        
+        margin_error = t_val * (std / np.sqrt(n))
+        return mean - margin_error, mean + margin_error
+    
+    # Debug: Check what we're working with
+    print(f"    After filtering {min_size_pixels}px minimum: {len(cell_areas)} cells found, {filtered_cells} filtered")
+    if cell_areas:
+        print(f"    Cell area range: {np.min(cell_areas):.1f} - {np.max(cell_areas):.1f} pixels")
+    else:
+        print(f"    WARNING: No cells remain after filtering!")
+    
+    # Calculate metrics with confidence intervals
+    area_ci_low, area_ci_high = calculate_confidence_interval(cell_areas)
+    aspect_ci_low, aspect_ci_high = calculate_confidence_interval(cell_aspect_ratios)
+    circ_ci_low, circ_ci_high = calculate_confidence_interval(cell_circularities)
+    
     metrics = {
-        'num_cells': num_cells,
+        'num_cells': len(cell_areas),  # After filtering
+        'num_cells_filtered': filtered_cells,
+        'min_size_applied': min_size_pixels,
+        # Raw cell data for further analysis
+        'cell_areas': cell_areas,
+        'cell_aspect_ratios': cell_aspect_ratios,
+        'cell_circularities': cell_circularities,
+        # Basic statistics
         'mean_cell_area': np.mean(cell_areas) if cell_areas else 0,
         'median_cell_area': np.median(cell_areas) if cell_areas else 0,
         'std_cell_area': np.std(cell_areas) if cell_areas else 0,
         'min_cell_area': np.min(cell_areas) if cell_areas else 0,
         'max_cell_area': np.max(cell_areas) if cell_areas else 0,
+        # Confidence intervals for areas
+        'mean_area_ci_low': area_ci_low,
+        'mean_area_ci_high': area_ci_high,
+        # Aspect ratio
         'mean_aspect_ratio': np.mean(cell_aspect_ratios) if cell_aspect_ratios else 0,
         'std_aspect_ratio': np.std(cell_aspect_ratios) if cell_aspect_ratios else 0,
+        'aspect_ratio_ci_low': aspect_ci_low,
+        'aspect_ratio_ci_high': aspect_ci_high,
+        # Circularity
         'mean_circularity': np.mean(cell_circularities) if cell_circularities else 0,
         'std_circularity': np.std(cell_circularities) if cell_circularities else 0,
+        'circularity_ci_low': circ_ci_low,
+        'circularity_ci_high': circ_ci_high,
+        # Other metrics
         'mean_solidity': np.mean(cell_solidity) if cell_solidity else 0,
         'mean_eccentricity': np.mean(cell_eccentricity) if cell_eccentricity else 0,
         'total_segmented_area': np.sum(mask > 0),
@@ -277,54 +338,46 @@ def analyze_comparison_results(config_file=None, results_dir="results"):
         if mapping_tasks:
             print(f"Processing all images from config: {list(image_configs.keys())}")
             
-            for task in mapping_tasks:
-                if not task.get('is_active', True):
+            # Process each image separately for each model
+            for image_id, image_config in image_configs.items():
+                if not image_config.get('is_active', True):
                     continue
                     
-                image_id = task['source_image_id']
-                param_set_id = task['source_param_set_id']
-                if param_set_id not in param_configs:
-                    print(f"Warning: Parameter set {param_set_id} not found in config")
-                    continue
+                print(f"\nProcessing image: {image_id}")
                 
-                param_config = param_configs[param_set_id]
-                if not param_config.get('is_active', True):
-                    print(f"Skipping inactive parameter set: {param_set_id}")
-                    continue
-                
-                # Get the image config to determine scale factor
-                image_config = image_configs.get(image_id)
-                if not image_config:
-                    print(f"Warning: Image config {image_id} not found")
-                    continue
-                
-                # Get scale factor from image config
-                scale_factor = 1.0
-                seg_options = image_config.get('segmentation_options', {})
-                rescaling_config = seg_options.get('rescaling_config')
-                if rescaling_config and 'scale_factor' in rescaling_config:
-                    scale_factor = rescaling_config['scale_factor']
-                
-                # Construct experiment ID using the same logic as pipeline_utils
-                # Format: {image_id}_{param_set_id}_scaled_{scale_factor_with_underscores}
-                def format_scale_factor_for_path(scale_factor):
-                    if scale_factor is not None and scale_factor != 1.0:
-                        return f"_scaled_{str(scale_factor).replace('.', '_')}"
-                    return ""
-                
-                experiment_id = f"{image_id}_{param_set_id}{format_scale_factor_for_path(scale_factor)}"
-                
-                result_dir = os.path.join(results_dir, experiment_id)
-                print(f"Looking for result directory: {result_dir}")
-                
-                if not os.path.exists(result_dir):
-                    print(f"Warning: Result directory not found: {result_dir}")
-                    continue
-                
-                model = param_config['cellpose_parameters']['MODEL_CHOICE']
-                result_entry = analyze_single_result(result_dir, model, param_set_id, param_config, image_config)
-                if result_entry:
-                    results_data.append(result_entry)
+                # Process each parameter set for this image
+                for param_set_id, param_config in param_configs.items():
+                    if not param_config.get('is_active', True):
+                        print(f"  Skipping inactive parameter set: {param_set_id}")
+                        continue
+                    
+                    # Get scale factor from image config
+                    scale_factor = 1.0
+                    seg_options = image_config.get('segmentation_options', {})
+                    rescaling_config = seg_options.get('rescaling_config')
+                    if rescaling_config and 'scale_factor' in rescaling_config:
+                        scale_factor = rescaling_config['scale_factor']
+                    
+                    # Construct experiment ID using the same logic as pipeline_utils
+                    # Format: {image_id}_{param_set_id}_scaled_{scale_factor_with_underscores}
+                    def format_scale_factor_for_path(scale_factor):
+                        if scale_factor is not None and scale_factor != 1.0:
+                            return f"_scaled_{str(scale_factor).replace('.', '_')}"
+                        return ""
+                    
+                    experiment_id = f"{image_id}_{param_set_id}{format_scale_factor_for_path(scale_factor)}"
+                    
+                    result_dir = os.path.join(results_dir, experiment_id)
+                    print(f"  Looking for result directory: {result_dir}")
+                    
+                    if not os.path.exists(result_dir):
+                        print(f"  Warning: Result directory not found: {result_dir}")
+                        continue
+                    
+                    model = param_config['cellpose_parameters']['MODEL_CHOICE']
+                    result_entry = analyze_single_result(result_dir, model, param_set_id, param_config, image_config, image_id)
+                    if result_entry:
+                        results_data.append(result_entry)
         
         # Process old-style mappings if available (older config format)
         elif mappings:
@@ -373,7 +426,7 @@ def analyze_comparison_results(config_file=None, results_dir="results"):
                         print(f"  Available directories: {os.listdir(results_dir)}")
                         continue
                     
-                    result_entry = analyze_single_result(result_dir, model, param_set_id, param_config, image_configs.get(image_id))
+                    result_entry = analyze_single_result(result_dir, model, param_set_id, param_config, image_configs.get(image_id), image_id)
                     if result_entry:
                         results_data.append(result_entry)
     
@@ -395,7 +448,7 @@ def analyze_comparison_results(config_file=None, results_dir="results"):
             else:
                 continue
             
-            result_entry = analyze_single_result(dir_path, model, comp_dir, None, None)
+            result_entry = analyze_single_result(dir_path, model, comp_dir, None, None, None)
             if result_entry:
                 results_data.append(result_entry)
     
@@ -404,7 +457,7 @@ def analyze_comparison_results(config_file=None, results_dir="results"):
     else:
         return results_data
 
-def analyze_single_result(result_dir, model, param_set_id, param_config, image_config):
+def analyze_single_result(result_dir, model, param_set_id, param_config, image_config, image_id=None):
     """
     Analyze a single segmentation result directory.
     
@@ -414,6 +467,7 @@ def analyze_single_result(result_dir, model, param_set_id, param_config, image_c
         param_set_id (str): Parameter set ID
         param_config (dict): Parameter configuration from JSON
         image_config (dict): Image configuration from JSON
+        image_id (str): Image identifier for per-image analysis
         
     Returns:
         dict: Result entry or None if analysis failed
@@ -434,8 +488,13 @@ def analyze_single_result(result_dir, model, param_set_id, param_config, image_c
         with open(summary_path, 'r') as f:
             summary_data = json.load(f)
     
-    # Compute metrics
-    metrics = load_mask_and_compute_metrics(mask_path)
+    # Get minimum size from parameter config
+    min_size = 15  # Default
+    if param_config:
+        min_size = param_config.get('cellpose_parameters', {}).get('MIN_SIZE', 15)
+    
+    # Compute metrics with minimum size filtering
+    metrics = load_mask_and_compute_metrics(mask_path, min_size_pixels=min_size)
     if metrics is None:
         return None
     
@@ -454,6 +513,7 @@ def analyze_single_result(result_dir, model, param_set_id, param_config, image_c
     # Combine all data
     result_entry = {
         'model': model,
+        'image_id': image_id if image_id else 'unknown',
         'experiment_id': param_set_id,
         'mask_path': mask_path,
         'pixel_size_um': pixel_size_um,
@@ -470,13 +530,29 @@ def analyze_single_result(result_dir, model, param_set_id, param_config, image_c
         'min_cell_area_um2': metrics['min_cell_area'] * pixel_to_um2,
         'max_cell_area_um2': metrics['max_cell_area'] * pixel_to_um2,
         'std_cell_area_um2': metrics['std_cell_area'] * pixel_to_um2,
-        # Shape metrics
+        # Confidence intervals for areas in μm²
+        'mean_area_ci_low_um2': metrics['mean_area_ci_low'] * pixel_to_um2,
+        'mean_area_ci_high_um2': metrics['mean_area_ci_high'] * pixel_to_um2,
+        # Shape metrics with confidence intervals
         'mean_aspect_ratio': metrics['mean_aspect_ratio'],
         'std_aspect_ratio': metrics['std_aspect_ratio'],
+        'aspect_ratio_ci_low': metrics['aspect_ratio_ci_low'],
+        'aspect_ratio_ci_high': metrics['aspect_ratio_ci_high'],
         'mean_circularity': metrics['mean_circularity'],
         'std_circularity': metrics['std_circularity'],
-        # Other metrics
-        **{k: v for k, v in metrics.items() if k not in ['num_cells', 'mean_cell_area', 'median_cell_area', 'min_cell_area', 'max_cell_area', 'std_cell_area', 'mean_aspect_ratio', 'std_aspect_ratio', 'mean_circularity', 'std_circularity']}
+        'circularity_ci_low': metrics['circularity_ci_low'],
+        'circularity_ci_high': metrics['circularity_ci_high'],
+        # Filtering info
+        'num_cells_filtered': metrics['num_cells_filtered'],
+        'min_size_applied': metrics['min_size_applied'],
+        # Other metrics (exclude values we've already processed or converted)
+        **{k: v for k, v in metrics.items() if k not in [
+            'num_cells', 'mean_cell_area', 'median_cell_area', 'min_cell_area', 'max_cell_area', 'std_cell_area',
+            'mean_aspect_ratio', 'std_aspect_ratio', 'mean_circularity', 'std_circularity',
+            'mean_area_ci_low', 'mean_area_ci_high', 'aspect_ratio_ci_low', 'aspect_ratio_ci_high',
+            'circularity_ci_low', 'circularity_ci_high', 'num_cells_filtered', 'min_size_applied',
+            'cell_areas', 'cell_aspect_ratios', 'cell_circularities'  # Exclude raw data arrays
+        ]}
     }
     
     # Add parameter data from config
@@ -603,53 +679,73 @@ def create_comparison_visualizations(data, output_dir="results/visualizations"):
 
 def create_summary_table(data, output_dir):
     """
-    Create a summary table for the manuscript matching the format in sections.md.
+    Create a summary table for the manuscript with per-image statistics and 95% confidence intervals.
     
     Args:
         data (pd.DataFrame or list): Comparison results data
         output_dir (str): Directory to save the table
     """
-    # Create a clean summary table matching the manuscript format
+    # Create a clean summary table with per-image statistics and confidence intervals
     summary_data = []
     
     if HAS_PANDAS and hasattr(data, 'iterrows'):
         # It's a DataFrame
         for _, row in data.iterrows():
             # Format size range
-            size_range = f"{row['min_cell_area_um2']:.0f}-{row['max_cell_area_um2']:.0f}"
+            size_range = f"{row['min_cell_area_um2']:.1f}-{row['max_cell_area_um2']:.1f}"
             
             # Format processing time
             proc_time = row.get('processing_time_minutes', 'N/A')
             proc_time_str = f"{proc_time:.1f}" if proc_time is not None else 'N/A'
             
+            # Format confidence intervals
+            mean_area_ci = f"[{row['mean_area_ci_low_um2']:.1f}, {row['mean_area_ci_high_um2']:.1f}]"
+            aspect_ci = f"[{row['aspect_ratio_ci_low']:.2f}, {row['aspect_ratio_ci_high']:.2f}]"
+            circ_ci = f"[{row['circularity_ci_low']:.3f}, {row['circularity_ci_high']:.3f}]"
+            
             summary_data.append({
+                'Image': row.get('image_id', 'unknown'),
                 'Model': row['model'].capitalize(),
-                'Cell Count': f"{int(row['num_cells'])} ± {int(row.get('std_cell_count', 0))}",
-                'Mean Area (μm²)': f"{row['mean_cell_area_um2']:.0f} ± {row['std_cell_area_um2']:.0f}",
-                'Median Area (μm²)': f"{row['median_cell_area_um2']:.0f}",
+                'Cell Count': int(row['num_cells']),
+                f'Filtered (<{int(row.get("min_size_applied", 15))} px)': int(row.get('num_cells_filtered', 0)),
+                'Mean Area (μm²)': f"{row['mean_cell_area_um2']:.1f}",
+                'Mean Area 95% CI': mean_area_ci,
+                'Median Area (μm²)': f"{row['median_cell_area_um2']:.1f}",
                 'Size Range (μm²)': size_range,
-                'Aspect Ratio': f"{row['mean_aspect_ratio']:.1f} ± {row['std_aspect_ratio']:.1f}",
-                'Circularity': f"{row['mean_circularity']:.2f} ± {row['std_circularity']:.2f}",
+                'Aspect Ratio': f"{row['mean_aspect_ratio']:.2f}",
+                'Aspect Ratio 95% CI': aspect_ci,
+                'Circularity': f"{row['mean_circularity']:.3f}",
+                'Circularity 95% CI': circ_ci,
                 'Processing Time (min)': proc_time_str
             })
     else:
         # It's a list
         for row in data:
             # Format size range
-            size_range = f"{row['min_cell_area_um2']:.0f}-{row['max_cell_area_um2']:.0f}"
+            size_range = f"{row['min_cell_area_um2']:.1f}-{row['max_cell_area_um2']:.1f}"
             
             # Format processing time
             proc_time = row.get('processing_time_minutes', 'N/A')
             proc_time_str = f"{proc_time:.1f}" if proc_time is not None else 'N/A'
             
+            # Format confidence intervals
+            mean_area_ci = f"[{row['mean_area_ci_low_um2']:.1f}, {row['mean_area_ci_high_um2']:.1f}]"
+            aspect_ci = f"[{row['aspect_ratio_ci_low']:.2f}, {row['aspect_ratio_ci_high']:.2f}]"
+            circ_ci = f"[{row['circularity_ci_low']:.3f}, {row['circularity_ci_high']:.3f}]"
+            
             summary_data.append({
+                'Image': row.get('image_id', 'unknown'),
                 'Model': row['model'].capitalize(),
-                'Cell Count': f"{int(row['num_cells'])} ± {int(row.get('std_cell_count', 0))}",
-                'Mean Area (μm²)': f"{row['mean_cell_area_um2']:.0f} ± {row['std_cell_area_um2']:.0f}",
-                'Median Area (μm²)': f"{row['median_cell_area_um2']:.0f}",
+                'Cell Count': int(row['num_cells']),
+                f'Filtered (<{int(row.get("min_size_applied", 15))} px)': int(row.get('num_cells_filtered', 0)),
+                'Mean Area (μm²)': f"{row['mean_cell_area_um2']:.1f}",
+                'Mean Area 95% CI': mean_area_ci,
+                'Median Area (μm²)': f"{row['median_cell_area_um2']:.1f}",
                 'Size Range (μm²)': size_range,
-                'Aspect Ratio': f"{row['mean_aspect_ratio']:.1f} ± {row['std_aspect_ratio']:.1f}",
-                'Circularity': f"{row['mean_circularity']:.2f} ± {row['std_circularity']:.2f}",
+                'Aspect Ratio': f"{row['mean_aspect_ratio']:.2f}",
+                'Aspect Ratio 95% CI': aspect_ci,
+                'Circularity': f"{row['mean_circularity']:.3f}",
+                'Circularity 95% CI': circ_ci,
                 'Processing Time (min)': proc_time_str
             })
     
@@ -672,19 +768,22 @@ def create_summary_table(data, output_dir):
         # Create table string manually
         table_lines = []
         headers = list(summary_data[0].keys())
-        table_lines.append('  '.join(f'{h:>20}' for h in headers))
+        table_lines.append('  '.join(f'{h:>15}' for h in headers))
         for row in summary_data:
-            table_lines.append('  '.join(f'{str(row[h]):>20}' for h in headers))
+            table_lines.append('  '.join(f'{str(row[h]):>15}' for h in headers))
         table_string = '\n'.join(table_lines)
     
     # Create a formatted table for manuscript
     with open(os.path.join(output_dir, 'cellpose_comparison_table.txt'), 'w', encoding='utf-8') as f:
-        f.write("Table: Comparison of Cellpose Models for Plant Tissue Segmentation\n")
-        f.write("=" * 80 + "\n\n")
+        f.write("Table: Comparison of Cellpose Models for Plant Tissue Segmentation (Per-Image Statistics with 95% CIs)\n")
+        f.write("=" * 110 + "\n\n")
         f.write(table_string)
         f.write("\n\n")
-        f.write("Note: All analyses performed on the same Medicago truncatula nodule image ")
-        f.write("(5C_morphology_focus.ome.tif) scaled to 0.25x resolution.\n")
+        f.write("Notes:\n")
+        f.write("- Statistics calculated separately for each image and model combination\n")
+        f.write("- 95% confidence intervals calculated using t-distribution (n<30) or normal approximation (n≥30)\n")
+        f.write("- Size filtering applied based on MIN_SIZE parameter from each model configuration\n")
+        f.write("- Images analyzed: 5A, 5B, 5C from Medicago truncatula nodule dataset\n")
     
     print(f"Summary table saved to {output_dir}")
     return summary_data if not HAS_PANDAS else pd.DataFrame(summary_data)
