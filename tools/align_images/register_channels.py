@@ -1,3 +1,27 @@
+"""
+This script performs 2D image registration to align a 'moving' image channel to a
+'fixed' reference channel. It is primarily designed for multi-channel microscopy
+images where channels may be slightly misaligned due to sequential acquisition.
+
+Core Functionality:
+- Uses the SimpleITK library to perform intensity-based registration.
+- Employs the Mattes Mutual Information metric, making it suitable for aligning
+  images with different intensity distributions (multi-modal registration).
+- Supports multiple transformation models: 'rigid', 'similarity', and 'affine'.
+- Can read TIFF images and parse physical pixel spacing from OME-XML metadata
+  if available.
+- Provides functionality to apply the calculated transform to a segmentation mask
+  using nearest-neighbor interpolation to preserve label integrity.
+- Calculates post-registration quality control (QC) metrics, including
+  Edge-based Normalized Cross-Correlation (NCC) and Structural Similarity (SSIM).
+- Includes a main block that serves as a command-line interface and a usage example.
+
+Goal:
+The main goal is to produce an aligned version of the moving image and a
+transformation file that can be used to warp other associated data (like masks or
+coordinate-based data) into the fixed image's coordinate space. This ensures
+accurate spatial co-localization of features across different image channels.
+"""
 import numpy as np
 import SimpleITK as sitk
 import tifffile as tiff

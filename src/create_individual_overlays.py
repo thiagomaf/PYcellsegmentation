@@ -159,17 +159,37 @@ def create_colored_overlay(image, mask, color_mode="multi", alpha=0.4, force_8bi
             image_8bit = image.astype(np.uint8)
 
     # Adjust brightness if requested
+    # if brightness_factor != 1.0:
+    #     print(f"  - Adjusting brightness by factor: {brightness_factor}")
+    #     # Convert to float for safe multiplication, apply factor, and clip back to [0, 255]
+    #     bright_image_float = image_8bit.astype(np.float32) * brightness_factor
+    #     image_8bit = np.clip(bright_image_float, 0, 255).astype(np.uint8)
+
+    # # 2. Create an RGB version of the grayscale image
+    # if HAS_OPENCV:
+    #     image_rgb = cv2.cvtColor(image_8bit, cv2.COLOR_GRAY2RGB)
+    # else:
+    #     image_rgb = np.stack([image_8bit]*3, axis=-1)
+
+    # # Ensure mask and image have same dimensions by cropping to the smallest
+    # min_h = min(image_rgb.shape[0], mask.shape[0])
+    # min_w = min(image_rgb.shape[1], mask.shape[1])
     if brightness_factor != 1.0:
         print(f"  - Adjusting brightness by factor: {brightness_factor}")
         # Convert to float for safe multiplication, apply factor, and clip back to [0, 255]
         bright_image_float = image_8bit.astype(np.float32) * brightness_factor
         image_8bit = np.clip(bright_image_float, 0, 255).astype(np.uint8)
 
-    # 2. Create an RGB version of the grayscale image
-    if HAS_OPENCV:
-        image_rgb = cv2.cvtColor(image_8bit, cv2.COLOR_GRAY2RGB)
+    # 2. Create an RGB version of the image, handling both grayscale and color inputs
+    if len(image_8bit.shape) == 3 and image_8bit.shape[2] == 3:
+        # Image is already a 3-channel image (e.g., RGB)
+        image_rgb = image_8bit
     else:
-        image_rgb = np.stack([image_8bit]*3, axis=-1)
+        # Image is grayscale, convert it to RGB for color overlay
+        if HAS_OPENCV:
+            image_rgb = cv2.cvtColor(image_8bit, cv2.COLOR_GRAY2RGB)
+        else:
+            image_rgb = np.stack([image_8bit]*3, axis=-1)
 
     # Ensure mask and image have same dimensions by cropping to the smallest
     min_h = min(image_rgb.shape[0], mask.shape[0])

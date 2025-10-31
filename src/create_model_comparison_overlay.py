@@ -1,11 +1,46 @@
 #!/usr/bin/env python3
 """
-Create visual comparisons of different Cellpose models by overlaying segmentation masks
-on original images. Generates one comparison figure per input image showing:
-- Top-left: Original image
-- Top-right: Nuclei model overlay
-- Bottom-left: Cyto2 model overlay  
-- Bottom-right: Cyto3 model overlay
+Create Model Comparison Overlays
+================================
+
+This script generates a 2x2 visual comparison of segmentation results from different
+Cellpose models for a given set of images. The output is a single PNG and PDF figure
+for each input image, showing the original image alongside overlays of masks from
+up to three different models (e.g., 'nuclei', 'cyto2', 'cyto3').
+
+The script is configured through a JSON file that specifies the images to process
+and the parameters for each model. It automatically finds the corresponding mask
+files in the results directory based on a naming convention.
+
+How to Use
+----------
+1.  **Configuration**:
+    -   Create a JSON configuration file (e.g., `config/processing_config_comparison.json`).
+    -   In the `image_configurations` section, define each image with its `image_id`
+        and `original_image_filename`. Set `is_active` to `true` for images you
+        want to process.
+    -   In the `cellpose_parameter_configurations` section, define parameter sets
+        for each model. The `MODEL_CHOICE` should be one of 'nuclei', 'cyto2', etc.
+
+2.  **Run Segmentation First**:
+    -   Ensure that you have already run the main segmentation pipeline to generate the mask files.
+    -   Masks should be located in a directory structure like:
+        `<results_dir>/<image_id>_<param_set_id>_scaled_<scale>/..._mask.tif`
+
+3.  **Execute the Script**:
+    -   Run the script from the command line.
+
+    Example:
+    ```bash
+    python src/create_model_comparison_overlay.py \\
+        --config config/processing_config_comparison5.json \\
+        --results_dir results \\
+        --output_dir results/model_comparisons
+    ```
+
+4.  **Output**:
+    -   The script will generate `model_comparison_<image_id>.png` and `.pdf` files
+        in the specified output directory.
 """
 
 import os

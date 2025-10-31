@@ -9,10 +9,52 @@ from .file_paths import RESULTS_DIR_BASE
 import time
 import tifffile
 import torch
+import cv2
 
 logger = logging.getLogger(__name__)
 
 # RESULTS_DIR_BASE = "results" # Removed
+
+def log_and_print(message, level='info'):
+    """Helper to log and print messages."""
+    if level.lower() == 'info':
+        logger.info(message)
+    elif level.lower() == 'error':
+        logger.error(message)
+    elif level.lower() == 'warning':
+        logger.warning(message)
+    # Also print to stdout for visibility when running scripts directly
+    print(message)
+
+def load_image(image_path, force_grayscale=True):
+    """
+    Load an image using tifffile and optionally convert to grayscale.
+    Handles RGB to grayscale conversion correctly.
+    """
+    if not os.path.exists(image_path):
+        log_and_print(f"Image file not found: {image_path}", level='ERROR')
+        return None
+    try:
+        # Use tifffile to handle multi-page TIFFs and complex TIFF formats
+        image = tifffile.imread(image_path)
+        log_and_print(f"Successfully loaded image: {image_path}, shape: {image.shape}, dtype: {image.dtype}")
+        
+        # Ensure image is 2D grayscale if FORCE_GRAYSCALE is true
+        if force_grayscale:
+            if len(image.shape) == 3 and image.shape[2] in [3, 4]:
+                log_and_print(f"Image appears to be RGB/RGBA. Converting to grayscale as per config.", level='INFO')
+                # Convert RGB to Grayscale using OpenCV for correct weighting
+                image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+                log_and_print(f"Converted to grayscale. New shape: {image.shape}", level='INFO')
+            elif len(image.shape) > 2:
+                # Handle other multi-channel images by taking the first channel
+                log_and_print(f"Image has multiple channels ({image.shape[2]}). Taking the first channel.", level='WARNING')
+                image = image[:, :, 0]
+
+        return image
+    except Exception as e:
+        log_and_print(f"Could not load image {image_path}. Error: {e}", level='ERROR')
+        return None
 
 def segment_image_worker(job_params_dict):
     """
@@ -76,12 +118,12 @@ def segment_image_worker(job_params_dict):
         return {"status": "error", "experiment_id": experiment_id, "unit": processing_unit_name, "error": error_msg, "traceback": ""}
 
     try:
-        if not os.path.exists(image_path):
-            error_msg = f"Image file not found: {image_path}"
-            logger.error(error_msg)
-            return {"status": "error", "experiment_id": experiment_id, "unit": processing_unit_name, "error": error_msg, "traceback": ""}
+        # Get grayscale setting from config
+        force_grayscale = job_params_dict.get("FORCE_GRAYSCALE", True)
+        
+        # Use the new robust image loading function
+        img = load_image(image_path, force_grayscale=force_grayscale)
 
-        img = io.imread(image_path)
         if img is None:
             error_msg = f"Failed to read image: {image_path}"
             logger.error(error_msg)
@@ -96,7 +138,6 @@ def segment_image_worker(job_params_dict):
         flow_threshold = job_params_dict.get("FLOW_THRESHOLD") 
         cellprob_threshold = job_params_dict.get("CELLPROB_THRESHOLD", 0.0) 
         min_size_from_config = job_params_dict.get("MIN_SIZE") 
-        force_grayscale = job_params_dict.get("FORCE_GRAYSCALE", True)
         
         logger.info(f"  Model: {model_choice}, DIAMETER_FOR_CELLPOSE received by worker: {diameter_for_eval}, GPU: {use_gpu}")
         # Log the original diameter from config as well, if available in job_params
@@ -128,15 +169,10 @@ def segment_image_worker(job_params_dict):
         
         # Prepare channels: if grayscale and 3D, expand dims for Cellpose
         channels = [0,0] # Default for grayscale
-        if force_grayscale and img.ndim == 2:
-            pass # Standard 2D grayscale
-        elif force_grayscale and img.ndim == 3: # Potentially Z-stack or RGB-like
-            if img.shape[-1] in [3,4]: # Likely RGB/A, take first channel (or mean/Luminosity)
-                logger.info(f"  Image has {img.shape[-1]} channels, using first channel for grayscale.")
-                img = img[..., 0]
-            # If it's already a 3D grayscale (Z, H, W), Cellpose might handle it or expect (num_planes, H, W)
-            # For safety, if it is (H,W,Z), it might need reordering. Assuming (Z,H,W) or (H,W) for now.
-        elif not force_grayscale: # Color
+        
+        # The new load_image function has already handled grayscale conversion,
+        # so the logic here can be simplified or removed. We'll leave the warning for color processing.
+        if not force_grayscale: # Color
              # Expects (H, W, C) where C is R,G,B. Cellpose channel args might be needed e.g. [R_chan, G_chan]
             logger.warning("  Processing in color mode. Ensure image is (H,W,C) and channels are set if not standard RGB.")
             # channels = [R,G] # Example: channels = [1,2] for R=1, G=2 if image is R,G,B
