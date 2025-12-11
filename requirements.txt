@@ -3,12 +3,22 @@ pip
 autopep8
 
 # App
-flask
+#flask
+#cellpose==3.0.10 # DO NOT REMOVE, this is the version that accepts choosing models
 cellpose
+
+tifffile
+imagecodecs[all]
+
 opencv-python
 scikit-image
-matplotlib
-tifffile
-pandas
+
 scipy
 pyarrow
+
+matplotlib
+
+pandas
+
+pytest
+pytest-mock

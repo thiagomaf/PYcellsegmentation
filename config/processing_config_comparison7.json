@@ -1,0 +1,100 @@
+{
+  "global_segmentation_settings": {
+    "default_log_level": "INFO",
+    "max_processes": 1,
+    "FORCE_GRAYSCALE": true,
+    "USE_GPU_IF_AVAILABLE": true
+  },
+
+  "image_configurations": [
+    {
+      "image_id": "5A_rev2_v1",
+      "original_image_filename": "data/raw/images/sample_5_autofluorescence/cropped/20x_28DPI_5A_shadow.tif",
+      "is_active": true,
+      "mpp_x": 1.0417,
+      "mpp_y": 1.0417,
+      "segmentation_options": {
+        "apply_segmentation": true,
+        "tiling_parameters": {
+          "apply_tiling": false
+        }
+      }
+    },
+    {
+      "image_id": "5B_rev2_v1",
+      "original_image_filename": "data/raw/images/sample_5_autofluorescence/cropped/20x_28DPI_5B_shadow.tif",
+      "is_active": true,
+      "mpp_x": 0.9190,
+      "mpp_y": 0.9190,
+      "segmentation_options": {
+        "apply_segmentation": true,
+        "tiling_parameters": {
+          "apply_tiling": false
+        }
+      }
+    },
+    {
+      "image_id": "5C_rev2_v1",
+      "original_image_filename": "data/raw/images/sample_5_autofluorescence/cropped/20x_28DPI_5C_shadow.tif",
+      "is_active": true,
+      "mpp_x": 0.9524,
+      "mpp_y": 0.9524,
+      "segmentation_options": {
+        "apply_segmentation": true,
+        "tiling_parameters": {
+          "apply_tiling": false
+        }
+      }
+    }
+  ],
+
+  "cellpose_parameter_configurations": [
+    {
+      "param_set_id": "comparison_15",
+      "is_active": true,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": 15,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true
+      }
+    },
+    {
+      "param_set_id": "comparison_20",
+      "is_active": true,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": 20,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true
+      }
+    },
+    {
+      "param_set_id": "comparison_30",
+      "is_active": true,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": 30,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true
+      }
+    },
+    {
+      "param_set_id": "comparison_45",
+      "is_active": true,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": 45,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true
+      }
+    }
+  ],
+
+  "mapping_tasks": [
+  ]
+} 

@@ -5,6 +5,9 @@ import numpy as np
 import json
 import math
 import traceback
+import logging
+
+logger = logging.getLogger(__name__)
 
 def tile_image(input_image_path, output_dir, tile_size=1024, overlap=100, output_prefix="tile"):
     """
@@ -12,33 +15,33 @@ def tile_image(input_image_path, output_dir, tile_size=1024, overlap=100, output
     Returns the manifest data (dictionary) on success, None on failure.
     """
     if not os.path.exists(input_image_path):
-        print(f"Error: Input image file not found: {input_image_path}")
+        logger.error(f"Error: Input image file not found: {input_image_path}")
         return None
 
     if not os.path.exists(output_dir):
         try:
             os.makedirs(output_dir)
-            print(f"Created output directory: {output_dir}")
+            logger.info(f"Created output directory: {output_dir}")
         except OSError as e:
-            print(f"Error creating output directory {output_dir}: {e}")
+            logger.error(f"Error creating output directory {output_dir}: {e}")
             return None
 
     try:
-        print(f"Loading large image for tiling: {input_image_path} ...")
+        logger.info(f"Loading large image for tiling: {input_image_path} ...")
         large_image = tifffile.imread(input_image_path)
         
         if large_image.ndim != 2:
             if large_image.ndim == 3: # Try to take first plane for ZYX or CYX etc.
-                print(f"Warning: Input image is 3D (shape: {large_image.shape}). Using the first 2D plane (index 0 of the first axis).")
+                logger.warning(f"Warning: Input image is 3D (shape: {large_image.shape}). Using the first 2D plane (index 0 of the first axis).")
                 large_image = large_image[0, :, :]
             elif large_image.ndim > 3: # Try to take first plane for ZCYX etc.
-                 print(f"Warning: Input image is >3D (shape: {large_image.shape}). Using the first 2D plane from the first two axes (e.g. Z=0, C=0).")
+                 logger.warning(f"Warning: Input image is >3D (shape: {large_image.shape}). Using the first 2D plane from the first two axes (e.g. Z=0, C=0).")
                  large_image = large_image[0, 0, :, :] 
             else: 
-                print(f"Error: Input image is not 2D (shape: {large_image.shape}). Tiling requires a 2D image.")
+                logger.error(f"Error: Input image is not 2D (shape: {large_image.shape}). Tiling requires a 2D image.")
                 return None
         
-        print(f"Image loaded for tiling. Shape: {large_image.shape}, dtype: {large_image.dtype}")
+        logger.info(f"Image loaded for tiling. Shape: {large_image.shape}, dtype: {large_image.dtype}")
 
         img_height, img_width = large_image.shape
         tile_manifest = {
@@ -54,10 +57,10 @@ def tile_image(input_image_path, output_dir, tile_size=1024, overlap=100, output
         step_size = tile_size - overlap
 
         if step_size <= 0:
-            print("Error: Overlap must be less than tile_size.")
+            logger.error("Error: Overlap must be less than tile_size.")
             return None
 
-        print(f"Tiling image into {tile_size}x{tile_size} tiles with {overlap}px overlap (step size: {step_size})...")
+        logger.info(f"Tiling image into {tile_size}x{tile_size} tiles with {overlap}px overlap (step size: {step_size})...")
 
         tile_count = 0
         for r_idx, y in enumerate(range(0, img_height, step_size)):
@@ -90,11 +93,11 @@ def tile_image(input_image_path, output_dir, tile_size=1024, overlap=100, output
                     tile_manifest["tiles"].append(tile_info)
                     tile_count += 1
                 except Exception as e_write:
-                    print(f"Error writing tile {tile_filepath}: {e_write}")
+                    logger.error(f"Error writing tile {tile_filepath}: {e_write}")
 
-        print(f"Generated {tile_count} tiles.")
+        logger.info(f"Generated {tile_count} tiles.")
         if tile_count == 0 and (img_width > 0 and img_height > 0) : # If image had size but no tiles (e.g. smaller than tile_size)
-             print("Warning: No tiles were generated. Image might be smaller than tile_size or overlap is too large.")
+             logger.warning("Warning: No tiles were generated. Image might be smaller than tile_size or overlap is too large.")
              # Consider if a single tile should be made if image < tile_size
 
         manifest_filename = f"{output_prefix}_manifest.json"
@@ -102,14 +105,14 @@ def tile_image(input_image_path, output_dir, tile_size=1024, overlap=100, output
         try:
             with open(manifest_filepath, 'w') as f_manifest:
                 json.dump(tile_manifest, f_manifest, indent=4)
-            print(f"Tile manifest saved to: {manifest_filepath}")
+            logger.info(f"Tile manifest saved to: {manifest_filepath}")
             return tile_manifest # Return the manifest data
         except Exception as e_json:
-            print(f"Error saving tile manifest {manifest_filepath}: {e_json}")
+            logger.error(f"Error saving tile manifest {manifest_filepath}: {e_json}")
             return None # Indicate failure
 
     except Exception as e:
-        print(f"An error occurred during tiling: {e}")
+        logger.error(f"An error occurred during tiling: {e}")
         traceback.print_exc()
         return None
 
@@ -126,8 +129,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    print(f"Tiling image: {args.input_image}")
-    print(f"Output directory: {args.output_dir}")
+    logger.info(f"Tiling image: {args.input_image}")
+    logger.info(f"Output directory: {args.output_dir}")
     
     tile_manifest_data = tile_image(args.input_image, args.output_dir, 
                                    tile_size=args.tile_size, 
@@ -135,7 +138,7 @@ if __name__ == "__main__":
                                    output_prefix=args.prefix)
     
     if tile_manifest_data:
-        print("Tiling process finished successfully.")
+        logger.info("Tiling process finished successfully.")
     else:
-        print("Tiling process encountered errors or produced no manifest.")
+        logger.info("Tiling process encountered errors or produced no manifest.")
 

@@ -1,0 +1,45 @@
+{
+  "global_segmentation_settings": {
+    "default_log_level": "INFO",
+    "max_processes": 1,
+    "FORCE_GRAYSCALE": true,
+    "USE_GPU_IF_AVAILABLE": true,
+    "output_base_dir": "results/results_paper/HE_rev3/XEN-126B"
+  },
+  "image_configurations": [
+    {
+      "image_id": "H&E_XEN_126B",
+      "original_image_filename": "data/raw/images/xenium_HE/HE/H&E_XEN-126B.ome.tif",
+      "is_active": true,
+      "mpp_x": 0.2528,
+      "mpp_y": 0.2528,
+      "segmentation_options": {
+        "apply_segmentation": true,
+        "rescaling_config": {
+          "scale_factor": 1.0,
+          "interpolation": "INTER_LINEAR"
+        },
+        "tiling_parameters": {
+          "apply_tiling": false
+        }
+      }
+    }
+  ],
+  "cellpose_parameter_configurations": [
+    {
+      "param_set_id": "rev3_140",
+      "is_active": true,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": 140,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true,
+        "Z_PROJECTION_METHOD": "max",
+        "CHANNEL_INDEX": 0,
+        "ENABLE_3D_SEGMENTATION": false
+      }
+    }
+  ],
+  "mapping_tasks": []
+}
