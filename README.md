@@ -6,7 +6,7 @@ This project is a powerful, flexible pipeline designed to help researchers analy
 
 Whether you are working with standard tissue slides or large-scale OME-TIFFs, this tool handles the heavy lifting—from image preprocessing and segmentation to transcript mapping and visualization.
 
-![PYcellsegmentation Header](images/image1.png)
+![PYcellsegmentation Header](docs/images/image1.png)
 
 ---
 
@@ -18,7 +18,7 @@ Whether you are working with standard tissue slides or large-scale OME-TIFFs, th
 *   **Beautiful Visualizations**: Generates high-quality images overlaying gene expression data onto cell masks.
 *   **Batch Processing**: Configure once and run multiple experiments or image channels in parallel.
 
-![Pipeline Overview](images/image2.png)
+![Pipeline Overview](docs/images/image2.png)
 
 ---
 
@@ -66,7 +66,7 @@ The pipeline is controlled by two main JSON files in the project root:
 2.  Put your transcripts in `data/raw/transcripts/`.
 3.  Edit `processing_config.json` to point to your specific filenames.
 
-![Folder Structure](images/image3.png)
+![Folder Structure](docs/images/image3.png)
 
 ### 3. Running the Pipeline
 
@@ -123,7 +123,7 @@ Extracts relevant 2D planes from complex OME-TIFFs.
     *   **Segmentation:** Runs Cellpose on each image or tile.
     *   Saves masks in `data/processed/segmentation/`.
 
-![Tiling and Stitching](images/image4.png)
+![Tiling and Stitching](docs/images/image4.png)
 
 ### 3. Transcript Mapping
 *   **Script:** `src/map_transcripts_to_cells.py`
