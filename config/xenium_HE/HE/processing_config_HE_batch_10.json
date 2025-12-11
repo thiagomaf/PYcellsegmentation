@@ -1,0 +1,120 @@
+{
+  "global_segmentation_settings": {
+    "default_log_level": "INFO",
+    "max_processes": 1,
+    "FORCE_GRAYSCALE": true,
+    "USE_GPU_IF_AVAILABLE": true
+  },
+  "image_configurations": [
+    {
+      "image_id": "H&E_XEN_128C",
+      "original_image_filename": "data\\raw\\images\\xenium_HE\\HE\\H&E_XEN-128C.ome.tif",
+      "is_active": true,
+      "mpp_x": 0.2528,
+      "mpp_y": 0.2528,
+      "segmentation_options": {
+        "apply_segmentation": true,
+        "rescaling_config": {
+          "scale_factor": 0.5,
+          "interpolation": "INTER_LINEAR"
+        },
+        "tiling_parameters": {
+          "apply_tiling": false
+        }
+      }
+    },
+    {
+      "image_id": "H&E_XEN_128D",
+      "original_image_filename": "data\\raw\\images\\xenium_HE\\HE\\H&E_XEN-128D.ome.tif",
+      "is_active": true,
+      "mpp_x": 0.2528,
+      "mpp_y": 0.2528,
+      "segmentation_options": {
+        "apply_segmentation": true,
+        "rescaling_config": {
+          "scale_factor": 1.0,
+          "interpolation": "INTER_LINEAR"
+        },
+        "tiling_parameters": {
+          "apply_tiling": false
+        }
+      }
+    },
+    {
+      "image_id": "H&E_XEN_128D",
+      "original_image_filename": "data\\raw\\images\\xenium_HE\\HE\\H&E_XEN-128D.ome.tif",
+      "is_active": true,
+      "mpp_x": 0.2528,
+      "mpp_y": 0.2528,
+      "segmentation_options": {
+        "apply_segmentation": true,
+        "rescaling_config": {
+          "scale_factor": 1.0,
+          "interpolation": "INTER_LINEAR"
+        },
+        "tiling_parameters": {
+          "apply_tiling": false
+        }
+      }
+    },
+    {
+      "image_id": "H&E_XEN_43A",
+      "original_image_filename": "data\\raw\\images\\xenium_HE\\HE\\H&E_XEN-43A.ome.tif",
+      "is_active": true,
+      "mpp_x": 0.2528,
+      "mpp_y": 0.2528,
+      "segmentation_options": {
+        "apply_segmentation": true,
+        "rescaling_config": {
+          "scale_factor": 0.5,
+          "interpolation": "INTER_LINEAR"
+        },
+        "tiling_parameters": {
+          "apply_tiling": false
+        }
+      }
+    },
+    {
+      "image_id": "H&E_XEN_43A",
+      "original_image_filename": "data\\raw\\images\\xenium_HE\\HE\\H&E_XEN-43A.ome.tif",
+      "is_active": true,
+      "mpp_x": 0.2528,
+      "mpp_y": 0.2528,
+      "segmentation_options": {
+        "apply_segmentation": true,
+        "rescaling_config": {
+          "scale_factor": 0.5,
+          "interpolation": "INTER_LINEAR"
+        },
+        "tiling_parameters": {
+          "apply_tiling": false
+        }
+      }
+    }
+  ],
+  "cellpose_parameter_configurations": [
+    {
+      "param_set_id": "comparison_60",
+      "is_active": true,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": 60,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true
+      }
+    },
+    {
+      "param_set_id": "comparison_90",
+      "is_active": true,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": 90,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true
+      }
+    }
+  ],
+  "mapping_tasks": []
+}

@@ -1,0 +1,226 @@
+{
+  "global_segmentation_settings": {
+    "default_log_level": "INFO",
+    "max_processes": 1,
+    "FORCE_GRAYSCALE": true,
+    "USE_GPU_IF_AVAILABLE": true,
+    "output_base_dir": "results/results_paper/HE_cropped"
+  },
+  "image_configurations": [
+    {
+      "image_id": "H&E_XEN_116C_cropped",
+      "original_image_filename": "data/raw/images/xenium_HE/HE_cropped/H&E_XEN-116C_cropped.ome.tif",
+      "is_active": true,
+      "mpp_x": 0.5682,
+      "mpp_y": 0.5682,
+      "segmentation_options": {
+        "apply_segmentation": true,
+        "rescaling_config": {
+          "scale_factor": 1.0,
+          "interpolation": "INTER_LINEAR"
+        },
+        "tiling_parameters": {
+          "apply_tiling": false
+        }
+      }
+    },
+    {
+      "image_id": "H&E_XEN_116D_cropped",
+      "original_image_filename": "data/raw/images/xenium_HE/HE_cropped/H&E_XEN-116D_cropped.ome.tif",
+      "is_active": false,
+      "mpp_x": 0.5682,
+      "mpp_y": 0.5682,
+      "segmentation_options": {
+        "apply_segmentation": true,
+        "rescaling_config": {
+          "scale_factor": 1.0,
+          "interpolation": "INTER_LINEAR"
+        },
+        "tiling_parameters": {
+          "apply_tiling": false
+        }
+      }
+    },
+    {
+      "image_id": "H&E_XEN_125A_cropped",
+      "original_image_filename": "data/raw/images/xenium_HE/HE_cropped/H&E_XEN-125A_cropped.ome.tif",
+      "is_active": true,
+      "mpp_x": 0.5682,
+      "mpp_y": 0.5682,
+      "segmentation_options": {
+        "apply_segmentation": true,
+        "rescaling_config": {
+          "scale_factor": 1.0,
+          "interpolation": "INTER_LINEAR"
+        },
+        "tiling_parameters": {
+          "apply_tiling": false
+        }
+      }
+    },
+    {
+      "image_id": "H&E_XEN_125B_cropped",
+      "original_image_filename": "data/raw/images/xenium_HE/HE_cropped/H&E_XEN-125B_cropped.ome.tif",
+      "is_active": true,
+      "mpp_x": 0.5682,
+      "mpp_y": 0.5682,
+      "segmentation_options": {
+        "apply_segmentation": true,
+        "rescaling_config": {
+          "scale_factor": 1.0,
+          "interpolation": "INTER_LINEAR"
+        },
+        "tiling_parameters": {
+          "apply_tiling": false
+        }
+      }
+    },
+    {
+      "image_id": "H&E_XEN_125C_cropped",
+      "original_image_filename": "data/raw/images/xenium_HE/HE_cropped/H&E_XEN-125C_cropped.ome.tif",
+      "is_active": false,
+      "mpp_x": 0.5682,
+      "mpp_y": 0.5682,
+      "segmentation_options": {
+        "apply_segmentation": true,
+        "rescaling_config": {
+          "scale_factor": 1.0,
+          "interpolation": "INTER_LINEAR"
+        },
+        "tiling_parameters": {
+          "apply_tiling": false
+        }
+      }
+    }
+  ],
+  "cellpose_parameter_configurations": [
+    {
+      "param_set_id": "comparison_30",
+      "is_active": false,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": 30,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true,
+        "Z_PROJECTION_METHOD": "max",
+        "CHANNEL_INDEX": 0,
+        "ENABLE_3D_SEGMENTATION": false
+      }
+    },
+    {
+      "param_set_id": "comparison_60",
+      "is_active": false,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": 60,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true,
+        "Z_PROJECTION_METHOD": "max",
+        "CHANNEL_INDEX": 0,
+        "ENABLE_3D_SEGMENTATION": false
+      }
+    },
+    {
+      "param_set_id": "comparison_90",
+      "is_active": false,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": 90,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true,
+        "Z_PROJECTION_METHOD": "max",
+        "CHANNEL_INDEX": 0,
+        "ENABLE_3D_SEGMENTATION": false
+      }
+    },
+    {
+      "param_set_id": "comparison_100",
+      "is_active": false,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": 100,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true,
+        "Z_PROJECTION_METHOD": "max",
+        "CHANNEL_INDEX": 0,
+        "ENABLE_3D_SEGMENTATION": false
+      }
+    },
+    {
+      "param_set_id": "comparison_120",
+      "is_active": false,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": 120,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true,
+        "Z_PROJECTION_METHOD": "max",
+        "CHANNEL_INDEX": 0,
+        "ENABLE_3D_SEGMENTATION": false
+      }
+    },
+    {
+      "param_set_id": "comparison_140",
+      "is_active": false,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": 140,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true,
+        "Z_PROJECTION_METHOD": "max",
+        "CHANNEL_INDEX": 0,
+        "ENABLE_3D_SEGMENTATION": false
+      }
+    },
+    {
+      "param_set_id": "comparison_160",
+      "is_active": true,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": 160,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true,
+        "Z_PROJECTION_METHOD": "max",
+        "CHANNEL_INDEX": 0,
+        "ENABLE_3D_SEGMENTATION": false
+      }
+    },
+    {
+      "param_set_id": "comparison_180",
+      "is_active": true,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": 180,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true,
+        "Z_PROJECTION_METHOD": "max",
+        "CHANNEL_INDEX": 0,
+        "ENABLE_3D_SEGMENTATION": false
+      }
+    },
+    {
+      "param_set_id": "comparison_200",
+      "is_active": true,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": 200,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true,
+        "Z_PROJECTION_METHOD": "max",
+        "CHANNEL_INDEX": 0,
+        "ENABLE_3D_SEGMENTATION": false
+      }
+    }
+  ],
+  "mapping_tasks": []
+}
+

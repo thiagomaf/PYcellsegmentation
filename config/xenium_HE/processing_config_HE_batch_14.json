@@ -1,0 +1,98 @@
+{
+  "global_segmentation_settings": {
+    "default_log_level": "INFO",
+    "max_processes": 1,
+    "FORCE_GRAYSCALE": true,
+    "USE_GPU_IF_AVAILABLE": true
+  },
+  "image_configurations": [
+    {
+      "image_id": "H&E_XEN_5A",
+      "original_image_filename": "data/raw/images/xenium_HE/HE/H&E_XEN-5A.ome.tif",
+      "is_active": true,
+      "mpp_x": 0.2528,
+      "mpp_y": 0.2528,
+      "segmentation_options": {
+        "apply_segmentation": true,
+        "rescaling_config": {
+          "scale_factor": 1.0,
+          "interpolation": "INTER_LINEAR"
+        },
+        "tiling_parameters": {
+          "apply_tiling": true,
+          "tile_size_xy_microns": 379,
+          "overlap_microns": 28
+        }
+      }
+    },
+    {
+      "image_id": "H&E_XEN_5B",
+      "original_image_filename": "data/raw/images/xenium_HE/HE/H&E_XEN-5B.ome.tif",
+      "is_active": true,
+      "mpp_x": 0.2528,
+      "mpp_y": 0.2528,
+      "segmentation_options": {
+        "apply_segmentation": true,
+        "rescaling_config": {
+          "scale_factor": 1.0,
+          "interpolation": "INTER_LINEAR"
+        },
+        "tiling_parameters": {
+          "apply_tiling": true,
+          "tile_size_xy_microns": 379,
+          "overlap_microns": 28
+        }
+      }
+    },
+    {
+      "image_id": "H&E_XEN_5C",
+      "original_image_filename": "data/raw/images/xenium_HE/HE/H&E_XEN-5C.ome.tif",
+      "is_active": true,
+      "mpp_x": 0.2528,
+      "mpp_y": 0.2528,
+      "segmentation_options": {
+        "apply_segmentation": true,
+        "rescaling_config": {
+          "scale_factor": 1.0,
+          "interpolation": "INTER_LINEAR"
+        },
+        "tiling_parameters": {
+          "apply_tiling": true,
+          "tile_size_xy_microns": 379,
+          "overlap_microns": 28
+        }
+      }
+    }
+  ],
+  "cellpose_parameter_configurations": [
+    {
+      "param_set_id": "comparison_60",
+      "is_active": true,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": 60,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true,
+        "Z_PROJECTION_METHOD": "max",
+        "CHANNEL_INDEX": 0,
+        "ENABLE_3D_SEGMENTATION": false
+      }
+    },
+    {
+      "param_set_id": "comparison_90",
+      "is_active": true,
+      "cellpose_parameters": {
+        "MODEL_CHOICE": "cyto3",
+        "DIAMETER": 90,
+        "MIN_SIZE": 15,
+        "CELLPROB_THRESHOLD": 0.0,
+        "FORCE_GRAYSCALE": true,
+        "Z_PROJECTION_METHOD": "max",
+        "CHANNEL_INDEX": 0,
+        "ENABLE_3D_SEGMENTATION": false
+      }
+    }
+  ],
+  "mapping_tasks": []
+}

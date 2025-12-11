@@ -1,0 +1,1186 @@
+{
+    "original_image_path": "/content/drive/MyDrive/Github/PYcellsegmentation/data/raw/images/xenium_HE/HE/H&E_XEN-128A.ome.tif",
+    "original_height": 27972,
+    "original_width": 9380,
+    "tile_size": 1499,
+    "overlap": 111,
+    "output_tile_directory": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A",
+    "tiles": [
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r000_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r000_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 0,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r000_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r000_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 0,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r000_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r000_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 0,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r000_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r000_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 0,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r000_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r000_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 0,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r000_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r000_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 0,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r000_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r000_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 0,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r001_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r001_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 1388,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r001_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r001_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 1388,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r001_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r001_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 1388,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r001_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r001_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 1388,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r001_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r001_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 1388,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r001_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r001_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 1388,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r001_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r001_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 1388,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r002_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r002_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 2776,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r002_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r002_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 2776,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r002_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r002_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 2776,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r002_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r002_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 2776,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r002_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r002_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 2776,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r002_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r002_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 2776,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r002_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r002_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 2776,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r003_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r003_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 4164,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r003_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r003_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 4164,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r003_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r003_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 4164,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r003_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r003_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 4164,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r003_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r003_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 4164,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r003_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r003_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 4164,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r003_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r003_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 4164,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r004_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r004_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 5552,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r004_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r004_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 5552,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r004_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r004_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 5552,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r004_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r004_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 5552,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r004_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r004_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 5552,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r004_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r004_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 5552,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r004_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r004_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 5552,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r005_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r005_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 6940,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r005_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r005_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 6940,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r005_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r005_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 6940,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r005_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r005_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 6940,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r005_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r005_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 6940,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r005_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r005_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 6940,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r005_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r005_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 6940,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r006_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r006_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 8328,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r006_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r006_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 8328,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r006_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r006_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 8328,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r006_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r006_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 8328,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r006_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r006_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 8328,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r006_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r006_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 8328,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r006_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r006_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 8328,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r007_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r007_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 9716,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r007_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r007_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 9716,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r007_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r007_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 9716,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r007_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r007_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 9716,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r007_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r007_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 9716,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r007_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r007_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 9716,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r007_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r007_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 9716,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r008_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r008_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 11104,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r008_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r008_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 11104,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r008_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r008_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 11104,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r008_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r008_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 11104,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r008_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r008_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 11104,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r008_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r008_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 11104,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r008_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r008_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 11104,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r009_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r009_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 12492,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r009_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r009_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 12492,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r009_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r009_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 12492,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r009_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r009_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 12492,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r009_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r009_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 12492,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r009_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r009_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 12492,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r009_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r009_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 12492,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r010_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r010_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 13880,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r010_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r010_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 13880,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r010_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r010_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 13880,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r010_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r010_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 13880,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r010_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r010_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 13880,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r010_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r010_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 13880,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r010_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r010_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 13880,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r011_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r011_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 15268,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r011_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r011_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 15268,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r011_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r011_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 15268,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r011_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r011_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 15268,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r011_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r011_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 15268,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r011_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r011_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 15268,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r011_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r011_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 15268,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r012_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r012_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 16656,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r012_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r012_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 16656,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r012_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r012_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 16656,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r012_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r012_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 16656,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r012_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r012_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 16656,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r012_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r012_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 16656,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r012_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r012_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 16656,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r013_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r013_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 18044,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r013_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r013_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 18044,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r013_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r013_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 18044,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r013_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r013_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 18044,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r013_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r013_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 18044,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r013_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r013_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 18044,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r013_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r013_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 18044,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r014_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r014_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 19432,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r014_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r014_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 19432,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r014_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r014_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 19432,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r014_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r014_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 19432,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r014_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r014_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 19432,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r014_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r014_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 19432,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r014_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r014_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 19432,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r015_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r015_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 20820,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r015_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r015_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 20820,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r015_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r015_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 20820,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r015_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r015_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 20820,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r015_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r015_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 20820,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r015_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r015_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 20820,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r015_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r015_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 20820,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r016_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r016_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 22208,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r016_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r016_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 22208,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r016_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r016_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 22208,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r016_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r016_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 22208,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r016_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r016_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 22208,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r016_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r016_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 22208,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r016_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r016_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 22208,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r017_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r017_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 23596,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r017_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r017_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 23596,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r017_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r017_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 23596,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r017_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r017_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 23596,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r017_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r017_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 23596,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r017_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r017_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 23596,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r017_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r017_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 23596,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r018_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r018_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 24984,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r018_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r018_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 24984,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r018_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r018_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 24984,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r018_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r018_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 24984,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r018_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r018_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 24984,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r018_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r018_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 24984,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r018_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r018_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 24984,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r019_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r019_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 26372,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r019_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r019_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 26372,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r019_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r019_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 26372,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r019_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r019_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 26372,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r019_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r019_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 26372,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r019_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r019_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 26372,
+            "width_tile": 1499,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r019_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r019_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 26372,
+            "width_tile": 1052,
+            "height_tile": 1499
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r020_c000.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r020_c000.tif",
+            "x_start_in_original": 0,
+            "y_start_in_original": 27760,
+            "width_tile": 1499,
+            "height_tile": 212
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r020_c001.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r020_c001.tif",
+            "x_start_in_original": 1388,
+            "y_start_in_original": 27760,
+            "width_tile": 1499,
+            "height_tile": 212
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r020_c002.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r020_c002.tif",
+            "x_start_in_original": 2776,
+            "y_start_in_original": 27760,
+            "width_tile": 1499,
+            "height_tile": 212
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r020_c003.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r020_c003.tif",
+            "x_start_in_original": 4164,
+            "y_start_in_original": 27760,
+            "width_tile": 1499,
+            "height_tile": 212
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r020_c004.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r020_c004.tif",
+            "x_start_in_original": 5552,
+            "y_start_in_original": 27760,
+            "width_tile": 1499,
+            "height_tile": 212
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r020_c005.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r020_c005.tif",
+            "x_start_in_original": 6940,
+            "y_start_in_original": 27760,
+            "width_tile": 1499,
+            "height_tile": 212
+        },
+        {
+            "filename": "H_E_XEN-128A_ome_tile_r020_c006.tif",
+            "path": "/content/drive/MyDrive/Github/PYcellsegmentation/images/tiled_outputs/H&E_XEN_128A/H_E_XEN-128A_ome_tile_r020_c006.tif",
+            "x_start_in_original": 8328,
+            "y_start_in_original": 27760,
+            "width_tile": 1052,
+            "height_tile": 212
+        }
+    ]
+}
