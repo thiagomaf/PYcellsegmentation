@@ -57,11 +57,20 @@ Follow these steps to get the pipeline running on your machine.
 
 ### 2. Configuration
 
+**📄 [See the Detailed Configuration Guide](docs/configuration_guide.md)** for full documentation on parameter settings and automated setup.
+
+**Option A: Automated Configuration (Recommended)**
+Use the provided script to automatically scan your data folders and generate ready-to-use config files:
+```bash
+python scripts/create_config_files.py
+```
+
+**Option B: Manual Setup**
 The pipeline is controlled by two main JSON files in the project root:
 *   **`processing_config.json`**: Controls segmentation, tiling, and transcript mapping.
 *   **`visualization_config.json`**: Controls which genes are plotted and how they look.
 
-**Basic Setup:**
+**Basic Manual Workflow:**
 1.  Put your images in `data/raw/images/`.
 2.  Put your transcripts in `data/raw/transcripts/`.
 3.  Edit `processing_config.json` to point to your specific filenames.
