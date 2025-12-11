@@ -1,552 +1,188 @@
-# Advanced Cell Segmentation & Analysis Pipeline for Spatio-Transcriptomics
+# PYcellsegmentation: Advanced Spatial Transcriptomics Analysis
 
-This project provides a Python-based pipeline for segmenting cells in microscopy images using Cellpose. It is highly configurable via a central JSON file, allowing for batch processing of multiple images with various Cellpose parameters, optional on-the-fly tiling and rescaling for very large images. It also includes tools for pre-processing OME-TIFFs, mapping transcripts to segmented cells, visualizing gene expression, and generating comparative summary visualizations.
+Welcome to **PYcellsegmentation**! 
 
-The primary data organization for inputs, intermediate processed files, and final results is managed within the `data/` directory (see "Project Directory Structure" below).
+This project is a powerful, flexible pipeline designed to help researchers analyze spatial transcriptomics data. It bridges the gap between raw microscopy images and biological insights by automating the complex process of identifying cells and mapping gene expression data to them.
 
-## Running Pipeline Steps Individually (Command-Line Usage)
+Whether you are working with standard tissue slides or large-scale OME-TIFFs, this tool handles the heavy lifting—from image preprocessing and segmentation to transcript mapping and visualization.
 
-While the scripts can be orchestrated by their respective configuration files for batch processing, many can also be run individually from the command line for specific tasks or debugging. Ensure your terminal is in the project's root directory when a script expects paths relative to the project (e.g. for config files or default output locations).
+![PYcellsegmentation Header](images/image1.png)
 
-*   **Pre-process OME-TIFFs (`src/preprocess_ometiff.py`)**:
-    Extracts specific 2D planes from OME-TIFF files.
+---
+
+## 🚀 Key Features
+
+*   **Automated Cell Segmentation**: Uses **Cellpose**, a state-of-the-art deep learning tool, to accurately identify cells and nuclei.
+*   **Handles Large Images**: Automatically splits very large images into tiles for processing and stitches them back together seamlessly.
+*   **Spatial Mapping**: Assigns transcript locations (e.g., from Xenium or other platforms) to specific cells, creating a feature-cell matrix.
+*   **Beautiful Visualizations**: Generates high-quality images overlaying gene expression data onto cell masks.
+*   **Batch Processing**: Configure once and run multiple experiments or image channels in parallel.
+
+![Pipeline Overview](images/image2.png)
+
+---
+
+## 🏁 Quick Start Guide
+
+Follow these steps to get the pipeline running on your machine.
+
+### 1. Installation
+
+**Prerequisites:** You need Python installed (version 3.9+ recommended).
+
+1.  **Clone the Repository**
     ```bash
-    python src/preprocess_ometiff.py <input_path.ome.tif> <output_directory> --channel <channel_index> --zplane <zplane_index> --series <series_index> --prefix <output_file_prefix>
+    git clone https://github.com/YourUsername/PYcellsegmentation.git
+    cd PYcellsegmentation
     ```
-    *   `<input_path.ome.tif>`: Path to the input OME-TIFF file.
-    *   `<output_directory>`: Directory to save the extracted TIFF plane(s).
-    *   `--channel`, `--zplane`, `--series`: Optional arguments to specify the desired plane. If multiple are given (e.g. multiple channels), each will be saved as a separate file.
-    *   `--prefix`: Optional prefix for the output filenames.
 
-*   **Run Batch Segmentation (`src/segmentation_pipeline.py`)**:
-    Processes images based on `processing_config.json`. This is the main script for running Cellpose segmentation in batches.
-    ```bash
-    python -m src.segmentation_pipeline --config path/to/processing_config.json
-    ```
-    *   `--config`: Path to the processing configuration JSON file (default: `processing_config.json` in the project root).
-    *   `--log_level`: Overrides log level from config (e.g., `DEBUG`, `INFO`).
-    *   `--max_processes`: Overrides max parallel processes from config.
-
-*   **Stitch Tiled Segmentations (`src/stitch_masks.py`)**:
-    Combines segmentation masks from individual tiles into a single coherent mask for a previously tiled image.
-    ```bash
-    python -m src.stitch_masks <original_image_id> <param_set_id> <output_dir_for_stitched_mask> --output_filename <stitched_mask_name.tif> --run_log path/to/run_log.json
-    ```
-    *   `<original_image_id>`: The `image_id` from `image_configurations` (in `processing_config.json`) that was tiled.
-    *   `<param_set_id>`: The `param_set_id` from `cellpose_parameter_configurations` used for segmenting the tiles.
-    *   `<output_dir_for_stitched_mask>`: Directory where the final stitched mask will be saved (e.g., `data/processed/segmentation/my_experiment_stitched/`).
-    *   `--output_filename`: (Optional) Filename for the output stitched mask (default: `stitched_mask.tif`).
-    *   `--run_log`: (Optional) Path to the `run_log.json` generated by the segmentation pipeline, used to find tile information (default: `results/run_log.json` relative to project root).
-
-*   **Map Transcripts to Cells (`src/map_transcripts_to_cells.py`)**:
-    Assigns transcript coordinates to segmented cell IDs.
-    ```bash
-    python -m src.map_transcripts_to_cells --config path/to/processing_config.json --task_id <specific_task_id>
-    ```
-    *   `--config`: Path to the processing configuration JSON file (default: `processing_config.json` in the project root). This file contains `mapping_tasks` and `image_configurations`.
-    *   `--task_id`: (Optional) If you want to run only a specific mapping task defined in the config. If omitted, all active tasks are run.
-
-*   **Visualize Gene Expression (`src/visualize_gene_expression.py`)**:
-    Generates images overlaying gene expression on segmentation masks.
-    ```bash
-    python -m src.visualize_gene_expression --proc_config path/to/processing_config.json --viz_config path/to/visualization_config.json --task_id <specific_task_id>
-    ```
-    *   `--proc_config`: Path to the processing config (contains `image_configurations`). Defaults to `processing_config.json` in the project root.
-    *   `--viz_config`: Path to the visualization config (contains `visualization_tasks`). Defaults to `visualization_config.json` in the project root.
-    *   `--task_id`: (Optional) Specific visualization task ID to run.
-
-*   **Analyze Segmentation Results (Simple) (`src/simple_cellpose_analysis.py`)**:
-    Provides a lightweight, text-only analysis of segmentation results. It calculates basic metrics (cell count, area statistics) without requiring plotting libraries. It prints a summary table to the console and saves a detailed CSV file. This is useful for quick, dependency-free analysis.
-    ```bash
-    python src/simple_cellpose_analysis.py --config path/to/processing_config.json
-    ```
-    *   `--config`: Path to the processing configuration JSON file. This is the recommended way to specify which results to analyze.
-    *   `--results_dir`: Directory where segmentation results are stored (default: `results`).
-    *   `--filter_pattern`: (Optional) If not using `--config`, you can specify a text pattern (e.g., "comparison") to find result directories by name.
-    *   `--output_csv`: (Optional) Specify the full path for the output CSV file. If omitted, a name is generated automatically based on the config file name.
-
-*   **Create Segmentation Summary Image (`src/create_segmentation_summary.py`)**:
-    Generates a comparative image of segmentations from different parameter sets, showing consistency. This script typically summarizes segmentations of the original (non-tiled, non-rescaled) images.
-    ```bash
-    python -m src.create_segmentation_summary --config path/to/processing_config.json --results_dir path/to/results_folder --output_filename summary.png
-    ```
-    *   `--config`: Path to the processing configuration JSON (default: `processing_config.json` in project root). Used to identify active image configurations and Cellpose parameters.
-    *   `--results_dir`: Base directory where segmentation results (experiment folders with masks) are stored (default: `results/` in project root). The script expects subfolders here named `<image_id>_<param_set_id>`.
-    *   `--output_filename`: (Optional) Filename for the output summary PNG image (default: `segmentation_summary_consistency.png`). Saved in the directory specified by `--results_dir`.
-
-*   **Create Individual Segmentation Overlays (`src/create_individual_overlays.py`)**:
-    Generates high-quality, individual overlay images for each image-model combination. This is ideal for detailed inspection and creating figures. Each output image shows the background image with a semi-transparent segmentation mask overlaid, and includes a scale bar.
-    ```bash
-    python src/create_individual_overlays.py --config path/to/processing_config.json --force_8bit --brightness_factor 1.5 --color "#FFFF00"
-    ```
-    *   `--config`: **(Required)** Path to the processing configuration JSON file. The script processes every active image/model combination defined in this file.
-    *   `--results_dir`: Directory where segmentation results are stored (default: `results`).
-    *   `--output_dir`: Directory to save the final overlay images (default: `results/individual_overlays`).
-    *   `--alpha`: Controls the transparency of the cell masks (e.g., `0.3` for high transparency). Default: `0.4`.
-    *   `--force_8bit`: If included, uses a robust percentile-based 8-bit conversion to improve contrast of the background image. Recommended for 16-bit source images. Default: off.
-    *   `--brightness_factor`: Multiplier to adjust background image brightness (e.g., `1.5` for 50% brighter). Default: `1.0`.
-    *   `--color`: Sets the color of the segmentation masks. Use `"multi"` (default) for randomly colored individual cells, or a hex string (e.g., `"#FFFF00"`) for a uniform color.
-    *   `--zoom_factor`, `--zoom_x`, `--zoom_y`: Use all three to zoom in on a specific region. `--zoom_factor` (e.g., `2.0` for 2x), and `--zoom_x`/`--zoom_y` for the center coordinates (in pixels) of the zoom.
-
-## Core Components & Workflow
-This project offers a suite of tools that can be used as a cohesive pipeline or as individual components. The typical automated workflow involves these general stages:
-
-1.  **Data Preparation & Configuration**:
-    *   Place your raw images (e.g., `.ome.tif`) in `data/raw/images/` and transcript files (e.g., `.parquet`) in `data/raw/transcripts/`.
-    *   Configure `processing_config.json` (for segmentation, mapping, etc.) and `visualization_config.json` (for visualization tasks). These files are located in the project root.
-
-2.  **`(Optional)` Image Pre-processing (`src/preprocess_ometiff.py`)**:
-    *   Extracts relevant 2D planes from complex OME-TIFFs (e.g., Xenium) as standard TIFF files. Output these to a working directory, ideally within `data/processed/` or a subfolder of `data/raw/images/` before referencing them in `processing_config.json`.
-    *   **Example Usage:**
-        ```bash
-        python src/preprocess_ometiff.py path/to/your/input.ome.tif path/to/output_directory --channel 0 --zplane 5 --prefix my_experiment
-        ```
-
-3.  **Main Configuration Files**:
-    *   **`processing_config.json`**: This central JSON file defines the core batch processing steps.
-        *   Contains: `global_segmentation_settings`, `image_configurations`, `cellpose_parameter_configurations`, and `mapping_tasks`.
-    *   **`visualization_config.json`**: This file defines all gene expression visualization tasks.
-        *   Contains: `visualization_tasks` (which includes `default_genes_to_visualize` and the list of individual `tasks`).
-
-4.  **Segmentation & Tiling (`src/segmentation_pipeline.py`)**:
-    *   Reads the `processing_config.json`.
-    *   For each active image configuration:
-        *   If rescaling is specified, the image is rescaled. Cached rescaled images might be stored (e.g., in `src/file_paths.py` defined `RESCALED_IMAGE_CACHE_DIR` which defaults to `images/rescaled_cache/`).
-        *   If tiling is specified, it generates tiles. Cached tile images might be stored (e.g., in `src/file_paths.py` defined `TILED_IMAGE_OUTPUT_BASE` which defaults to `images/tiled_outputs/`).
-    *   For each job (image/tile + Cellpose parameter set):
-        *   Performs segmentation.
-        *   Outputs (masks, summaries) are saved in structured directories, typically under `data/processed/segmentation/<experiment_id_final>/` (the exact base path is defined by `RESULTS_DIR_BASE` in `src/file_paths.py`, which can be configured to point into `data/processed/segmentation/`).
-        *   The `experiment_id_final` incorporates image ID, parameter set ID, scaling, and tile information.
-    *   A main `run_log.json` is saved (e.g., in `data/processed/segmentation/run_log.json` if `RESULTS_DIR_BASE` points there).
-
-5.  **`(Optional)` Stitch Tiled Segmentations (`src/stitch_masks.py`)**:
-    *   Combines individual tile masks into a single coherent mask. Input tiles are typically from the tile cache, and the output stitched mask should be saved to a relevant path in `data/processed/segmentation/`.
-
-6.  **`(Optional)` Transcript Mapping (`src/map_transcripts_to_cells.py`)**:
-    *   Reads `processing_config.json` for `mapping_tasks` and to resolve dependencies like image configurations.
-    *   Maps transcript locations from `data/raw/transcripts/` (or a processed version) to segmented cell IDs using a chosen mask (from `data/processed/segmentation/`).
-    *   Outputs (e.g., mapped transcripts CSV, feature-cell matrix) should be saved to `data/processed/mapped/`.
-
-7.  **`(Optional)` Gene Expression Visualization (`src/visualize_gene_expression.py`)**:
-    *   Driven by `visualization_config.json`.
-    *   Also requires `processing_config.json` to access `image_configurations` for image metadata (MPP, original paths for backgrounds, etc.).
-    *   Loads segmentation masks, background images, and mapped transcripts.
-    *   Generates PNG images, typically saved to `data/results/visualizations/<task_output_subfolder_name>/`.
-
-8.  **`(Optional)` Summary Visualization (`src/create_segmentation_summary.py`)**:
-    *   Analyzes segmentation results to generate consensus/consistency images, typically saved to `data/results/visualizations/` or `data/processed/segmentation/`.
-
-## Features
-*   **Centralized JSON Configuration:** Parameters are managed in `processing_config.json` and `visualization_config.json`.
-*   **Structured Data Management:** Clear organization for raw data, processed files, and results using the `data/` directory.
-*   Flexible batch processing.
-*   Automatic on-the-fly image rescaling and tiling.
-*   OME-TIFF pre-processing utility.
-*   Configurable Cellpose models, parameters, and GPU usage.
-*   Stitching of tiled segmentation masks.
-*   Transcript mapping and feature-cell matrix generation.
-*   Configurable gene expression visualization.
-*   Advanced summary visualization of segmentation consistency.
-*   **Comprehensive Logging:** Configurable log levels, job summaries, and a main `run_log.json`.
-*   Internal path management defaults are in `src/file_paths.py` but outputs are intended for the `data/` directory structure.
-
-## Installation
-
-1.  **Clone the Repository.**
-2.  **Set up a Python Virtual Environment:**
-
-    It's highly recommended to use a virtual environment to manage project dependencies. This isolates the project's requirements from your global Python installation.
-
-    *Important: Virtual environments are not generally transportable between computers or different path locations. You should create a new virtual environment and install dependencies on each machine where you set up the project.*
-
-    *   **Windows (PowerShell/Command Prompt):**
-        ```bash
-        # Create the virtual environment (e.g., named .venv)
+2.  **Set up a Virtual Environment**
+    It is highly recommended to use a virtual environment to keep dependencies organized.
+    *   **Windows:**
+        ```powershell
         python -m venv .venv
-        # Activate the virtual environment
         Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process
         .venv\Scripts\activate
         ```
-        *Note: If `python` is not recognized, you might need to use `py -m venv .venv` or ensure Python is in your PATH.*
-
-    *   **macOS / Linux (bash/zsh):**
+    *   **Mac/Linux:**
         ```bash
-        # Create the virtual environment (e.g., named .venv)
         python3 -m venv .venv
-        # Activate the virtual environment
         source .venv/bin/activate
         ```
-        *Note: Depending on your system, you might need to use `python` instead of `python3`.*
 
-    You should see the environment name (e.g., `(.venv)`) prefixed to your shell prompt once activated. To deactivate, simply type `deactivate`.
-
-3.  **Install Dependencies:**
-    Once your virtual environment is activated, install the required packages:
+3.  **Install Dependencies**
     ```bash
     pip install -r requirements.txt
     ```
-    (Key dependencies include `cellpose`, `opencv-python-headless`, `numpy`, `matplotlib`, `tifffile`, `pandas`, `scipy`, `pyarrow`, `pytest`, `pytest-mock`).
 
-## Project Directory Structure
+### 2. Configuration
 
-The project is organized as follows:
+The pipeline is controlled by two main JSON files in the project root:
+*   **`processing_config.json`**: Controls segmentation, tiling, and transcript mapping.
+*   **`visualization_config.json`**: Controls which genes are plotted and how they look.
+
+**Basic Setup:**
+1.  Put your images in `data/raw/images/`.
+2.  Put your transcripts in `data/raw/transcripts/`.
+3.  Edit `processing_config.json` to point to your specific filenames.
+
+![Folder Structure](images/image3.png)
+
+### 3. Running the Pipeline
+
+To run the main segmentation workflow:
+```bash
+python -m src.segmentation_pipeline --config processing_config.json
+```
+
+To map transcripts to the segmented cells:
+```bash
+python -m src.map_transcripts_to_cells --config processing_config.json
+```
+
+To visualize the results:
+```bash
+python -m src.visualize_gene_expression --proc_config processing_config.json --viz_config visualization_config.json
+```
+
+---
+
+## 📂 Project Directory Structure
+
+The project is organized to keep data separate from code:
 
 ```
 project_root/
 ├── data/                     # All user data, processed files, and results
-│   ├── raw/                  # Original, unmodified input data
-│   │   ├── images/           # Raw microscopy images (e.g., *.ome.tif)
-│   │   │   └── experiment1/  # Example experiment subfolder
-│   │   └── transcripts/      # Raw transcript data (e.g., *.parquet)
-│   │       └── experiment1/  # Example experiment subfolder
-│   ├── processed/            # Intermediate files generated by the pipeline
-│   │   ├── segmentation/     # Segmentation masks, summaries, run logs
-│   │   │   └── experiment1/
-│   │   ├── mapped/           # Transcript-to-cell mapping outputs
-│   │   │   └── experiment1/
-│   │   └── ...               # Other intermediate processing outputs
-│   └── results/              # Final analysis results and visualizations
-│       └── experiment1/
-│           ├── visualizations/
-│           └── statistics/
-├── src/                      # Python source code for the pipeline
-│   ├── segmentation_pipeline.py  # Main script for running segmentation
-│   ├── visualize_gene_expression.py # Script for gene expression visualization
-│   ├── pipeline_config_parser.py # Handles loading and parsing parameter_sets.json
-│   ├── segmentation_worker.py    # Core Cellpose segmentation logic for a single job
-│   ├── tile_large_image.py     # Logic for tiling and rescaling images
-│   ├── pipeline_utils.py       # Utility functions used across the pipeline
-│   ├── file_paths.py         # Defines default base paths (can be configured)
-│   ├── stitch_masks.py         # Stitches tiled segmentation masks
-│   ├── map_transcripts_to_cells.py # Maps transcripts to segmented cells
-│   ├── create_segmentation_summary.py   # Creates summary visualizations of segmentations
-│   └── preprocess_ometiff.py   # Utility for pre-processing OME-TIFFs
-├── tests/                    # Automated tests
-│   ├── unit/
-│   ├── integration/
-│   └── functional/
-├── processing_config.json    # Main JSON for segmentation and mapping
-├── visualization_config.json # JSON for visualization tasks
-├── README.md                 # This file
-├── requirements.txt          # Python dependencies
-└── .gitignore                # Specifies intentionally untracked files by Git
+│   ├── raw/                  # Original inputs (images, transcripts)
+│   ├── processed/            # Intermediate files (segmentation masks, mapping)
+│   └── results/              # Final outputs (visualizations, statistics)
+├── src/                      # Python source code
+├── processing_config.json    # Main configuration file
+├── visualization_config.json # Visualization settings
+└── ...
 ```
-*Note: The `images/` and `results/` directories at the project root (if present from older versions) are generally used as default cache locations by scripts (e.g., for rescaled images, tiled images before stitching) as defined in `src/file_paths.py`. The primary, organized data storage is intended for the `data/` directory.* A `data/README.md` provides more detail on the `data/` directory.
 
+---
 
-## Detailed Workflow Steps
+## 📖 Detailed Workflow & Core Components
 
-The following sections describe the parameters for the JSON configuration files and the command-line execution for the main pipeline scripts. While a common workflow is implied, many scripts (as detailed in "Running Pipeline Steps Individually (Command-Line Usage)") can be used independently if their input requirements are met.
+This pipeline can be run as a cohesive workflow or as individual tools.
 
-### Step 0: Prepare Input Data and Environment
-1.  Place your raw microscopy images (e.g., `.ome.tif`, `.tif`) into a subdirectory within `data/raw/images/` (e.g., `data/raw/images/my_experiment/`).
-2.  Place corresponding raw transcript data (e.g., `.parquet`, `.csv`) into `data/raw/transcripts/my_experiment/`.
-3.  Ensure your Python environment is set up and dependencies from `requirements.txt` are installed.
+### 1. Image Pre-processing (Optional)
+Extracts relevant 2D planes from complex OME-TIFFs.
+*   **Script:** `src/preprocess_ometiff.py`
+*   **Usage:** Useful if your raw data is in multi-stack OME-TIFF format and you need to extract specific channels.
 
-### Step 1: Configure `processing_config.json` and `visualization_config.json`
-These are the main control files, located in the project root.
+### 2. Segmentation & Tiling
+*   **Script:** `src/segmentation_pipeline.py`
+*   **What it does:**
+    *   Reads `processing_config.json`.
+    *   Rescales images if needed (e.g., to match Cellpose training data size).
+    *   **Tiling:** If an image is too large, it chops it into overlapping tiles.
+    *   **Segmentation:** Runs Cellpose on each image or tile.
+    *   Saves masks in `data/processed/segmentation/`.
 
-*   **`processing_config.json` Structure Overview:**
-    ```json
-    {
-      "global_segmentation_settings": { /* ... */ },
-      "image_configurations": [ /* ... */ ],
-      "cellpose_parameter_configurations": [ /* ... */ ],
-      "mapping_tasks": [ /* ... */ ]
-    }
-    ```
+![Tiling and Stitching](images/image4.png)
 
-*   **`visualization_config.json` Structure Overview:**
-    ```json
-    {
-      "visualization_tasks": {
-        "default_genes_to_visualize": ["FullGeneID1", {"MyGeneAlias": "FullGeneID2"}, "FullGeneID3"],
-        "tasks": [
-          { /* Task 1 details */ },
-          { /* Task 2 details */ }
-        ]
-      }
-    }
-    ```
+### 3. Transcript Mapping
+*   **Script:** `src/map_transcripts_to_cells.py`
+*   **What it does:**
+    *   Takes the X/Y coordinates of transcripts from your `.parquet` or `.csv` files.
+    *   Overlays them onto the cell masks created in the previous step.
+    *   Assigns each transcript to a cell ID (or marks it as background).
+    *   Outputs a **Feature-Cell Matrix** (counts of each gene per cell).
 
-*   **`global_segmentation_settings` (in `processing_config.json`):**
-    Settings that apply globally to `segmentation_pipeline.py`.
-    
-    *   `default_log_level`: (String) "DEBUG", "INFO", etc. Overridden by CLI `--log_level`.
-    *   `max_processes`: (Integer) Max parallel jobs. Overridden by CLI `--max_processes`.
-    *   `FORCE_GRAYSCALE`: (Boolean) Global default for grayscale conversion.
-    *   `USE_GPU_IF_AVAILABLE`: (Boolean) Global default for Cellpose GPU usage. If `true`, the pipeline will attempt to use an available GPU for all segmentations. If `false`, CPU will be used. This is the primary setting controlling GPU usage.
+### 4. Visualization
+*   **Script:** `src/visualize_gene_expression.py`
+*   **What it does:** Creates PNGs showing the cell boundaries and the actual transcript dots for selected genes.
+*   **Config:** Use `visualization_config.json` to select which genes to plot and set colors/brightness.
 
-    ```json
-    {
-      "global_segmentation_settings": {
-        "default_log_level": "INFO",
-        "max_processes": 1,
-        "FORCE_GRAYSCALE": true,
-        "USE_GPU_IF_AVAILABLE": true
-      }
-    }
-    ```
+> **[IMAGE5 PLACEHOLDER: VISUALIZATION OUTPUT]**
+> *Prompt suggestion: An example output image showing a dark background, bright cell outlines, and colorful dots representing gene expression molecules.*
 
-*   **`image_configurations` (in `processing_config.json`, List of Objects):**
-    Define each source image to be processed by the pipeline. Each object in this list represents one image and its specific processing settings.
-    *   `"image_id"`: (String) A unique identifier for this image configuration (e.g., `"exp1_dapi_channel"`, `"slide2_tile_grid"`). This ID is used throughout the pipeline for logging, output file naming, and linking to other configurations (like `visualization_tasks`).
-    *   `"original_image_filename"`: (String) The path to the source image file, relative to the project root directory (e.g., `"data/raw/images/my_experiment/image1.ome.tif"`). This can be an OME-TIFF, standard TIFF, or other formats readable by `tifffile`.
-    *   `"is_active"`: (Boolean) Set to `true` to include this image configuration in the current pipeline run. If `false`, this image will be skipped.
-    *   `"mpp_x"`, `"mpp_y"`: (Float) Microns per pixel for the image in the X and Y dimensions, respectively. These values are crucial for accurate measurements if tiling is based on physical units (microns) and for some visualization scaling. If not applicable or unknown, you can use `1.0`.
-    *   `"segmentation_options"`: (Object, Optional) Contains parameters related to how this specific image should be segmented, including whether to segment it at all, and if rescaling or tiling should be applied before segmentation.
-        *   `"apply_segmentation"`: (Boolean) If `true`, Cellpose segmentation will be performed on this image (or its rescaled/tiled versions). If `false`, segmentation is skipped for this image configuration, though other operations might still apply.
-        *   `"rescaling_config"`: (Object or `null`, Optional) Defines parameters for on-the-fly image rescaling before segmentation. Set to `null` or omit if no rescaling is needed.
-            *   `"scale_factor"`: (Float) The factor by which to rescale the image. E.g., `0.5` halves the image dimensions, `2.0` doubles them. Rescaling can help if object sizes are too large or too small for the chosen Cellpose model or diameter, or to reduce processing time for very large images. It affects the effective microns-per-pixel of the image being segmented.
-            *   `"interpolation"`: (String) The interpolation method to use for rescaling. Common values include `"INTER_NEAREST"` (fast, preserves sharp edges, good for masks), `"INTER_LINEAR"` (default, good for general downscaling), `"INTER_CUBIC"` (good for upscaling, slower), `"INTER_AREA"` (good for downscaling, preserves area). Refer to OpenCV documentation for more options.
-        *   `"tiling_parameters"`: (Object or `null`, Optional) Defines parameters for dividing the image into smaller tiles for segmentation. Useful for very large images that don't fit in memory or to apply segmentation locally. Set to `null` or omit if no tiling is needed.
-            *   `"apply_tiling"`: (Boolean) If `true`, tiling will be performed. If `false`, the entire image (possibly after rescaling) is processed at once.
-            *   `"tile_size_xy_microns"`: (Integer) The desired size of each tile in microns (both width and height). This requires `mpp_x` and `mpp_y` to be set correctly. Alternatively, a pixel-based tile size could be implemented if needed (not current default).
-            *   `"overlap_microns"`: (Integer) The overlap between adjacent tiles in microns. Overlap helps to avoid edge artifacts during segmentation and ensures objects spanning tile boundaries are captured correctly. Cellpose's stitching mechanism (if used) benefits from this.
-    **Example:**
-    ```json
-    "image_configurations": [
-      {
-        "image_id": "experiment1_image_dapi",
-        "original_image_filename": "data/raw/images/experiment1/image_channel_0.tif",
-        "is_active": true,
-        "mpp_x": 0.21,
-        "mpp_y": 0.21,
-        "segmentation_options": {
-          "apply_segmentation": true,
-          "rescaling_config": {
-            "scale_factor": 0.5,
-            "interpolation": "INTER_NEAREST"
-          },
-          "tiling_parameters": {
-            "apply_tiling": false
-          }
-        }
-      },
-      {
-        "image_id": "experiment1_image_cells",
-        "original_image_filename": "data/raw/images/experiment1/image_channel_1.tif",
-        "is_active": true,
-        "mpp_x": 0.21,
-        "mpp_y": 0.21,
-        "segmentation_options": {
-          "apply_segmentation": true,
-          "rescaling_config": null,
-          "tiling_parameters": {
-            "apply_tiling": true,
-            "tile_size_xy_microns": 500,
-            "overlap_microns": 50
-          }
-        }
-      },
-      {
-        "image_id": "experiment2_image_simple",
-        "original_image_filename": "data/raw/images/experiment2/another_image.ome.tif",
-        "is_active": false,
-        "mpp_x": 1.0,
-        "mpp_y": 1.0,
-        "segmentation_options": { 
-            "apply_segmentation": false 
-        }
-      }
-    ]
-    ```
+---
 
-*   **`cellpose_parameter_configurations` (in `processing_config.json`, List of Objects):**
-    Define sets of Cellpose parameters to be applied to images. Each object in this list represents a distinct configuration.
-    *   `"param_set_id"`: (String) A unique identifier for this specific set of Cellpose parameters (e.g., `"cyto2_default_diam30"`, `"nuclei_custom_flow0.8"`). This ID is used to link `image_configurations` to these settings, allowing different images or the same image to be processed with multiple parameter sets.
-    *   `"is_active"`: (Boolean) Set to `true` to enable this parameter set for processing, or `false` to disable and skip it during a pipeline run.
-    *   `"cellpose_parameters"`: (Object) An object containing key-value pairs that correspond to the arguments for the Cellpose `model.eval()` method. These parameters directly control the segmentation behavior. For a comprehensive list and detailed explanations of all available Cellpose parameters, please refer to the official Cellpose documentation. Common parameters include:
-        *   `"MODEL_CHOICE"`: (String) Specifies the Cellpose model to use (e.g., `"cyto2"` for cytoplasm, `"nuclei"` for nuclei, `"livecell"`, or a path to a custom-trained model).
-        *   `"CHANNELS"`: (List of Integers) Defines the channels for segmentation. For grayscale images, use `[0,0]`. For multi-channel images where, for example, the cytoplasm is green (channel 2) and nucleus is blue (channel 1), you might use `[2,1]` (cytoplasm channel first, nucleus channel second for cyto2 model) or `[1,0]` (nucleus channel first for nuclei model, second channel is ignored or set to 0).
-        *   `"DIAMETER"`: (Integer) Estimated average diameter of the objects (cells or nuclei) in pixels. If set to `0` or `null`, Cellpose will attempt to automatically estimate the diameter from the image. Providing an accurate estimate can improve segmentation quality.
-        *   `"FLOW_THRESHOLD"`: (Float) Threshold for the flow field prediction from the model. Default is typically `0.4`. Higher values generally lead to fewer, larger, and more merged objects, while lower values can result in more segmented objects, potentially including noise.
-        *   `"CELLPROB_THRESHOLD"`: (Float) Threshold for the cell probability map. Default is typically `0.0`. Increasing this (e.g., towards positive values) makes segmentation more conservative (fewer objects), while decreasing it (e.g., towards negative values) makes it more sensitive (more objects).
-        *   `"MIN_SIZE"`: (Integer) The minimum number of pixels a segmented object must have to be included in the final masks. Objects smaller than this are discarded. Default is often around `15`.
-        *   `"STITCH_THRESHOLD"`: (Float, Optional) When segmenting tiled images, this threshold (ranging from 0.0 to 1.0) is used to stitch together masks from adjacent tiles. Only relevant if tiling is enabled in `image_configurations`. Default is typically `0.0` if not specified by Cellpose, but can be adjusted.
-    **Example:**
-    ```json
-    "cellpose_parameter_configurations": [
-      {
-        "param_set_id": "cyto2_default_diam30",
-        "is_active": true,
-        "cellpose_parameters": {
-          "MODEL_CHOICE": "cyto2",
-          "CHANNELS": [0, 0],
-          "DIAMETER": 30,
-          "FLOW_THRESHOLD": 0.4,
-          "CELLPROB_THRESHOLD": 0.0,
-          "MIN_SIZE": 15
-        }
-      },
-      {
-        "param_set_id": "nuclei_custom_diam15",
-        "is_active": true,
-        "cellpose_parameters": {
-          "MODEL_CHOICE": "nuclei",
-          "CHANNELS": [1, 0],
-          "DIAMETER": 15,
-          "FLOW_THRESHOLD": 0.6,
-          "CELLPROB_THRESHOLD": -2.0,
-          "MIN_SIZE": 10,
-          "STITCH_THRESHOLD": 0.1 
-        }
-      },
-      {
-        "param_set_id": "livecell_diam0_autodetect",
-        "is_active": false,
-        "cellpose_parameters": {
-          "MODEL_CHOICE": "livecell",
-          "CHANNELS": [0,0],
-          "DIAMETER": 0 
-        }
-      }
-    ]
-    ```
+## 🛠️ Command-Line Reference (Advanced)
 
-*   **`mapping_tasks` (in `processing_config.json`, List of Objects):**
-    Define transcript-to-cell mapping tasks. Each task processes one transcript file against one segmentation mask.
-    *   `"task_id"`: (String) Unique identifier for this mapping task.
-    *   `"is_active"`: (Boolean) Set to `true` to run this mapping task. If `false`, it will be skipped.
-    *   `"description"`: (String, Optional) User-friendly description of the task.
-    *   `"source_image_id"`: (String) ID of the original image from `image_configurations`. This is used to find the relevant image metadata (like original MPP, scaling, and tiling settings).
-    *   `"source_param_set_id"`: (String) ID of the Cellpose parameters from `cellpose_parameter_configurations` used for the segmentation that produced the mask.
-    *   `"source_processing_unit_display_name"`: (String, Optional for non-tiled segmentations) The filename (without path) of the specific image unit that was segmented and whose mask will be used.
-        *   **For non-tiled segmentations:** If omitted, this name is automatically derived. If the image was rescaled (per `rescaling_config` in `image_configurations`), the name is constructed as `original_basename_scaled_X_Y.ext`. If not rescaled, it defaults to the base name of the `original_image_filename`.
-        *   **For tiled segmentations:** This field is **mandatory** and must specify the exact tile filename (e.g., `"tile_r0_c0.tif"`). Whether a source image is considered tiled is determined by the `apply_tiling` setting in its `image_configuration`.
-    *   `"input_transcripts_path"`: (String) Path to the input transcript file (e.g., `.parquet` or `.csv`), typically under `data/raw/transcripts/`.
-    *   `"output_base_dir"`: (String) Directory where mapping results (mapped transcripts CSV, feature-cell matrix CSVs) will be saved, typically under `data/processed/mapped/`.
-    *   `"output_prefix"`: (String) Prefix for output filenames (e.g., `"mapped_transcripts_run1"`).
-    *   `"mask_path_override"`: (String, Optional) If provided, this full path to the mask TIFF file will be used directly, bypassing all mask path derivation logic based on source IDs and names.
-    *The following parameters are automatically derived from the linked `image_configuration` and are no longer needed directly in the task definition: `source_segmentation_scale_factor`, `source_segmentation_is_tile`, `mpp_x_of_mask`, `mpp_y_of_mask`.*
-    **Example:**
-    ```json
-    "mapping_tasks": [
-    {
-        "task_id": "map_exp1_non_tiled_rescaled",
-      "is_active": true,
-        "description": "Map transcripts for experiment1 using segmentation from pset1 on a rescaled image (unit name derived).",
-        "source_image_id": "experiment1_image_dapi", // Assumes this image_config has rescaling defined
-        "source_param_set_id": "cyto2_default_diam30",
-        // "source_processing_unit_display_name" is omitted, will be derived e.g., to "image_channel_0_scaled_0_5.tif"
-      "input_transcripts_path": "data/raw/transcripts/experiment1/transcripts.parquet",
-        "output_base_dir": "data/processed/mapped/exp1_dapi_map/",
-        "output_prefix": "mapped_transcripts_dapi"
-      },
-      {
-        "task_id": "map_exp1_tiled_specific_tile",
-        "is_active": true,
-        "description": "Map transcripts for experiment1 using segmentation from pset2 on a specific tile.",
-        "source_image_id": "experiment1_image_cells", // Assumes this image_config has apply_tiling = true
-        "source_param_set_id": "nuclei_custom_diam15",
-        "source_processing_unit_display_name": "tile_r1_c2.tif", // Specific tile name is mandatory here
-        "input_transcripts_path": "data/raw/transcripts/experiment1/transcripts_other.parquet",
-        "output_base_dir": "data/processed/mapped/exp1_cells_tile_r1_c2_map/",
-        "output_prefix": "mapped_transcripts_cells_tile_r1_c2"
-      }
-    ]
-    ```
+While the pipeline is designed to be driven by the config files, individual scripts can be run directly for specific tasks or debugging.
 
-*   **`visualization_tasks` (in `visualization_config.json`)**:
-    The main object containing all settings for gene expression visualization.
-    *   **`default_genes_to_visualize`**: (Optional) Specifies genes to be visualized by default if a task does not define its own `genes_to_visualize` list. The recommended formats are:
-        *   **As a dictionary (preferred when using aliases):** Keys are user-friendly display names (aliases) and values are the full actual gene IDs. Example: `{"MtNIN": "medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0448621", "PantherGene": "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0197771"}`. If a gene ID should be displayed as itself (no alias), use the ID as both the key and value: `{"medtr.A17.gnm5.ann1_6.AnotherGene": "medtr.A17.gnm5.ann1_6.AnotherGene"}`. A full example combining these: `{"MtNIN": "medtr.A17...", "medtr.A17.gnm5.ann1_6.RegularGene": "medtr.A17.gnm5.ann1_6.RegularGene"}`.
-        *   **As a list of strings (if no aliases are needed):** Each string is the full actual gene ID (e.g., `["medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0448621", "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0197771"]`). In this case, the actual gene ID will also be used as the display name.
-        *   A mixed list format (e.g., `["ID1", {"Alias2": "ID2"}]`) is also supported by the parser but using a consistent dictionary (when aliases are present) or a simple list (when no aliases are needed) is generally clearer.
-        The display name (alias from the dictionary key, or the actual ID if no alias is given/key matches value) will be used in plot titles and logs. The actual gene ID (the dictionary value) is always used for data lookup and filename generation.
-    *   **`tasks`**: An array of objects, each defining a specific visualization job.
-        *   `"task_id"`: (String) A unique identifier for this visualization task (e.g., `"exp1_dapi_gene_set1_viz"`).
-        *   `"is_active"`: (Boolean) Set to `true` to run this visualization task. If `false`, it will be skipped.
-        *   `"source_image_id"`: (String) Refers to the `image_id` from an `image_configurations` entry. This specifies the original image context (e.g., for background, scale) and is used to derive the segmentation scale factor.
-        *   `"source_param_set_id"`: (String) Refers to the `param_set_id` from a `cellpose_parameter_configurations` entry. This identifies the segmentation parameters used to generate the mask that will be visualized.
-        *   `"source_processing_unit_display_name"`: (String, Optional for non-tiled segmentations) The filename (without path) of the specific image unit that was segmented. 
-            *   **For non-tiled segmentations:** If omitted, this name will be automatically derived. If the image was rescaled via `rescaling_config` in `image_configurations`, the name is constructed from the original image filename and the scale factor (e.g., `original_basename_scaled_0_5.tif`). If not rescaled, it defaults to the base name of the `original_image_filename`.
-            *   **For tiled segmentations:** This field is **mandatory** and must specify the exact tile filename (e.g., `"tile_r0_c0.tif"`) whose mask is to be used. (Whether a segmentation is considered tiled is determined by the `apply_tiling` setting in the `segmentation_options` of the linked `image_configuration`).
-            *   This name is crucial for locating the correct `_mask.tif` file.
-        *   `"mapped_transcripts_csv_path"`: (String) Path to the CSV file containing mapped transcript data. This file should typically include columns for transcript coordinates (e.g., 'x', 'y' or 'global_x', 'global_y'), gene names (e.g., 'gene'), and the cell ID to which each transcript was assigned (e.g., 'cell_id'). An example path: `"data/processed/mapped/my_experiment/mapped_transcripts.csv"`.
-        *   **`genes_to_visualize`**: (Optional) Specifies genes for this particular task, overriding `default_genes_to_visualize`. The format follows the same recommendations as for `default_genes_to_visualize`:
-            *   **Dictionary (preferred when using aliases):** `{"DisplayName": "ActualGeneID", ...}`. For example: `{"CustomGene1": "FullGeneID1", "FullGeneID2": "FullGeneID2"}`.
-            *   **List of strings (if no aliases are needed):** `["FullGeneID1", "FullGeneID2"]`.
-            *   The parser also supports a mixed list format.
-            If omitted, `default_genes_to_visualize` from the global `visualization_tasks` scope will be used.
-        *   `"output_subfolder_name"`: (String) The name of the subfolder where the generated visualization images for this task will be saved. This folder will be created under the main visualization output directory (typically `data/results/visualizations/`). E.g., `"exp1_dapi_channel_genes"`.
-        *   `"visualization_params"`: (Object, Optional) Parameters to control the appearance of the visualization.
-            *   `"background_image_path_override"`: (String or `null`, Optional) Full path to a specific image to use as the background for the visualization. If `null` or omitted, the script will attempt to use the `original_image_filename` from the linked `image_configurations`.
-            *   `"mask_alpha"`: (Float, 0.0-1.0, Optional) Opacity of the cell segmentation mask outlines. Default: `0.3`.
-            *   `"dot_size"`: (Integer, Optional) Size of the dots representing transcripts. Default: `5`.
-            *   `"dot_alpha"`: (Float, 0.0-1.0, Optional) Opacity of the transcript dots. Default: `0.5`.
-            *   `"image_brightness_factor"`: (Float, Optional) Multiplier to adjust the brightness of the background image. Default: `1.0`.
-            *   `"crop_to_segmentation_area"`: (Boolean, Optional) If `true`, the visualization will be cropped to the extent of the segmentation mask. Default: `false`.
-            *   `"log_scale_counts_for_colormap"`: (Boolean, Optional) If `true`, transcript counts per cell will be log-transformed (`log(1+count)`) before being mapped to the colormap. This can help visualize differences in lower expression ranges when some cells have very high counts. Default: `false`.
-            *   `"colormap_min_percentile"`: (Float, 0-100, Optional) The percentile of (log-transformed if enabled, non-zero) cell counts to use as the minimum for the colormap scaling. E.g., `5.0` would mean the colormap starts at the 5th percentile of expression. Default: `0.0` (uses the actual minimum observed value).
-            *   `"colormap_max_percentile"`: (Float, 0-100, Optional) The percentile of (log-transformed if enabled, non-zero) cell counts to use as the maximum for the colormap scaling. E.g., `95.0` would mean the colormap ends at the 95th percentile of expression. Default: `100.0` (uses the actual maximum observed value).
-    **Example:**
-    ```json
-    "visualization_tasks": {
-      "default_genes_to_visualize": {"MtNIN": "medtr.A17.gnm5.ann1_6.MtrunA17Chr5g0448621", "PantherGene": "medtr.A17.gnm5.ann1_6.MtrunA17Chr1g0197771", "medtr.A17.gnm5.ann1_6.AnotherGene": "medtr.A17.gnm5.ann1_6.AnotherGene"},
-      "tasks": [
-        {
-          "task_id": "vis_exp1_image_dapi_genes_ab", // This task will use its own gene list
-          "is_active": true,
-          "source_image_id": "experiment1_image_dapi",
-          "source_param_set_id": "cyto2_default_diam30",
-          "source_processing_unit_display_name": "image_channel_0_scaled_0_5.tif", 
-          "mapped_transcripts_csv_path": "data/processed/mapped/experiment1_image_dapi_cyto2_default_diam30/mapped_transcripts.csv",
-          "genes_to_visualize": ["GeneA", "GeneB"], // Overrides default
-          "output_subfolder_name": "exp1_dapi_genes_ab_on_scaled_seg",
-          "visualization_params": {
-            "mask_alpha": 0.4,
-            "dot_size": 3,
-            "image_brightness_factor": 1.2,
-            "log_scale_counts_for_colormap": true,
-            "colormap_min_percentile": 5.0,
-            "colormap_max_percentile": 95.0
-          }
-        },
-        {
-          "task_id": "vis_exp1_image_cells_global_genes", // This task will use the default_genes_to_visualize
-          "is_active": true,
-          "source_image_id": "experiment1_image_cells",
-          "source_param_set_id": "nuclei_custom_diam15",
-          "source_processing_unit_display_name": "tile_r0_c0.tif", 
-          "mapped_transcripts_csv_path": "data/processed/mapped/experiment1_image_cells_tile_r0_c0_nuclei_custom_diam15/mapped_transcripts_tile_r0_c0.csv",
-          // "genes_to_visualize" is omitted, so it will use ["GlobalGeneX", "GlobalGeneY"]
-          "output_subfolder_name": "exp1_cells_global_genes_tile_r0_c0",
-          "visualization_params": {
-            "background_image_path_override": "data/raw/images/experiment1/tiles/tile_r0_c0_background.tif", 
-            "dot_alpha": 0.7,
-            "crop_to_segmentation_area": true
-          }
-        }
-      ]
-    }
-    ```
-
-### Step 2: Run Segmentation Pipeline
-Execute from the project root:
+### Pre-process OME-TIFFs
 ```bash
-python -m src.segmentation_pipeline --config processing_config.json
+python src/preprocess_ometiff.py <input.ome.tif> <output_dir> --channel 0 --zplane 5
 ```
-**Command-line arguments:**
-*   `--config <path>`: Path to your processing JSON configuration. Default: `processing_config.json`.
-*   `--log_level <LEVEL>`: Overrides JSON `default_log_level`.
-*   `--max_processes <N>`: Overrides JSON `max_processes`.
 
-### Step 3: Run Transcript Mapping (if configured in `mapping_tasks`)
-Execute from the project root:
+### Stitch Tiled Masks
+If you ran tiling but need to manually re-stitch:
 ```bash
-python -m src.map_transcripts_to_cells --config processing_config.json
+python -m src.stitch_masks <image_id> <param_set_id> <output_dir>
 ```
-**Command-line arguments:**
-*   `--config <path>`: Path to your processing JSON configuration. Default: `processing_config.json`.
-*   `--task_id <ID>`: Specific mapping task ID to run.
 
-### Step 4: Run Gene Expression Visualization
-Execute from the project root:
+### Create Individual Overlays
+Generate high-quality check images for every segmentation:
 ```bash
-python -m src.visualize_gene_expression --proc_config processing_config.json --viz_config visualization_config.json
+python src/create_individual_overlays.py --config processing_config.json --color "#FFFF00"
 ```
-**Command-line arguments:**
-*   `--proc_config <path>`: Path to the processing JSON configuration (containing image configurations). Default: `processing_config.json`.
-*   `--viz_config <path>`: Path to the visualization tasks JSON configuration. Default: `visualization_config.json`.
-*   `--task_id <ID>`: Specific visualization task ID to run from the `visualization_config.json`.
+
+### Analyze Results (Simple)
+Get basic stats (count, area) without complex dependencies:
+```bash
+python src/simple_cellpose_analysis.py --config processing_config.json
+```
+
+---
+
+## ⚙️ Configuration File Details
+
+### `processing_config.json`
+*   **`image_configurations`**: List of images to process. Set `is_active: true` to process.
+    *   `mpp_x`, `mpp_y`: Microns per pixel (important for tiling).
+    *   `tiling_parameters`: Set `apply_tiling: true` for large images.
+*   **`cellpose_parameter_configurations`**: Settings for the AI model.
+    *   `DIAMETER`: Expected cell size in pixels.
+    *   `MODEL_CHOICE`: `cyto2`, `nuclei`, or custom path.
+*   **`mapping_tasks`**: Links transcripts to segmentation masks.
+
+### `visualization_config.json`
+*   **`default_genes_to_visualize`**: List of genes to plot if not specified in a task.
+*   **`tasks`**: Specific visualization jobs (e.g., plotting specific genes on specific images).
