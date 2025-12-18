@@ -17,6 +17,7 @@ Whether you are working with standard tissue slides or large-scale OME-TIFFs, th
 *   **Spatial Mapping**: Assigns transcript locations (e.g., from Xenium or other platforms) to specific cells, creating a feature-cell matrix.
 *   **Beautiful Visualizations**: Generates high-quality images overlaying gene expression data onto cell masks.
 *   **Batch Processing**: Configure once and run multiple experiments or image channels in parallel.
+*   **Interactive TUI**: Manage configurations, monitor pipelines, and explore results via a terminal interface.
 
 ![Pipeline Overview](docs/images/image2.png)
 
@@ -93,6 +94,21 @@ To visualize the results:
 ```bash
 python -m src.visualize_gene_expression --proc_config processing_config.json --viz_config visualization_config.json
 ```
+
+### 4. Interactive TUI Mode
+
+For a more user-friendly experience, you can use the Terminal User Interface (TUI).
+
+1.  **Install TUI Dependencies**
+    ```bash
+    pip install -r tui/requirements.txt
+    ```
+
+2.  **Run the TUI**
+    ```bash
+    python -m tui.app
+    ```
+    See the **[TUI Manual](tui/README.md)** for detailed instructions and features like the Result Explorer.
 
 ---
 

@@ -1,69 +1,156 @@
-# PyCellSegmentation TUI
+# PyCellSegmentation TUI Manual
 
-A modern Terminal User Interface (TUI) for managing PyCellSegmentation project configurations.
+The PyCellSegmentation TUI (Terminal User Interface) provides a powerful, console-based environment for managing segmentation projects, configuring Cellpose parameters, and monitoring execution pipelines.
+
+## Table of Contents
+
+1. [Installation](#installation)
+2. [Running the TUI](#running-the-tui)
+3. [Interface Overview](#interface-overview)
+4. [Workflows](#workflows)
+   - [Creating a New Project](#creating-a-new-project)
+   - [Managing Images](#managing-images)
+   - [Configuring Parameters](#configuring-parameters)
+   - [Monitoring the Pipeline](#monitoring-the-pipeline)
+   - [Exploring Results](#exploring-results)
+5. [Keyboard Shortcuts](#keyboard-shortcuts)
+6. [Troubleshooting](#troubleshooting)
 
 ## Installation
 
-Install the required dependencies:
+From the project root directory, install the required dependencies for the TUI:
 
 ```bash
-pip install -r requirements.txt
+pip install -r tui/requirements.txt
+```
+
+For image preview capabilities in the Result Explorer, install the optional dependency:
+```bash
+pip install textual-imageview
 ```
 
 ## Running the TUI
 
-From the project root directory:
+To start the application, run the following command from the project root:
 
 ```bash
 python -m tui.app
 ```
 
-Or:
+**Developer Mode:**
+If you need to debug layout issues or inspect widgets, run in developer mode (requires `textual-dev`):
 
 ```bash
-cd tui
-python app.py
+textual run --dev tui/app.py
 ```
+*Press `F12` or `Ctrl+I` in this mode to open the widget inspector.*
 
-## Features
+## Interface Overview
 
-- **Create New Projects**: Start a new configuration from scratch
-- **Load Existing Projects**: Open and edit existing configuration files
-- **Image Management**: Add, edit, and manage image configurations
-- **Parameter Management**: Configure Cellpose segmentation parameters
-- **Modern UI**: Beautiful, intuitive interface built with Textual
+The TUI is divided into two main sections: the **Dashboard** and the **Project Editor**.
+
+### 1. Dashboard
+The entry point of the application.
+- **New Project**: Start a configuration from scratch.
+- **Load Project**: Open an existing JSON configuration file.
+- **Exit**: Quit the application.
+
+### 2. Project Editor
+The main workspace, accessible after creating or loading a project. It has a sidebar with three main views:
+
+#### A. Config Editor (`c`)
+The core configuration area, split into sub-tabs:
+- **General (`1`)**: Basic project settings (Name, Root Directory, etc.).
+- **Images (`2`)**: Manage the list of images to process.
+  - *Features*: Add/Remove images, inline editing, copy/paste settings.
+- **Parameters (`3`)**: Configure Cellpose segmentation parameters.
+- **Preview (`4`)**: (Experimental) Preview segmentation settings.
+
+#### B. Pipeline Status (`p`)
+Monitors the execution of the segmentation pipeline.
+- **Live Status**: Shows if the pipeline is Running, Idle, or Stale.
+- **Steps**: specific processing steps (e.g., Preprocessing, Segmentation).
+- **Logs**: Real-time log output from the processing engine.
+- **Progress**: Visual progress bar.
+
+#### C. Result Explorer (`r`)
+Browse and inspect output files.
+- **Tree View**: Hierarchical view of images and their result sets.
+- **Metadata**: Detailed information about selected files.
+- **Preview**: View content of JSON, CSV, and Image files (masks/TIFFs).
+
+## Workflows
+
+### Creating a New Project
+1. Select **New Project** from the Dashboard.
+2. You will be taken to the **Config Editor** > **General** tab.
+3. Enter a **Project Name** and **Project Root Directory**.
+4. Press `Ctrl+S` to save the project configuration to a JSON file.
+
+### Managing Images
+1. Navigate to **Config Editor** > **Images** (`2`).
+2. **Add Image**: Click the "Add Image" button to append a new entry.
+3. **Edit**: 
+   - **Double-click** a cell to edit values inline.
+   - **Spacebar** toggles boolean (checkbox) values like `Active` or `Segmentation`.
+   - **Enter** opens a detailed editor for the selected cell.
+4. **Bulk Actions**:
+   - `Ctrl+C` to copy a cell's value.
+   - `Ctrl+V` to paste the value into other cells.
+
+### Configuring Parameters
+1. Navigate to **Config Editor** > **Parameters** (`3`).
+2. Create or edit parameter sets (e.g., `cyto2`, `nuclei`).
+3. Adjust settings like `diameter`, `flow_threshold`, and `cellprob_threshold`.
+
+### Monitoring the Pipeline
+1. Once the pipeline script is running (externally), switch to **Pipeline Status** (`p`).
+2. The indicator at the top left shows the system heartbeat:
+   - 🟢 **Green**: Live and Running.
+   - 🟠 **Orange**: Running but Stale (no recent updates).
+   - 🔴 **Red**: Stopped or Error.
+   - 🔵 **Blue**: Completed.
+
+### Exploring Results
+1. Switch to **Result Explorer** (`r`).
+2. Expand the tree to see Images -> Parameter Sets -> Output Files.
+3. Select a file to view its details.
+   - **Masks (.tif)**: Shows a colorized preview of the segmentation mask (if `textual-imageview` is installed) or a text-based approximation.
+   - **Data (.json/csv)**: Shows syntax-highlighted content.
 
 ## Keyboard Shortcuts
 
-- `Ctrl+Q` or `Esc`: Exit the application
-- `Ctrl+S`: Save current project
-- `Tab`: Navigate between fields
-- `Enter`: Confirm/Submit
-- Arrow keys: Navigate lists and tables
+| Context | Shortcut | Action |
+|---------|----------|--------|
+| **Global** | `Ctrl+Q` | Quit Application |
+| | `F12` / `Ctrl+I` | Open Inspector (Dev Mode) |
+| **Editor** | `Ctrl+S` | Save Project |
+| | `Esc` | Back / Cancel |
+| | `c` | Switch to Config Editor |
+| | `p` | Switch to Pipeline Status |
+| | `r` | Switch to Result Explorer |
+| **Config** | `1` | View General Settings |
+| | `2` | View Images |
+| | `3` | View Parameters |
+| | `4` | View Preview |
+| **Tables** | `Space` | Toggle Checkbox |
+| | `Enter` | Edit Cell |
+| | `Ctrl+C` | Copy Cell |
+| | `Ctrl+V` | Paste Cell |
 
-## Debugging Layout Issues
+## Troubleshooting
 
-To debug TUI layout (similar to browser DevTools):
+### Layout Issues
+If the interface looks broken or text is overlapping:
+1. Resize your terminal window.
+2. Ensure you are using a strictly monospaced font (e.g., Fira Code, Consolas).
+3. Run in developer mode (`textual run --dev ...`) to inspect elements.
 
-1. **Install developer tools** (if not already installed):
-   ```bash
-   pip install textual-dev
-   ```
+### Pipeline Not Updating
+- Check if the **Project Root** in "General" settings matches the directory where the pipeline script is running.
+- Ensure the pipeline script has write permissions to the status file.
+- Look for the "Last Updated" timestamp in the Pipeline Status footer.
 
-2. **IMPORTANT: Run with developer mode enabled**:
-   ```bash
-   textual run --dev tui/app.py
-   ```
-   Or from project root:
-   ```bash
-   textual run --dev -m tui.app
-   ```
-   
-   **Note**: You MUST use `textual run --dev`. Running with `python -m tui.app` directly will NOT enable the inspector, even if textual-dev is installed.
-
-3. **Open the Inspector**:
-   - Press `F12` or `Ctrl+I` while the app is running
-   - This shows the widget tree, CSS styles, and widget properties
-   - Navigate with arrow keys, select widgets with Enter
-
-See `tui/DEBUGGING.md` for more detailed debugging information.
+### Images Not Loading
+- Verify the `original_image_filename` paths are correct relative to the project root or are absolute paths.
+- Check the logs in **Pipeline Status** for "File not found" errors.
