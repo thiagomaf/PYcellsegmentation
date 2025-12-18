@@ -11,6 +11,7 @@ from .segmentation_worker import segment_image_worker
 from .file_paths import (
     IMAGE_DIR_BASE, RESCALED_IMAGE_CACHE_DIR, TILED_IMAGE_OUTPUT_BASE, RESULTS_DIR_BASE, PROJECT_ROOT
 ) # Import from new file_paths, added PROJECT_ROOT for config path
+from .status_manager import StatusManager
 
 # --- Global Configuration (mostly paths now) ---
 # Paths are now imported from file_paths.py
@@ -43,12 +44,16 @@ def ensure_directories(base_dirs):
         else:
             logger.debug(f"Directory already exists: {base_dir_name}")
 
-def run_segmentation_jobs(jobs_to_run, num_processes):
+def run_segmentation_jobs(jobs_to_run, num_processes, status_manager: StatusManager = None):
     if not jobs_to_run:
         logger.info("No active jobs to process based on configuration. Exiting.")
         return []
 
     logger.info(f"Total active jobs to process after expansion: {len(jobs_to_run)}")
+    
+    if status_manager:
+        status_manager.set_step("Segment")
+        status_manager.set_total_jobs(len(jobs_to_run))
 
     any_gpu_run = any(job.get("USE_GPU", False) for job in jobs_to_run)
     if any_gpu_run and num_processes > 1:
@@ -61,11 +66,28 @@ def run_segmentation_jobs(jobs_to_run, num_processes):
     job_results_list = []
     if num_processes > 1 and len(jobs_to_run) > 1:
         with Pool(processes=num_processes) as pool:
-            job_results_list = pool.map(segment_image_worker, jobs_to_run)
+            # Use imap_unordered for real-time status updates
+            for result in pool.imap_unordered(segment_image_worker, jobs_to_run):
+                job_results_list.append(result)
+                if status_manager and result:
+                    job_id = result.get("experiment_id", "unknown")
+                    success = result.get("status", "").startswith("success")
+                    msg = result.get("message", "")
+                    if not msg and result.get("num_cells") is not None:
+                        msg = f"{result.get('num_cells')} cells"
+                    status_manager.job_completed(job_id, success=success, message=msg)
     else:
         logger.info("Running jobs sequentially (due to num_processes=1 or only 1 job).")
         for job_params in jobs_to_run:
-            job_results_list.append(segment_image_worker(job_params))
+            result = segment_image_worker(job_params)
+            job_results_list.append(result)
+            if status_manager and result:
+                job_id = result.get("experiment_id", "unknown")
+                success = result.get("status", "").startswith("success")
+                msg = result.get("message", "")
+                if not msg and result.get("num_cells") is not None:
+                    msg = f"{result.get('num_cells')} cells"
+                status_manager.job_completed(job_id, success=success, message=msg)
     return job_results_list
 
 def save_run_log(results, log_file_path):
@@ -212,6 +234,12 @@ def main():
     logger.info(f" Effective GPU usage intent: {effective_use_gpu}") # Log GPU setting
     logger.info("====================================================================")
 
+    # Initialize status tracking for TUI monitoring
+    status_manager = StatusManager(config_file_path)
+    status_manager.set_step("Initialize")
+    status_manager.log(f"Config: {config_file_path}")
+    status_manager.log(f"Max processes: {effective_max_processes}, GPU: {effective_use_gpu}")
+
     # run_log_file path depends on RESULTS_DIR_BASE which is now imported
     run_log_file = os.path.join(RESULTS_DIR_BASE, "run_log.json")
     
@@ -219,28 +247,42 @@ def main():
     base_directories_to_ensure = [IMAGE_DIR_BASE, TILED_IMAGE_OUTPUT_BASE, RESCALED_IMAGE_CACHE_DIR, RESULTS_DIR_BASE]
     ensure_directories(base_directories_to_ensure)
 
+    status_manager.set_step("Generate Jobs")
     active_jobs_to_run = load_and_expand_configurations(config_file_path, effective_use_gpu) # Pass GPU setting
     initial_job_count = len(active_jobs_to_run)
 
     if not active_jobs_to_run:
         logger.info("No active jobs found in configuration. Exiting.")
+        status_manager.finish(success=True, message="No active jobs to process")
         exit(0)
         
+    status_manager.log(f"Generated {initial_job_count} jobs from configuration")
     start_time_all = time.time()
     
-    job_results_list = run_segmentation_jobs(active_jobs_to_run, effective_max_processes) # Use effective_max_processes
-    
-    save_run_log(job_results_list, run_log_file)
+    try:
+        job_results_list = run_segmentation_jobs(active_jobs_to_run, effective_max_processes, status_manager)
+        
+        save_run_log(job_results_list, run_log_file)
 
-    end_time_all = time.time()
-    total_duration = end_time_all - start_time_all
-    
-    logger.info("====================================================================")
-    logger.info(f" ALL JOBS FINISHED @ {time.strftime('%Y-%m-%d %H:%M:%S')}")
-    logger.info("====================================================================")
-    logger.info(f"Total processing time for {initial_job_count} configured jobs: {total_duration:.2f} seconds ({total_duration/60:.2f} minutes).")
+        end_time_all = time.time()
+        total_duration = end_time_all - start_time_all
+        
+        logger.info("====================================================================")
+        logger.info(f" ALL JOBS FINISHED @ {time.strftime('%Y-%m-%d %H:%M:%S')}")
+        logger.info("====================================================================")
+        logger.info(f"Total processing time for {initial_job_count} configured jobs: {total_duration:.2f} seconds ({total_duration/60:.2f} minutes).")
 
-    summarize_job_results(job_results_list, initial_job_count)
+        successful_runs, failed_runs = summarize_job_results(job_results_list, initial_job_count)
+        
+        # Finalize status tracking
+        status_manager.set_step("Finalize")
+        if failed_runs > 0:
+            status_manager.finish(success=False, message=f"{failed_runs}/{initial_job_count} jobs failed")
+        else:
+            status_manager.finish(success=True, message=f"All {successful_runs} jobs completed successfully")
+    except Exception as e:
+        status_manager.finish(success=False, message=str(e))
+        raise
 
 
 if __name__ == "__main__":

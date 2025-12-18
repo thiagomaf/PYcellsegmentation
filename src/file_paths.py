@@ -16,6 +16,9 @@ RESCALED_IMAGE_CACHE_DIR = os.path.join(IMAGE_DIR_BASE, "rescaled_cache")
 TILED_IMAGE_OUTPUT_BASE = os.path.join(IMAGE_DIR_BASE, "tiled_outputs")
 RESULTS_DIR_BASE = os.path.join(PROJECT_ROOT, RESULTS_DIR_RELATIVE_TO_PROJECT)
 
+# Status tracking directory for pipeline monitoring
+STATUS_DIR = os.path.join(PROJECT_ROOT, "data", "status")
+
 # Exported names for clarity when importing
 __all__ = [
     "PROJECT_ROOT",
@@ -25,6 +28,7 @@ __all__ = [
     "TILED_IMAGE_OUTPUT_BASE",
     "RESULTS_DIR_RELATIVE_TO_PROJECT",
     "RESULTS_DIR_BASE",
+    "STATUS_DIR",
     "DEFAULT_CONFIG_FILENAME",
     "VISUALIZATION_CONFIG_FILENAME",
     "PROCESSING_CONFIG_FILENAME"
