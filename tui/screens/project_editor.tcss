@@ -1,0 +1,82 @@
+/* Project Editor Component Styles */
+
+/* Primary sidebar */
+#editor-sidebar {
+    width: 20;
+    border-right: wide $primary;
+}
+
+/* Main content area */
+#editor-main-content {
+    width: 1fr;
+    height: 100%;
+}
+
+/* CONFIG view specific */
+#config-secondary-sidebar {
+    width: 25;
+    border-right: wide $primary;
+}
+
+#config-main-content {
+    width: 1fr;
+}
+
+/* View sections */
+#view-upper-section,
+#pipeline-upper-section,
+#results-upper-section {
+    height: 30%;
+    border-bottom: solid $primary;
+}
+
+#view-lower-section,
+#pipeline-lower-section,
+#results-lower-section {
+    height: 70%;
+}
+
+/* 
+ProjectEditor {
+    background: $surface;
+}
+
+ProjectEditor > .editor-header {
+    dock: top;
+    height: 6;
+    background: $panel;
+    border-bottom: wide $primary;
+    padding: 0;
+}
+
+.editor-actions {
+    align: right middle;
+    width: auto;
+}
+
+.editor-content {
+    margin: 1;
+    padding: 1;
+    width: 1fr;
+}
+
+.editor-footer {
+    dock: bottom;
+    margin-top: 0;
+}
+
+.editor-sidebar {
+    width: 25;
+    background: $panel;
+    border-right: wide $primary;
+    padding: 1;
+}
+
+.editor-title {
+    text-style: bold;
+    color: $primary;
+    margin-left: 1;
+    width: 1fr;
+}
+
+*/

@@ -1,0 +1,368 @@
+/* Modern Dark Theme for PyCellSegmentation TUI */
+
+Screen {
+    background: $surface;
+}
+
+Button {
+    background: $boost;
+    border: solid $primary;
+    color: $text;
+}
+
+Button:hover {
+    background: $primary;
+    color: black;
+}
+
+Button:focus {
+    border: wide $primary;
+}
+
+Button.nav-btn {
+    width: 100%;
+    height: 3;
+    margin: 1;
+    border: none;
+    background: $boost;
+    color: $text;
+    text-align: left;
+}
+
+Button.nav-btn:hover {
+    background: $primary;
+    color: black;
+}
+
+Button.nav-btn--selected {
+    background: $primary;
+    height: 3 !important;
+    color: black;
+    text-style: bold;
+}
+
+Collapsible {
+    border: solid $primary;
+    margin: 1;
+    background: $panel;
+}
+
+#content-area {
+    width: 100%;
+    height: 1fr;
+}
+
+FilePicker,
+ImageEditor,
+ParameterEditor,
+SaveDialog {
+    align: center middle;
+}
+
+GeneralView {
+    height: 1fr;
+}
+
+ImageEditor .editor-header,
+ParameterEditor .editor-header {
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 2;
+    text-align: center;
+}
+
+Input {
+    border: solid $primary;
+    background: $surface;
+}
+
+Input:focus {
+    border: wide $primary;
+}
+
+ListView {
+    background: $panel;
+    border: solid $primary;
+}
+
+ListView > ListItem {
+    padding: 1;
+}
+
+ListView > ListItem:hover {
+    background: $boost;
+}
+
+ListView > ListItem.--highlight {
+    background: $primary;
+    color: $text;
+}
+
+Modal {
+    background: $panel;
+    border: wide $primary;
+    padding: 2;
+}
+
+
+Scrollbar {
+    background: $boost;
+}
+
+Scrollbar.horizontal {
+    height: 1;
+}
+
+Scrollbar.vertical {
+    width: 1;
+}
+
+Select {
+    border: solid $primary;
+    background: $surface;
+}
+
+Select:focus {
+    border: wide $primary;
+}
+
+SimpleInspector {
+    align: center middle;
+}
+
+Switch {
+    background: $boost;
+}
+
+Switch.on {
+    background: $success;
+}
+
+.card-content {
+    margin: 1;
+}
+
+.card-header {
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 1;
+}
+
+
+.collapsible-content {
+    padding: 1;
+    margin: 1;
+}
+
+.collapsible-title {
+    text-style: bold;
+    color: $primary;
+    padding: 1;
+}
+
+
+.data-table-container {
+    height: 1fr;
+    border: solid $primary;
+    padding: 1;
+    background: $panel;
+}
+
+.details-container {
+    width: 1fr;
+    padding: 1;
+}
+
+.dialog-content {
+    margin: 1;
+}
+
+.dialog-footer,
+.editor-footer {
+    height: 3;
+    margin-top: 2;
+    align: right middle;
+}
+
+.dialog-header {
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 2;
+    text-align: center;
+}
+
+
+.file-picker-button {
+    margin-left: 1;
+}
+
+.file-picker-container {
+    width: 80;
+    height: 30;
+    background: $panel;
+    border: wide $primary;
+    padding: 1;
+}
+
+.file-picker-footer {
+    height: 3;
+    margin-top: 1;
+    align: right middle;
+}
+
+.file-picker-header {
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 1;
+    text-align: center;
+}
+
+.file-picker-path {
+    height: 3;
+    margin: 1;
+}
+
+.file-picker-tree {
+    height: 1fr;
+    border: solid $primary;
+    margin: 1;
+}
+
+.footer-button {
+    margin-left: 1;
+}
+
+.form-container {
+    height: auto;
+    padding: 1;
+}
+
+.form-input {
+    width: 1fr;
+}
+
+.form-label {
+    width: 20;
+    color: $text;
+    margin-right: 1;
+}
+
+.form-row {
+    height: auto;
+    margin: 1;
+}
+
+.form-section {
+    border: solid $primary;
+    padding: 1;
+    margin: 1;
+    background: $panel;
+}
+
+.form-section-title {
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 1;
+}
+
+.form-switch {
+    width: auto;
+}
+
+
+.image-editor-container {
+    width: 70;
+    height: 40;
+    background: $panel;
+    border: wide $primary;
+    padding: 1;
+}
+
+.param-editor-container {
+    width: 70;
+    height: 45;
+    background: $panel;
+    border: wide $primary;
+    padding: 1;
+}
+
+
+.inspector-container {
+    width: 90%;
+    height: 90%;
+    background: $panel;
+    border: wide $primary;
+}
+
+.inspector-content {
+    height: 1fr;
+}
+
+.inspector-header {
+    height: 3;
+    background: $boost;
+    border-bottom: wide $primary;
+    padding: 1;
+}
+
+.json-preview {
+    background: $surface;
+    border: solid $primary;
+    padding: 1;
+    height: 1fr;
+}
+
+.modal-content {
+    margin: 1;
+}
+
+.modal-footer {
+    height: 3;
+    margin-top: 2;
+    align: right middle;
+}
+
+.modal-header {
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 2;
+    text-align: center;
+}
+
+.parameter-card {
+    border: solid $primary;
+    padding: 1;
+    margin: 1;
+    background: $panel;
+}
+
+
+.save-dialog-container {
+    width: 60;
+    height: 15;
+    background: $panel;
+    border: wide $primary;
+    padding: 0;
+}
+
+.status-active {
+    color: $success;
+    text-style: bold;
+}
+
+.status-inactive {
+    color: $error;
+}
+
+.table-toolbar {
+    height: 3;
+    margin-bottom: 1;
+    background: $boost;
+    padding: 1;
+}
+
+
+.tree-container {
+    width: 40%;
+    border-right: wide $primary;
+}

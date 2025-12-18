@@ -1,0 +1,33 @@
+/* Images View Component Styles */
+
+ImagesView {
+    height: 1fr;
+}
+
+.images-toolbar {
+    height: 5;
+    margin-bottom: 1;
+    background: $panel;
+    border: solid $primary;
+    padding: 0;
+    align: left middle;
+    width: 100%;
+}
+
+.images-table {
+    height: 1fr;
+    border: solid $primary;
+}
+
+.toolbar-spacer {
+    width: 1fr;
+}
+
+.toolbar-button {
+    margin-left: 1;
+    height: 3;
+    min-width: 15;
+}
+
+
+

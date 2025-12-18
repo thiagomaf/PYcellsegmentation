@@ -1,0 +1,53 @@
+/* Cell Editor Component Styles */
+
+.cell-editor-container {
+    width: 50;
+    height: auto;
+    background: $panel;
+    border: wide $primary;
+    padding: 2;
+}
+
+.cell-editor-container-inline {
+    width: 30;
+    height: auto;
+    background: $panel;
+    border: solid $primary;
+    padding: 1;
+}
+
+.cell-editor-title {
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 2;
+    text-align: center;
+}
+
+.cell-editor-content {
+    margin: 2;
+    height: auto;
+}
+
+.cell-editor-container-inline > .cell-editor-content {
+    margin: 1;
+}
+
+.cell-editor-input {
+    width: 100%;
+}
+
+.cell-editor-hint {
+    text-align: center;
+    color: $text-muted;
+    margin-top: 1;
+    height: 1;
+}
+
+.cell-editor-footer {
+    height: 3;
+    margin-top: 2;
+    align: right middle;
+}
+
+
+

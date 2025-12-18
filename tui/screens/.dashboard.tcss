@@ -1,0 +1,58 @@
+/* Dashboard Component Styles */
+
+Dashboard {
+    background: $surface;
+    align: center middle;
+}
+
+.dashboard-button {
+    width: 50;
+    height: 3;
+    margin: 1;
+}
+
+.dashboard-button:focus {
+    width: 50;
+    height: 3;
+    border: solid $primary;
+}
+
+.dashboard-buttons {
+    height: auto;
+    margin: 2;
+    align: center middle;
+}
+
+.dashboard-container {
+    width: 75;
+    height: 30;
+    background: $panel;
+    border: wide $primary;
+    padding: 1;
+    align: center middle;
+}
+
+.dashboard-footer {
+    text-align: center;
+    color: $text-muted;
+    margin-top: 2;
+    height: 1;
+}
+
+.dashboard-subtitle {
+    text-align: center;
+    color: $text-muted;
+    margin-bottom: 2;
+    height: 1;
+}
+
+.dashboard-title {
+    text-align: center;
+    color: green;
+    margin-bottom: 1;
+    height: 16;
+    text-style: bold;
+}
+
+
+

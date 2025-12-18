@@ -1,0 +1,21 @@
+/* Preview View Component Styles */
+
+PreviewView {
+    height: 1fr;
+}
+
+.preview-container {
+    height: 1fr;
+    border: solid $primary;
+    background: $surface;
+    padding: 1;
+}
+
+.preview-title {
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 1;
+}
+
+
+
