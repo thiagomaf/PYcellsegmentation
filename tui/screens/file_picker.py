@@ -9,15 +9,21 @@ from textual.widgets import Button, DirectoryTree, Input, Static
 
 
 class FilePicker(ModalScreen[str]):
-    """Modal screen for picking a configuration file."""
+    """Modal screen for picking a file."""
     
     BINDINGS = [
         ("escape", "cancel", "Cancel"),
         ("enter", "confirm", "Load"),
     ]
     
-    def __init__(self, initial_path: str = None):
-        """Initialize the file picker."""
+    def __init__(self, initial_path: str = None, allowed_extensions: set = None, title: str = "Select File"):
+        """Initialize the file picker.
+        
+        Args:
+            initial_path: Initial directory path to show
+            allowed_extensions: Set of allowed file extensions (e.g., {'.json'}, {'.tif', '.tiff'})
+            title: Title to display in the header
+        """
         super().__init__()
         if initial_path is None:
             # Default to config directory or project root
@@ -29,12 +35,14 @@ class FilePicker(ModalScreen[str]):
                 self.initial_path = str(project_root)
         else:
             self.initial_path = initial_path
+        self.allowed_extensions = allowed_extensions or {'.json'}
+        self.title = title
         self.selected_file = None
     
     def compose(self) -> ComposeResult:
         """Create child widgets for the file picker."""
         with Container(classes="file-picker-container"):
-            yield Static("Select Configuration File", classes="file-picker-header")
+            yield Static(self.title, classes="file-picker-header")
             
             yield Input(
                 value=self.initial_path,
@@ -58,7 +66,7 @@ class FilePicker(ModalScreen[str]):
 
     def on_directory_tree_file_selected(self, event: DirectoryTree.FileSelected) -> None:
         """Handle file selection."""
-        if event.path.suffix == ".json":
+        if event.path.suffix.lower() in self.allowed_extensions:
             self.selected_file = str(event.path)
             self.query_one("#path-input", Input).value = str(event.path.parent)
     
@@ -90,18 +98,22 @@ class FilePicker(ModalScreen[str]):
         if self.selected_file and Path(self.selected_file).exists():
             self.dismiss(self.selected_file)
         else:
-            # Try to find a JSON file in the current directory
+            # Try to find a file in the current directory
             path_input = self.query_one("#path-input", Input)
             current_path = Path(path_input.value)
-            if current_path.is_file() and current_path.suffix == ".json":
+            if current_path.is_file() and current_path.suffix.lower() in self.allowed_extensions:
                 self.dismiss(str(current_path))
             elif current_path.is_dir():
-                # Look for JSON files in the directory
-                json_files = list(current_path.glob("*.json"))
-                if json_files:
-                    # Use the first JSON file found
-                    self.dismiss(str(json_files[0]))
+                # Look for files with allowed extensions in the directory
+                matching_files = []
+                for ext in self.allowed_extensions:
+                    matching_files.extend(current_path.glob(f"*{ext}"))
+                if matching_files:
+                    # Use the first matching file found
+                    self.dismiss(str(matching_files[0]))
                 else:
-                    self.notify("No JSON files found in the selected directory", severity="error")
+                    ext_list = ", ".join(self.allowed_extensions)
+                    self.notify(f"No files with extensions {ext_list} found in the selected directory", severity="error")
             else:
-                self.notify("Please select a JSON configuration file", severity="error")
+                ext_list = ", ".join(self.allowed_extensions)
+                self.notify(f"Please select a file with one of these extensions: {ext_list}", severity="error")

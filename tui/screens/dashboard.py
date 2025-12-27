@@ -23,22 +23,20 @@ ascii_art = """
 
 
 class Dashboard(Container):
-    """Main dashboard screen with project management options."""
+    """Main dashboard screen for project management."""
     
-    # CSS_PATH = str(Path(__file__).parent / "dashboard_new.tcss")
     BINDINGS = [
         Binding("n", "new_project",  "New Project",  tooltip="Create a new project"),
-        Binding("l", "load_project", "Load Project", tooltip="Load a project from a file"),
+        Binding("l", "load_project", "Load Project", tooltip="Load a project"),
     ]
     
     def compose(self) -> ComposeResult:
         """Create child widgets for the dashboard."""
-        # Simple ASCII art that will definitely render
         TITLE_ART = ascii_art
 
         with Container(classes="dashboard-content"):
             yield Static(TITLE_ART, classes="dashboard-title", markup=False)
-            # yield Static("Project Configuration Manager", classes="dashboard-subtitle")
+            yield Static("Project Manager", classes="dashboard-subtitle")
             
             with Vertical(classes="dashboard-buttons"):
                 yield Button("New Project",  id="new-project",  classes="dashboard-button")

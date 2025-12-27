@@ -1,0 +1,177 @@
+OptimizationDashboard {
+    align: center middle;
+    padding-bottom: 0;
+}
+
+.dashboard-grid {
+    grid-size: 2 2;
+    grid-columns: 1fr 2.3fr;
+    grid-rows: 1fr 1fr;
+    width: 100%;
+    height: 1fr;
+    padding: 1;
+    margin-bottom: 0;
+}
+
+.left-column {
+    row-span: 2;
+    column-span: 1;
+    height: 100%;
+}
+
+.method-config-panel {
+    height: 1fr;
+}
+
+.separator {
+    color: $text-muted;
+}
+
+.viz-panel {
+    display: none;  /* Not used in new layout */
+}
+
+.plot-panel {
+    row-span: 2;
+    column-span: 1;
+    border: solid $accent;
+    padding: 1;
+    height: 100%;
+}
+
+.plot-panel > Horizontal {
+    height: 3;
+    margin-bottom: 1;
+}
+
+#plot-scroll-container {
+    height: 1fr;
+    width: 100%;
+    min-height: 20;
+}
+
+.plot-card {
+    border: solid $panel;
+    padding: 1;
+    margin: 1;
+    min-height: 35;
+}
+
+.mini-plot {
+    height: 30;
+    width: 100%;
+    margin: 1;
+}
+
+.history-panel {
+    row-span: 1;
+    column-span: 1;
+    border: solid yellow;
+    padding: 0;
+    height: 1fr;
+    margin-top: 0;
+}
+
+#table-scroll-container {
+    width: 100%;
+    height: 1fr;
+}
+
+#history-table {
+    width: 100%;
+}
+
+.control-bar {
+    dock: bottom;
+    height: 4;
+    align: left middle;
+    background: $surface;
+    padding: 0 1;
+    border-top: solid $primary;
+    margin-bottom: 2;
+    layout: horizontal;
+}
+
+.control-bar-left {
+    align: left middle;
+    width: 1fr;
+}
+
+.control-bar-right {
+    align: right middle;
+    width: 3fr;
+}
+
+.control-bar Button {
+    margin: 0 1;
+    height: 3;
+}
+
+.control-bar Select {
+    margin: 0 1;
+    width: 20;
+    height: 2;
+}
+
+#select-suggestion-method {
+    width: 25;
+}
+
+.control-bar Static {
+    margin: 0 1;
+    height: 3;
+}
+
+#method-label {
+    width: 7;
+}
+
+#calc-status {
+    width: 1;
+}
+
+.stat-box {
+    margin-bottom: 1;
+}
+
+Sparkline {
+    height: 3;
+    width: 100%;
+    color: $success;
+}
+
+
+.plot-panel {
+    border: solid $accent;
+    padding: 1;
+}
+
+
+.direction-btn {
+    width: 3;
+    min-width: 3;
+    height: 1;
+    margin-left: 1;
+    border: none;
+    background: transparent;
+    color: $text;
+    text-style: bold;
+    content-align: center middle;
+}
+
+.direction-btn:hover {
+    background: $primary;
+    color: $text;
+}
+
+.tab-btn--selected {
+    background: $primary;
+    color: $text;
+}
+
+/* Highlight best parameter set row - star indicator makes it visible */
+#history-table {
+    /* The star (★) in the first column indicates the best parameter set */
+    /* We rely on the visual star indicator since DataTable doesn't support per-row styling */
+}
+

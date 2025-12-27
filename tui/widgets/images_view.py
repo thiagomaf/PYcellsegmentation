@@ -45,7 +45,7 @@ class ImagesView(Container):
         ("MPP X", "mpp_x", "float", None),
         ("MPP Y", "mpp_y", "float", None),
         ("Segmentation", "segmentation_options.apply_segmentation", "bool", None),
-        ("Scale Factor", "segmentation_options.rescaling_config.scale_factor", "float", None),
+        ("Scale", "segmentation_options.rescaling_config.scale_factor", "float", None),
         ("Interpolation", "segmentation_options.rescaling_config.interpolation", "enum", [
             ("INTER_NEAREST", "INTER_NEAREST"),
             ("INTER_LINEAR", "INTER_LINEAR"),
@@ -66,20 +66,28 @@ class ImagesView(Container):
         self._last_click_time = {}
         self._double_click_threshold = 0.5  # seconds
         self.can_focus = True
+        # MPP validation state: {image_id: {"mpp_x": "correct|incorrect|unvalidated", "mpp_y": "..."}}
+        self._mpp_validation_state: dict[str, dict[str, str]] = {}
+        # Scale validation state: {image_id: {"scale_factor": "valid|invalid|unvalidated", "suggested_scale": float}}
+        self._scale_validation_state: dict[str, dict[str, str | float]] = {}
+        # File existence state: {image_id: bool} - True if file exists, False if not
+        self._file_existence_state: dict[str, bool] = {}
+        # Suggested maximum scaled dimension (in pixels)
+        self.SUGGESTED_MAX_SCALED_SIZE = 8000
     
     def compose(self) -> ComposeResult:
         """Create child widgets for the images view."""
-        with Vertical():
-            with Container(classes="images-container"):
-                yield Static("Image Configurations", classes="images-title")
-                
-                yield DataTable(id="images-table", classes="images-table")
+        with Container(classes="images-container"):
+            yield Static("Image Configurations", classes="images-title")
+            
+            yield DataTable(id="images-table", classes="images-table")
 
-                with Horizontal(classes="images-toolbar"):
-                    yield Static("Enter: Edit | Double-click: Edit/Toggle | Space: Toggle boolean", id="status")
-                    yield Static("", classes="toolbar-spacer")
-                    yield Button("Add Image", id="add-image",    classes="toolbar-button", variant="primary")
-                    yield Button("Remove",    id="remove-image", classes="toolbar-button")
+            with Horizontal(classes="images-toolbar"):
+                yield Button("🔍 MPP", id="check-mpp",    classes="toolbar-button", variant="primary")
+                yield Button("🧮 Scale", id="calc-scale",    classes="toolbar-button", variant="primary")
+                yield Static("", classes="toolbar-spacer")
+                yield Button("Add Images", id="add-image",    classes="toolbar-button", variant="primary")
+                yield Button("Remove",    id="remove-image", classes="toolbar-button")
     
     def on_mount(self) -> None:
         """Called when the widget is mounted."""
@@ -105,11 +113,34 @@ class ImagesView(Container):
             )
             self.config.image_configurations.append(default_image)
         
+        # Check if we have valid images (not just the default empty one)
+        has_valid_images = False
+        for img in self.config.image_configurations:
+            if img.image_id != "default" and img.original_image_filename:
+                has_valid_images = True
+                break
+        
+        # Enable/disable buttons
+        try:
+            self.query_one("#check-mpp", Button).disabled = not has_valid_images
+            self.query_one("#calc-scale", Button).disabled = not has_valid_images
+        except Exception:
+            pass # Buttons might not be mounted yet
+        
+        # Check file existence for all images
+        import os
+        for img_config in self.config.image_configurations:
+            if img_config.original_image_filename:
+                filepath = img_config.original_image_filename.replace("\\", "/")
+                self._file_existence_state[img_config.image_id] = os.path.exists(filepath)
+            else:
+                self._file_existence_state[img_config.image_id] = False
+        
         for img_config in self.config.image_configurations:
             row_data = []
             for col_name, field_path, value_type, options in self.COLUMNS:
                 value = self._get_field_value(img_config, field_path)
-                display_value = self._format_value(value, value_type, col_name)
+                display_value = self._format_value(value, value_type, col_name, field_path, img_config)
                 row_data.append(display_value)
             
             table.add_row(*row_data, key=img_config.image_id)
@@ -126,6 +157,30 @@ class ImagesView(Container):
             else:
                 return None
         return obj
+    
+    def _make_path_relative(self, filepath: str) -> str:
+        """Convert an absolute path to a relative path (relative to PROJECT_ROOT)."""
+        import os
+        try:
+            from src.file_paths import PROJECT_ROOT
+            
+            # Normalize paths
+            abs_path = os.path.abspath(filepath).replace('\\', '/')
+            project_root = os.path.abspath(PROJECT_ROOT).replace('\\', '/')
+            
+            # Check if the path is within the project root
+            if abs_path.startswith(project_root):
+                # Get relative path
+                relative = os.path.relpath(abs_path, project_root)
+                return relative.replace('\\', '/')
+            else:
+                # Path is outside project root - return as-is but log a warning
+                # In this case, we can't make it relative, so we'll store it as absolute
+                # but this might cause issues on different platforms
+                return filepath
+        except (ImportError, Exception):
+            # If we can't determine PROJECT_ROOT, return as-is
+            return filepath
     
     def _set_field_value(self, img_config: ImageConfiguration, field_path: str, value: Any) -> None:
         """Set a field value in an image configuration using dot notation."""
@@ -144,7 +199,7 @@ class ImagesView(Container):
                         attr_value = RescalingConfig()
                         setattr(obj, part, attr_value)
                     elif part == "tiling_parameters":
-                        attr_value = TilingParameters()
+                        attr_value = TilingParameters(apply_tiling=False)
                         setattr(obj, part, attr_value)
                     elif part == "segmentation_options":
                         from tui.models import SegmentationOptions
@@ -153,27 +208,104 @@ class ImagesView(Container):
                 obj = attr_value
             else:
                 return
+        # Convert absolute paths to relative paths for original_image_filename before setting
+        if field_path == "original_image_filename" and isinstance(value, str) and value:
+            value = self._make_path_relative(value)
+        
         # Set the final attribute
         setattr(obj, parts[-1], value)
+        
+        # Reset validation state if MPP values are changed
+        if field_path in ("mpp_x", "mpp_y") and hasattr(img_config, 'image_id'):
+            image_id = img_config.image_id
+            if image_id in self._mpp_validation_state:
+                self._mpp_validation_state[image_id][field_path] = "unvalidated"
+        
+        # Reset validation state if scale factor is changed
+        # Check if field_path ends with "scale_factor" to handle nested paths
+        if field_path.endswith("scale_factor") and hasattr(img_config, 'image_id'):
+            image_id = img_config.image_id
+            if image_id in self._scale_validation_state:
+                self._scale_validation_state[image_id]["scale_factor"] = "unvalidated"
+        
+        # Check file existence if filename is changed
+        if field_path == "original_image_filename" and hasattr(img_config, 'image_id'):
+            image_id = img_config.image_id
+            import os
+            if value and isinstance(value, str):
+                # Use resolve_image_path to handle both relative and absolute paths
+                try:
+                    from src.pipeline_utils import resolve_image_path
+                    resolved_path = resolve_image_path(value)
+                    self._file_existence_state[image_id] = os.path.exists(resolved_path)
+                except ImportError:
+                    # Fallback to simple check
+                    filepath = value.replace("\\", "/")
+                    self._file_existence_state[image_id] = os.path.exists(filepath)
+            else:
+                self._file_existence_state[image_id] = False
+            # Refresh table to show updated file existence color
+            self.refresh_table()
     
-    def _format_value(self, value: Any, value_type: str, col_name: str = "") -> str | Text:
+    def _format_value(self, value: Any, value_type: str, col_name: str = "", field_path: str = "", img_config: ImageConfiguration = None) -> str | Text:
         """Format a value for display in the table."""
         if value is None:
             return "N/A"
         
-        if col_name == "Filename" and isinstance(value, str) and value:
+        # File existence check - use field_path for robustness
+        if field_path == "original_image_filename" and isinstance(value, str) and value:
             # Shorten filename for display
             path = Path(value)
-            # If there are directory parts, show .../filename
+            display_name = path.name
             if len(path.parts) > 1:
-                return f".../{path.name}"
-            return path.name
+                display_name = f".../{path.name}"
+            
+            # Check file existence and color accordingly
+            if img_config and img_config.image_id in self._file_existence_state:
+                file_exists = self._file_existence_state[img_config.image_id]
+                if not file_exists:
+                    return Text(display_name, style="red")
+            
+            return display_name
             
         elif value_type == "bool":
             if value:
                 return Text("✓", style="green")
             else:
                 return Text("✗", style="red")
+        elif field_path in ("mpp_x", "mpp_y") and img_config:
+            # Check validation state for MPP values using field_path
+            image_id = img_config.image_id
+            field_name = field_path  # Use field_path directly
+            
+            # Format MPP value to max 4 decimal places
+            formatted_value = f"{float(value):.4f}".rstrip('0').rstrip('.')
+            
+            if image_id in self._mpp_validation_state:
+                validation = self._mpp_validation_state[image_id].get(field_name, "unvalidated")
+                if validation == "correct":
+                    return Text(formatted_value, style="green")
+                elif validation == "incorrect":
+                    return Text(formatted_value, style="red")
+            
+            # Default: unvalidated or no validation state
+            return formatted_value
+        elif field_path.endswith("scale_factor") and img_config:
+            # Check validation state for scale factors using field_path
+            image_id = img_config.image_id
+            
+            # Format scale value to 1 decimal place
+            formatted_value = f"{float(value):.1f}".rstrip('0').rstrip('.')
+            
+            if image_id in self._scale_validation_state:
+                validation = self._scale_validation_state[image_id].get("scale_factor", "unvalidated")
+                if validation == "valid":
+                    return Text(formatted_value, style="green")
+                elif validation == "invalid":
+                    return Text(formatted_value, style="red")
+            
+            # Default: unvalidated or no validation state
+            return formatted_value
         else:
             return str(value)
     
@@ -385,27 +517,257 @@ class ImagesView(Container):
         
         self.app.push_screen(editor, on_dismiss)
     
+    def check_all_mpp_values(self) -> None:
+        """Check and validate MPP values for all images."""
+        from tui.utils.mpp_calculator import calculate_mpp_from_image
+        
+        valid_images = [img for img in self.config.image_configurations 
+                       if img.image_id != "default" and img.original_image_filename]
+        
+        if not valid_images:
+            self.notify("No valid images to check", severity="warning")
+            return
+        
+        self.notify(f"Checking MPP values for {len(valid_images)} image(s)...")
+        
+        updated_count = 0
+        validated_count = 0
+        error_count = 0
+        
+        for img_config in valid_images:
+            filepath = img_config.original_image_filename
+            image_id = img_config.image_id
+            
+            # Initialize validation state if not present
+            if image_id not in self._mpp_validation_state:
+                self._mpp_validation_state[image_id] = {"mpp_x": "unvalidated", "mpp_y": "unvalidated"}
+            
+            # Calculate MPP from image metadata
+            calculated_mpp_x, calculated_mpp_y = calculate_mpp_from_image(filepath)
+            
+            if calculated_mpp_x is None and calculated_mpp_y is None:
+                # Could not calculate MPP
+                self._mpp_validation_state[image_id]["mpp_x"] = "unvalidated"
+                self._mpp_validation_state[image_id]["mpp_y"] = "unvalidated"
+                error_count += 1
+                continue
+            
+            # Handle mpp_x
+            if calculated_mpp_x is not None:
+                if img_config.mpp_x is None:
+                    # Auto-update missing value
+                    img_config.mpp_x = calculated_mpp_x
+                    self._mpp_validation_state[image_id]["mpp_x"] = "correct"
+                    updated_count += 1
+                else:
+                    # Validate existing value
+                    diff = abs(calculated_mpp_x - img_config.mpp_x)
+                    if diff <= 0.001:
+                        self._mpp_validation_state[image_id]["mpp_x"] = "correct"
+                        validated_count += 1
+                    else:
+                        self._mpp_validation_state[image_id]["mpp_x"] = "incorrect"
+            
+            # Handle mpp_y
+            if calculated_mpp_y is not None:
+                if img_config.mpp_y is None:
+                    # Auto-update missing value
+                    img_config.mpp_y = calculated_mpp_y
+                    self._mpp_validation_state[image_id]["mpp_y"] = "correct"
+                    updated_count += 1
+                else:
+                    # Validate existing value
+                    diff = abs(calculated_mpp_y - img_config.mpp_y)
+                    if diff <= 0.001:
+                        self._mpp_validation_state[image_id]["mpp_y"] = "correct"
+                        validated_count += 1
+                    else:
+                        self._mpp_validation_state[image_id]["mpp_y"] = "incorrect"
+        
+        # Refresh table to show updated colors
+        self.refresh_table()
+        
+        # Show summary notification
+        if updated_count > 0:
+            self.notify(f"Updated {updated_count} MPP value(s), validated {validated_count} value(s)")
+        elif validated_count > 0:
+            self.notify(f"Validated {validated_count} MPP value(s)")
+        elif error_count > 0:
+            self.notify(f"Could not calculate MPP for {error_count} image(s)", severity="warning")
+        else:
+            self.notify("MPP check complete")
+    
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
         if event.button.id == "add-image":
             self.add_image()
         elif event.button.id == "remove-image":
             self.remove_image()
+        elif event.button.id == "check-mpp":
+            self.check_all_mpp_values()
+        elif event.button.id == "calc-scale":
+            self.check_all_scale_values()
     
     def add_image(self) -> None:
-        """Add a new image configuration."""
-        from tui.screens.image_editor import ImageEditor
-        new_image = ImageConfiguration(
-            image_id=f"image_{len(self.config.image_configurations) + 1}",
-            original_image_filename=""
-        )
+        """Add new image configuration(s)."""
+        from tui.screens.image_picker import ImagePicker
+        import os
         
-        def on_dismiss(result):
-            if result is not None:
-                self.config.image_configurations.append(result)
+        # Determine initial path
+        # Default to current working directory or a sensible default
+        initial_path = os.getcwd()
+        try:
+            from src.file_paths import PROJECT_ROOT
+            if os.path.exists(PROJECT_ROOT):
+                initial_path = PROJECT_ROOT
+        except ImportError:
+            pass
+        
+        def on_dismiss(results: list[str]) -> None:
+            if not results:
+                return
+            
+            # Remove default image if it exists before adding new ones
+            if self.config.image_configurations:
+                default_img = next((img for img in self.config.image_configurations if img.image_id == "default"), None)
+                if default_img:
+                    self.config.image_configurations.remove(default_img)
+            
+            count = 0
+            for filepath in results:
+                # Convert absolute path to relative path (relative to PROJECT_ROOT)
+                relative_path = self._make_path_relative(filepath)
+                
+                # Create unique ID
+                # Simple generation based on count, but ensuring uniqueness
+                base_id = f"image_{len(self.config.image_configurations) + 1}"
+                image_id = base_id
+                
+                # Check for duplicate ID
+                existing_ids = {img.image_id for img in self.config.image_configurations}
+                counter = 1
+                while image_id in existing_ids:
+                    image_id = f"{base_id}_{counter}"
+                    counter += 1
+                
+                new_image = ImageConfiguration(
+                    image_id=image_id,
+                    original_image_filename=relative_path
+                )
+                self.config.image_configurations.append(new_image)
+                count += 1
+            
+            if count > 0:
                 self.refresh_table()
+                self.notify(f"Added {count} image(s)")
         
-        self.app.push_screen(ImageEditor(new_image), on_dismiss)
+        self.app.push_screen(ImagePicker(initial_path), on_dismiss)
+    
+    def check_all_scale_values(self) -> None:
+        """Check and validate scale factors for all images."""
+        from tui.utils.mpp_calculator import get_image_dimensions
+        
+        valid_images = [img for img in self.config.image_configurations 
+                       if img.image_id != "default" and img.original_image_filename]
+        
+        if not valid_images:
+            self.notify("No valid images to check", severity="warning")
+            return
+        
+        self.notify(f"Checking scale factors for {len(valid_images)} image(s)...")
+        
+        checked_count = 0
+        suggested_count = 0
+        error_count = 0
+        
+        for img_config in valid_images:
+            filepath = img_config.original_image_filename
+            image_id = img_config.image_id
+            
+            # Initialize validation state if not present
+            if image_id not in self._scale_validation_state:
+                self._scale_validation_state[image_id] = {
+                    "scale_factor": "unvalidated",
+                    "suggested_scale": 1.0
+                }
+            
+            # Get image dimensions
+            width, height = get_image_dimensions(filepath)
+            
+            if width is None or height is None:
+                self._scale_validation_state[image_id]["scale_factor"] = "unvalidated"
+                error_count += 1
+                continue
+            
+            # Get current scale factor
+            rescaling_config = img_config.segmentation_options.rescaling_config
+            current_scale = rescaling_config.scale_factor if rescaling_config else None
+            
+            # Calculate suggested scale factor
+            # Use the larger dimension to determine the scale
+            larger_dimension = max(width, height)
+            if larger_dimension > self.SUGGESTED_MAX_SCALED_SIZE:
+                suggested_scale = self.SUGGESTED_MAX_SCALED_SIZE / larger_dimension
+                # Round to 4 decimal places for cleaner display
+                suggested_scale = round(suggested_scale, 4)
+                # Ensure it's within valid range (0 < scale <= 1.0)
+                suggested_scale = max(0.0001, min(1.0, suggested_scale))
+            else:
+                # Image is already small enough, suggest 1.0
+                suggested_scale = 1.0
+            
+            self._scale_validation_state[image_id]["suggested_scale"] = suggested_scale
+            
+            # Auto-fill suggested scale if current scale is empty/default/NA
+            # (i.e., rescaling_config is None, or scale_factor is None, or scale_factor is default 1.0)
+            should_auto_fill = False
+            if rescaling_config is None:
+                # No rescaling config exists, create it with suggested scale
+                from tui.models import RescalingConfig
+                img_config.segmentation_options.rescaling_config = RescalingConfig(scale_factor=suggested_scale)
+                should_auto_fill = True
+            elif current_scale is None:
+                # Scale is None, set to suggested
+                rescaling_config.scale_factor = suggested_scale
+                should_auto_fill = True
+            elif current_scale == 1.0:
+                # Scale is default 1.0, update to suggested (even if suggested is also 1.0, to ensure it's set)
+                rescaling_config.scale_factor = suggested_scale
+                if suggested_scale != 1.0:
+                    should_auto_fill = True
+            
+            # Use the (potentially updated) scale for validation
+            final_scale = rescaling_config.scale_factor if rescaling_config else suggested_scale
+            
+            # Calculate scaled dimensions
+            scaled_width = int(width * final_scale)
+            scaled_height = int(height * final_scale)
+            
+            # Check if scaled dimensions exceed maximum
+            max_dimension = max(scaled_width, scaled_height)
+            is_valid = max_dimension <= self.SUGGESTED_MAX_SCALED_SIZE
+            
+            # Update validation state
+            self._scale_validation_state[image_id]["scale_factor"] = "valid" if is_valid else "invalid"
+            
+            checked_count += 1
+            if should_auto_fill:
+                suggested_count += 1
+            elif suggested_scale != final_scale and suggested_scale < 1.0:
+                suggested_count += 1
+        
+        # Refresh table to show updated colors
+        self.refresh_table()
+        
+        # Show summary notification with suggestions
+        if suggested_count > 0:
+            self.notify(f"Checked {checked_count} image(s). {suggested_count} may benefit from scale adjustment. Check table for suggestions.", severity="info")
+        elif checked_count > 0:
+            self.notify(f"Checked {checked_count} image(s). All scale factors are appropriate.")
+        elif error_count > 0:
+            self.notify(f"Could not read dimensions for {error_count} image(s)", severity="warning")
+        else:
+            self.notify("Scale check complete")
     
     def remove_image(self) -> None:
         """Remove the selected image."""
@@ -413,15 +775,23 @@ class ImagesView(Container):
         cursor_row = table.cursor_row
         
         if cursor_row is None or cursor_row >= len(self.config.image_configurations):
-            self.query_one("#status", Static).update("Please select an image to remove")
+            self.notify("Please select an image to remove", severity="warning")
             return
         
         # Don't allow removing the last image
         if len(self.config.image_configurations) <= 1:
-            self.query_one("#status", Static).update("Cannot remove the last image")
+            self.notify("Cannot remove the last image", severity="warning")
             return
         
         image_config = self.config.image_configurations[cursor_row]
+        image_id = image_config.image_id
         self.config.image_configurations.remove(image_config)
+        # Clean up validation state
+        if image_id in self._mpp_validation_state:
+            del self._mpp_validation_state[image_id]
+        if image_id in self._scale_validation_state:
+            del self._scale_validation_state[image_id]
+        if image_id in self._file_existence_state:
+            del self._file_existence_state[image_id]
         self.refresh_table()
-        self.query_one("#status", Static).update(f"Removed {image_config.image_id}")
+        self.notify(f"Removed {image_config.image_id}")

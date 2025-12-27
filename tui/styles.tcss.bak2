@@ -1,0 +1,690 @@
+/* Modern Dark Theme for PyCellSegmentation TUI */
+
+/* Image Editor Component Styles */
+/* Parameter Editor Component Styles */
+
+ImageEditor,
+ParameterEditor {
+    align: center middle;
+
+    .image-editor-container {
+        height: 80%;
+    }
+
+    .param-editor-container {
+        height: 45;
+        padding: 1;
+    }
+
+    .image-editor-container,
+    .param-editor-container {
+        width: 70;
+        background: $panel;
+        border: wide $primary;
+
+        .editor-header {
+            dock: top;
+            text-style: bold;
+            color: $primary;
+            margin: 1 1 1 1;
+            text-align: center;
+            height: auto;
+        }
+
+        .editor-content {
+            height: 1fr;
+            overflow-y: auto;
+            padding: 1;
+
+            .form-section {
+                border: solid $primary;
+                padding: 1;
+                margin: 1;
+                background: $panel;
+                height: auto;
+
+                .form-input {
+                    width: 1fr;
+                }
+
+                .form-label {
+                    width: 20;
+                    color: $text;
+                    margin-right: 1;
+                }
+
+                .form-row {
+                    height: auto;
+                    margin: 1;
+                }
+
+                .form-section-title {
+                    text-style: bold;
+                    color: $primary;
+                    margin-bottom: 1;
+                }
+            }
+        }
+
+        .editor-footer {
+            dock: bottom;
+            height: 5;
+            padding: 1;
+            align: right middle;
+            background: $panel;
+
+            .footer-button {
+                margin-left: 1;
+            }
+        }
+    }    
+
+    .form-container {
+        height: auto;
+        padding: 1;
+    }
+
+    .form-switch {
+        width: auto;
+    }
+}    
+
+
+/* File Picker Component Styles */
+
+FilePicker {
+    align: center middle;
+
+    .file-picker-button {
+        margin-left: 1;
+    }
+
+    .file-picker-container {
+        width: 80;
+        height: 30;
+        background: $panel;
+        border: wide $primary;
+        padding: 1;
+    }
+
+    .file-picker-footer {
+        height: 3;
+        margin-top: 1;
+        align: right middle;
+    }
+
+    .file-picker-header {
+        text-style: bold;
+        color: $primary;
+        margin-bottom: 1;
+        text-align: center;
+    }
+
+    .file-picker-path {
+        height: 3;
+        margin: 1;
+    }
+
+    .file-picker-tree {
+        height: 1fr;
+        border: solid $primary;
+        margin: 1;
+    }
+}
+
+/* Save Dialog Component Styles */
+
+SaveDialog {
+    align: center middle;
+
+    .file-picker-button {
+        margin-left: 1;
+    }
+
+    .file-picker-container {
+        width: 80;
+        height: 20;
+        background: $panel;
+        border: wide $primary;
+        padding: 1;
+    }
+
+    .file-picker-footer {
+        height: 3;
+        margin-top: 1;
+        align: right middle;
+    }
+
+    .file-picker-header {
+        text-style: bold;
+        color: $primary;
+        margin-bottom: 1;
+        text-align: center;
+    }
+
+    .file-picker-path {
+        height: 3;
+        margin: 1;
+    }
+}
+
+/* Simple Inspector Component Styles */
+
+SimpleInspector {
+    align: center middle;
+    
+    .inspector-container {
+        width: 90%;
+        height: 90%;
+        background: $panel;
+        border: wide $primary;
+    }
+
+    .inspector-content {
+        height: 1fr;
+    }
+
+    .inspector-header {
+        height: 3;
+        background: $boost;
+        border-bottom: wide $primary;
+        padding: 1;
+    }
+}
+
+
+/* General View Component Styles */
+/* Preview View Component Styles */
+/* Images View Component Styles */
+/* Parameters View Component Styles */
+
+PreviewView {
+    #json-preview {
+        height: 1fr;
+        border: solid $primary;
+    }
+}
+
+GeneralView,
+PreviewView,
+ImagesView,
+ParametersView {
+    /*height: 1fr;*/
+    /*background: $surface;*/
+
+    /*
+    .general-container,
+    .preview-container,
+    .images-container,
+    .parameters-container {
+        height: 1fr;
+        border: solid $primary;
+        padding: 1 1 0 1;
+
+        layout: vertical;
+    }
+    */
+}
+
+ImagesView,
+ParametersView {
+    .images-toolbar,
+    .parameters-toolbar {
+        height: 5;
+        background: $panel;
+        border: solid $primary;
+
+        #status {
+            width: auto;
+            height: 100%;
+            content-align: left middle;
+        }
+
+        .toolbar-button {
+            margin-left: 1;
+            height: 3;
+            min-width: 15;
+            align: right middle;
+        }
+    }
+
+    .images-table,
+    .parameters-table {
+        height: 1fr;
+        border: solid $primary;
+    }
+
+    .toolbar-spacer {
+        width: 1fr;
+    }
+}
+
+/* Project Editor Component Styles */
+
+ProjectEditor,
+ConfigView {
+    background: $surface;    
+
+    .general-container,
+    .preview-container,
+    .images-container,
+    .parameters-container {
+        height: 1fr;
+        border: solid $primary;
+        padding: 1 1 0 1;
+
+        layout: vertical;
+    }
+
+    #editor-container,
+    #config-container {
+        .general-title,
+        .preview-title,
+        .images-title,
+        .parameters-title,
+        #nav-title,
+        #config-nav-title {
+            text-style: bold;
+            color: $primary;
+            margin-bottom: 1;
+            height: auto;
+        }
+
+        #editor-sidebar,
+        #config-secondary-sidebar {
+            padding: 1 1 0 1;
+            border: solid $primary;
+        }
+
+        #editor-sidebar{
+            width: 23;
+        }
+
+        #config-secondary-sidebar {
+            width: 20;
+        }
+    }
+}
+
+/* Nav buttons in sidebars - left aligned */
+Button.nav-btn {
+    width: 100%;
+    height: 3;
+    content-align: left middle;
+    text-align: left;
+    padding: 0 1;
+    text-wrap: nowrap;
+}
+
+Button.nav-btn--selected {
+    text-style: bold;
+}
+
+
+/* Dashboard Component Styles */
+
+Dashboard {
+    background: $surface;
+    align: center top;
+    width: 100%;
+    height: 100%;
+
+    #dashboard-area {
+        width: 100%;
+        height: 1fr;
+        align: center middle;
+        /*border: solid #92D050;*/
+    }
+
+    .dashboard-content {
+        width: auto;
+        height: auto;
+        layout: vertical;
+    }
+
+    .dashboard-title {
+        text-align: center;
+        color: green;
+        margin-bottom: 1;
+        height: 16;
+        text-style: bold;
+    }
+
+    .dashboard-subtitle {
+        text-align: center;
+        color: $text-muted;
+        margin-bottom: 2;
+        height: 1;
+    }
+
+    .dashboard-buttons {
+        height: auto;
+        margin: 2;
+        align: center middle;
+    }
+
+    .dashboard-button {
+        width: 50;
+        height: 3;
+        margin: 1;
+    }
+
+    .dashboard-button:focus {
+        width: 50;
+        height: 3;
+        /*border: solid $primary;*/
+    }
+}
+
+
+/* Cell Editor Component Styles */
+
+CellEditor {
+    align: center middle;
+}
+
+.cell-editor-container {
+    width: 50;
+    height: auto;
+    background: $panel;
+    border: wide $primary;
+    padding: 2;
+}
+
+.cell-editor-container-inline {
+    width: 30;
+    height: auto;
+    background: $panel;
+    border: solid $primary;
+    padding: 1;
+}
+
+.cell-editor-title {
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 2;
+    text-align: center;
+}
+
+.cell-editor-content {
+    margin: 2;
+    height: auto;
+}
+
+.cell-editor-container-inline > .cell-editor-content {
+    margin: 1;
+}
+
+.cell-editor-input {
+    width: 100%;
+}
+
+.cell-editor-hint {
+    text-align: center;
+    color: $text-muted;
+    margin-top: 1;
+    height: 1;
+}
+
+.cell-editor-footer {
+    height: 3;
+    margin-top: 2;
+    align: right middle;
+}
+
+/*----------------------------------------------*/
+
+#app-header {
+    /*border: solid #7030A0;*/
+}
+#app-footer {
+    /*border: solid #7030A0;*/
+}
+
+/*----------------------------------------------*/
+/* Pipeline View Styles                         */
+/*----------------------------------------------*/
+
+PipelineView {
+    background: $surface;
+
+    .pipeline-container {
+        height: 1fr;
+        padding: 1;
+    }
+
+    .pipeline-header {
+        height: 3;
+        align: left middle;
+        padding: 0 1;
+        background: $panel;
+        border: solid $primary;
+        margin-bottom: 1;
+    }
+
+    #alive-indicator {
+        width: 1;
+        height: 1;
+        text-align: center;
+        margin-right: 1;
+        content-align: center middle;
+    }
+
+    #alive-indicator.alive-running {
+        color: #00ff00;
+        text-style: bold;
+    }
+
+    #alive-indicator.alive-stale {
+        color: #ffaa00;
+        text-style: bold;
+    }
+
+    #alive-indicator.alive-dead {
+        color: #ff4444;
+    }
+
+    #alive-indicator.alive-completed {
+        color: #4488ff;
+    }
+
+    .pipeline-title {
+        width: auto;
+        height: 1;
+        text-style: bold;
+        color: $primary;
+        content-align: left middle;
+        margin-right: 2;
+    }
+
+    .config-label {
+        width: 1fr;
+        height: 1;
+        color: $text-muted;
+        content-align: right middle;
+        text-align: right;
+    }
+
+    Button.nav-btn {
+        width: 100%;
+        height: 3;
+        content-align: right middle;
+        text-align: left;
+        padding: 0 1;
+        text-wrap: nowrap;
+    }
+
+    #refresh-btn {
+        width: 12;
+        min-width: 12;
+        height: 3;
+        padding: 0 1;
+    }
+
+    .pipeline-main {
+        height: 1fr;
+    }
+
+    .pipeline-steps-panel {
+        width: 40;
+        border: solid $primary;
+        padding: 1;
+        margin-right: 1;
+
+        .panel-title {
+            text-align: center;
+            color: $text-muted;
+            margin-bottom: 1;
+        }
+
+        .pipeline-step {
+            height: 3;
+            padding: 0 1;
+            margin: 0 0 1 0;
+            background: $panel;
+            border: solid $surface-darken-1;
+        }
+
+        .pipeline-step.step-pending Static {
+            color: $text-muted;
+        }
+
+        .pipeline-step.step-running {
+            border: solid yellow;
+        }
+
+        .pipeline-step.step-running Static {
+            color: yellow;
+            text-style: bold;
+        }
+
+        .pipeline-step.step-done {
+            border: solid green;
+        }
+
+        .pipeline-step.step-done Static {
+            color: green;
+        }
+
+        .pipeline-step.step-error {
+            border: solid red;
+        }
+
+        .pipeline-step.step-error Static {
+            color: red;
+        }
+
+        .progress-label {
+            margin-top: 1;
+            color: $text;
+        }
+
+        #progress-bar {
+            margin: 1 0;
+        }
+
+        .progress-stats {
+            color: $text-muted;
+            text-align: center;
+        }
+    }
+
+    .pipeline-logs-panel {
+        width: 1fr;
+        border: solid $primary;
+        padding: 1;
+        background: $boost;
+
+        .panel-title {
+            text-align: center;
+            color: $text-muted;
+            margin-bottom: 1;
+        }
+
+        #log-viewer {
+            height: 1fr;
+            background: #1a1a1a;
+            border: solid $surface-darken-1;
+            padding: 1;
+            scrollbar-gutter: stable;
+        }
+    }
+
+    .pipeline-footer {
+        height: 3;
+        background: $panel;
+        border: solid $primary;
+        margin-top: 1;
+        padding: 0 1;
+        align: left middle;
+
+        #footer-status {
+            width: 1fr;
+            color: $text;
+        }
+
+        #footer-hints {
+            width: auto;
+            color: $text-muted;
+        }
+    }
+}
+
+/*----------------------------------------------*/
+/* Results View Styles                          */
+/*----------------------------------------------*/
+
+ResultsView {
+    background: $surface;
+
+    /* Detail panel takes full space */
+    #results-detail-panel {
+        width: 1fr;
+        height: 1fr;
+        border: solid $primary;
+        padding: 1;
+    }
+
+    /* Collapsible metadata */
+    #metadata-collapsible {
+        height: auto;
+        max-height: 12;
+        margin-bottom: 1;
+        background: $panel;
+    }
+
+    #metadata-collapsible.-collapsed {
+        height: auto;
+        max-height: 3;
+    }
+
+    #metadata-content {
+        height: auto;
+        padding: 1;
+    }
+
+    /* Preview container takes remaining space */
+    #results-preview-container {
+        height: 1fr;
+        background: #1a1a1a;
+        border: solid $surface-darken-1;
+    }
+
+    /* Text preview (scrollable) */
+    #results-preview {
+        height: 1fr;
+        padding: 1;
+        scrollbar-gutter: stable;
+    }
+
+    #preview-content {
+        height: auto;
+    }
+
+    /* Collapsible title styling */
+    Collapsible > CollapsibleTitle {
+        color: $text-muted;
+        text-style: bold;
+        padding: 0 1;
+    }
+}

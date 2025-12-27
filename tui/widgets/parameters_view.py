@@ -56,17 +56,15 @@ class ParametersView(Container):
     
     def compose(self) -> ComposeResult:
         """Create child widgets for the parameters view."""
-        with Vertical():
-            with Container(classes="parameters-container"):
-                yield Static("Parameter Configurations", classes="parameters-title")                    
-                
-                yield DataTable(id="parameters-table", classes="parameters-table")
+        with Container(classes="parameters-container"):
+            yield Static("Parameter Configurations", classes="parameters-title")                    
+            
+            yield DataTable(id="parameters-table", classes="parameters-table")
 
-                with Horizontal(classes="parameters-toolbar"):
-                    yield Static("Enter: Edit | Double-click: Edit/Toggle | Space: Toggle boolean", id="status")
-                    yield Static("", classes="toolbar-spacer")
-                    yield Button("Add Parameter Set", id="add-param", classes="toolbar-button", variant="primary")
-                    yield Button("Remove", id="remove-param", classes="toolbar-button")
+            with Horizontal(classes="parameters-toolbar"):
+                yield Static("", classes="toolbar-spacer")
+                yield Button("Add Parameter Set", id="add-param", classes="toolbar-button", variant="primary", disabled=False)
+                yield Button("Remove", id="remove-param", classes="toolbar-button", disabled=False)
     
     def on_mount(self) -> None:
         """Called when the widget is mounted."""
@@ -249,10 +247,9 @@ class ParametersView(Container):
             self.action_paste_cell()
             event.stop()
     
-    def on_data_table_cell_selected(self, event: DataTable.CellSelected) -> None:
+    async def on_data_table_cell_selected(self, event: DataTable.CellSelected) -> None:
         """Handle cell selection - detect double-click for inline editing or toggling booleans."""
         import time
-        import asyncio
         current_time = time.time()
         # Use row and column as the key for double-click detection
         click_key = (event.coordinate.row, event.coordinate.column)
@@ -268,13 +265,13 @@ class ParametersView(Container):
                     col_def = self.COLUMNS[column_index]
                     if col_def[2] == "bool":  # value_type is bool
                         # Toggle the boolean value
-                        asyncio.create_task(self.toggle_boolean_cell(event.coordinate.row, column_index))
+                        await self.toggle_boolean_cell(event.coordinate.row, column_index)
                     else:
                         # Open inline editor for non-boolean values
-                        asyncio.create_task(self.edit_cell(inline=True))
+                        self.edit_cell(inline=True)
                 else:
                     # Fallback to inline editor
-                    asyncio.create_task(self.edit_cell(inline=True))
+                    self.edit_cell(inline=True)
                 self._last_click_time.pop(click_key, None)
                 return
         

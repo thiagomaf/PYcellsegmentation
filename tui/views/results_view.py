@@ -12,6 +12,7 @@ from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Static, Tree, Collapsible
 from textual.widgets.tree import TreeNode
+from textual.timer import Timer
 from rich.text import Text
 from rich.syntax import Syntax
 from rich.table import Table
@@ -93,6 +94,9 @@ class ResultsView(BaseView):
     ]
     
     show_sidebar = reactive(True)
+    _loading_spinner_timer: Timer | None = None
+    _spinner_frame = 0
+    _loading_message = "Loading..."
     
     def compose(self) -> ComposeResult:
         # Animated sidebar with tree
@@ -306,7 +310,8 @@ class ResultsView(BaseView):
         elif node_type == "tiled_output":
             self._show_tiled_summary(data)
         elif node_type == "file":
-            self._show_file_preview(data)
+            # Use call_later to ensure async methods can be called
+            self.call_later(self._show_file_preview, data)
         else:
             self._clear_preview()
     
@@ -316,27 +321,71 @@ class ResultsView(BaseView):
         metadata.update("Select an item to view details")
         self._show_text_preview("")
     
+    def _clear_preview_container(self) -> None:
+        """Safely clear the preview container."""
+        # Stop spinner timer if running
+        if self._loading_spinner_timer:
+            self._loading_spinner_timer.stop()
+            self._loading_spinner_timer = None
+        
+        try:
+            container = self.query_one("#results-preview-container", Vertical)
+            # Try to remove ImageViewer widgets first if they exist
+            if HAS_IMAGE_VIEWER:
+                try:
+                    existing_viewers = container.query(ImageViewer)
+                    for viewer in existing_viewers:
+                        try:
+                            viewer.remove()
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+            
+            # Remove all children
+            try:
+                container.remove_children()
+            except Exception:
+                # Fallback: try removing children one by one
+                try:
+                    for child in list(container.children):
+                        child.remove()
+                except Exception:
+                    pass
+        except Exception:
+            # If we can't find the container, that's okay - it might not exist yet
+            pass
+    
     def _show_text_preview(self, content) -> None:
         """Show text/renderable content in the preview container."""
-        container = self.query_one("#results-preview-container", Vertical)
-        container.remove_children()
+        self._clear_preview_container()
         
-        # Create a scrollable container with Static for text content
-        scroll = ScrollableContainer(id="results-preview")
-        static = Static(content, id="preview-content")
-        container.mount(scroll)
-        scroll.mount(static)
+        try:
+            container = self.query_one("#results-preview-container", Vertical)
+            # Create a scrollable container with Static for text content
+            scroll = ScrollableContainer(id="results-preview")
+            static = Static(content, id="preview-content")
+            container.mount(scroll)
+            scroll.mount(static)
+        except Exception as e:
+            # If mounting fails, at least try to show error
+            try:
+                container = self.query_one("#results-preview-container", Vertical)
+                error_static = Static(f"[red]Error displaying preview: {e}[/red]", id="preview-error")
+                container.mount(error_static)
+            except Exception:
+                pass
     
     def _show_image_preview(self, image_path: str) -> None:
         """Show an image using ImageViewer in the preview container."""
-        container = self.query_one("#results-preview-container", Vertical)
-        container.remove_children()
+        self._clear_preview_container()
         
         if HAS_IMAGE_VIEWER:
             try:
                 from PIL import Image
                 # Load and display using ImageViewer
                 image = Image.open(image_path)
+                container = self.query_one("#results-preview-container", Vertical)
                 viewer = ImageViewer(image, id="image-viewer")
                 container.mount(viewer)
                 return
@@ -475,12 +524,29 @@ class ResultsView(BaseView):
         """Preview TIFF file using ImageViewer for masks."""
         # For mask files, use ImageViewer with colorized mask
         if "_mask" in file_path:
+            # Load asynchronously to avoid blocking UI
+            # Use call_later to schedule the async function properly
+            self.app.call_later(self._start_mask_loading, file_path)
+            return
+    
+    def _start_mask_loading(self, file_path: str) -> None:
+        """Start the async mask loading task."""
+        import asyncio
+        try:
+            # Get the running event loop (Textual apps run in an async context)
+            loop = asyncio.get_running_loop()
+            loop.create_task(self._preview_mask_image_async(file_path))
+        except RuntimeError:
+            # Fallback: try to get event loop
             try:
-                self._preview_mask_image(file_path)
-                return
+                loop = asyncio.get_event_loop()
+                if loop.is_running():
+                    loop.create_task(self._preview_mask_image_async(file_path))
+                else:
+                    loop.run_until_complete(self._preview_mask_image_async(file_path))
             except Exception as e:
-                self._show_text_preview(f"[red]Error loading mask: {e}[/red]")
-                return
+                # Last resort: show error
+                self._show_text_preview(f"[red]Error starting mask load: {e}[/red]")
         
         # For other TIFF files, show metadata
         try:
@@ -504,31 +570,172 @@ class ResultsView(BaseView):
         except Exception as e:
             self._show_text_preview(f"[red]Error reading TIFF: {e}[/red]")
     
-    def _preview_mask_image(self, file_path: str) -> None:
-        """Preview mask TIFF using ImageViewer."""
-        import tifffile
-        import numpy as np
-        from PIL import Image
+    def _show_loading_indicator(self, message: str = "Loading...") -> None:
+        """Show a loading indicator with animated spinner in the preview container."""
+        self._clear_preview_container()
+        try:
+            container = self.query_one("#results-preview-container", Vertical)
+            # Store message for spinner updates
+            self._loading_message = message
+            loading = Static(f"[dim]{message} ⠋[/dim]", id="loading-indicator")
+            loading.styles.align = ("center", "middle")
+            container.mount(loading)
+            
+            # Start spinner animation
+            self._spinner_frame = 0
+            if self._loading_spinner_timer:
+                self._loading_spinner_timer.stop()
+            self._loading_spinner_timer = self.set_interval(0.1, self._update_spinner)
+        except Exception:
+            pass
+    
+    def _update_spinner(self) -> None:
+        """Update the spinner animation."""
+        try:
+            loading = self.query_one("#loading-indicator", Static)
+            # Braille spinner frames: ⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏
+            spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+            frame = spinner_frames[self._spinner_frame % len(spinner_frames)]
+            loading.update(f"[dim]{self._loading_message} {frame}[/dim]")
+            self._spinner_frame += 1
+        except Exception:
+            # Stop timer if widget is gone
+            if self._loading_spinner_timer:
+                self._loading_spinner_timer.stop()
+                self._loading_spinner_timer = None
+    
+    async def _preview_mask_image_async(self, file_path: str) -> None:
+        """Preview mask TIFF using ImageViewer asynchronously."""
+        # Show loading indicator immediately
+        self._show_loading_indicator("Loading mask...")
         
-        # Load the mask
-        with tifffile.TiffFile(file_path) as tif:
-            data = tif.pages[0].asarray()
+        # Process in background to avoid blocking UI
+        import asyncio
+        from concurrent.futures import ThreadPoolExecutor
         
-        # Colorize the mask
-        rgb_array = self._colorize_mask(data)
+        def process_mask():
+            """Process mask in background thread."""
+            import tifffile
+            import numpy as np
+            from PIL import Image
+            
+            # Load the mask
+            with tifffile.TiffFile(file_path) as tif:
+                data = tif.pages[0].asarray()
+            
+            # For faster loading, skip colorization for very large masks
+            # Just convert to grayscale RGB for display
+            h, w = data.shape[:2]
+            total_pixels = h * w
+            
+            # If mask is very large (> 10M pixels), use simpler rendering
+            if total_pixels > 10_000_000:
+                # Simple grayscale conversion for speed
+                # Normalize to 0-255
+                normalized = ((data.astype(np.float32) / data.max()) * 255).astype(np.uint8)
+                rgb_array = np.stack([normalized, normalized, normalized], axis=-1)
+            else:
+                # Colorize the mask for smaller images
+                rgb_array = self._colorize_mask(data)
+            
+            # Convert to PIL Image
+            pil_image = Image.fromarray(rgb_array, mode='RGB')
+            
+            return pil_image, data
         
-        # Convert to PIL Image
-        pil_image = Image.fromarray(rgb_array, mode='RGB')
+        try:
+            # Run processing in thread pool
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor() as executor:
+                pil_image, data = await loop.run_in_executor(executor, process_mask)
+            
+            # Update UI on the main thread - use call_later to ensure it runs on UI thread
+            # This ensures the spinner stays visible until the image is actually displayed
+            self.call_later(self._display_mask_image, pil_image, data, file_path)
+            
+        except Exception as e:
+            # Stop spinner on error
+            if self._loading_spinner_timer:
+                self._loading_spinner_timer.stop()
+                self._loading_spinner_timer = None
+            
+            # Show error or fallback
+            error_msg = f"[red]Error loading mask: {e}[/red]"
+            try:
+                self._show_text_preview(error_msg)
+            except Exception:
+                # If showing error fails, try fallback
+                try:
+                    # Try to get data for fallback if we have it
+                    if 'data' in locals():
+                        self._preview_tiff_fallback(data)
+                    else:
+                        self._show_text_preview("[red]Failed to load mask[/red]")
+                except Exception:
+                    pass
+    
+    def _display_mask_image(self, pil_image, data, file_path: str) -> None:
+        """Display the processed mask image in the UI."""
+        # Stop spinner before displaying
+        if self._loading_spinner_timer:
+            self._loading_spinner_timer.stop()
+            self._loading_spinner_timer = None
         
         # Use ImageViewer if available
         if HAS_IMAGE_VIEWER:
-            container = self.query_one("#results-preview-container", Vertical)
-            container.remove_children()
-            viewer = ImageViewer(pil_image)
-            container.mount(viewer)
+            try:
+                # Clear container but don't use _clear_preview_container as it stops spinner
+                container = self.query_one("#results-preview-container", Vertical)
+                
+                # Remove existing children (including loading indicator)
+                try:
+                    # Try to remove ImageViewer widgets first if they exist
+                    if HAS_IMAGE_VIEWER:
+                        try:
+                            existing_viewers = container.query(ImageViewer)
+                            for viewer in existing_viewers:
+                                try:
+                                    viewer.remove()
+                                except Exception:
+                                    pass
+                        except Exception:
+                            pass
+                    
+                    # Remove all children
+                    try:
+                        container.remove_children()
+                    except Exception:
+                        # Fallback: try removing children one by one
+                        try:
+                            for child in list(container.children):
+                                child.remove()
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
+                
+                # Create and mount new viewer
+                viewer = ImageViewer(pil_image, id="mask-viewer")
+                container.mount(viewer)
+                
+                # Image is now displayed
+            except Exception as e:
+                # Fall back to text preview on error
+                error_msg = f"[red]Error displaying mask: {e}[/red]"
+                try:
+                    self._show_text_preview(error_msg)
+                except Exception:
+                    pass
+                try:
+                    self._preview_tiff_fallback(data)
+                except Exception:
+                    pass
         else:
             # Fallback to text-based rendering
-            self._preview_tiff_fallback(data)
+            try:
+                self._preview_tiff_fallback(data)
+            except Exception:
+                pass
     
     def _preview_tiff_fallback(self, mask_data) -> None:
         """Fallback preview using Unicode block rendering."""
@@ -562,9 +769,15 @@ class ResultsView(BaseView):
         unique_ids = np.unique(mask_data)
         unique_ids = unique_ids[unique_ids > 0]
         
+        # For performance: limit colorization to first 1000 cells
+        # This prevents slowdown on masks with many cells
+        if len(unique_ids) > 1000:
+            unique_ids = unique_ids[:1000]
+        
         # Generate colors using golden ratio for good distribution
         colors = self._generate_colors(len(unique_ids))
         
+        # Use vectorized operations for better performance
         for i, cell_id in enumerate(unique_ids):
             mask = mask_data == cell_id
             rgb[mask] = colors[i % len(colors)]

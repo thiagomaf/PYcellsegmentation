@@ -1,10 +1,9 @@
 """Image editor modal screen."""
-from pathlib import Path
+# from pathlib import Path
 from textual.app import ComposeResult
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Collapsible, Input, Select, Static, Switch
-from textual import events
 
 from tui.models import ImageConfiguration, SegmentationOptions, RescalingConfig, TilingParameters
 
@@ -32,7 +31,7 @@ class ImageEditor(ModalScreen[ImageConfiguration]):
                 with Container(classes="form-section"):
                     yield Static("Basic Information", classes="form-section-title")
                     
-                    with Container(classes="form-row"):
+                    with Horizontal(classes="form-row"):
                         yield Static("Image ID:", classes="form-label")
                         yield Input(
                             self.image_config.image_id,
@@ -40,7 +39,7 @@ class ImageEditor(ModalScreen[ImageConfiguration]):
                             classes="form-input"
                         )
                     
-                    with Container(classes="form-row"):
+                    with Horizontal(classes="form-row"):
                         yield Static("Image Filename:", classes="form-label")
                         yield Input(
                             self.image_config.original_image_filename,
@@ -48,7 +47,7 @@ class ImageEditor(ModalScreen[ImageConfiguration]):
                             classes="form-input"
                         )
                     
-                    with Container(classes="form-row"):
+                    with Horizontal(classes="form-row"):
                         yield Static("MPP X:", classes="form-label")
                         yield Input(
                             str(self.image_config.mpp_x) if self.image_config.mpp_x else "",
@@ -57,7 +56,7 @@ class ImageEditor(ModalScreen[ImageConfiguration]):
                             placeholder="0.2125"
                         )
                     
-                    with Container(classes="form-row"):
+                    with Horizontal(classes="form-row"):
                         yield Static("MPP Y:", classes="form-label")
                         yield Input(
                             str(self.image_config.mpp_y) if self.image_config.mpp_y else "",
@@ -66,7 +65,7 @@ class ImageEditor(ModalScreen[ImageConfiguration]):
                             placeholder="0.2125"
                         )
                     
-                    with Container(classes="form-row"):
+                    with Horizontal(classes="form-row"):
                         yield Static("Active:", classes="form-label")
                         yield Switch(
                             self.image_config.is_active,
@@ -76,7 +75,7 @@ class ImageEditor(ModalScreen[ImageConfiguration]):
                 # Segmentation Options
                 with Collapsible(title="Segmentation Options", collapsed=False):
                     with Container(classes="form-section"):
-                        with Container(classes="form-row"):
+                        with Horizontal(classes="form-row"):
                             yield Static("Apply Segmentation:", classes="form-label")
                             yield Switch(
                                 self.image_config.segmentation_options.apply_segmentation,
@@ -87,7 +86,7 @@ class ImageEditor(ModalScreen[ImageConfiguration]):
                         with Collapsible(title="Rescaling Configuration", collapsed=True):
                             rescaling = self.image_config.segmentation_options.rescaling_config
                             with Container(classes="form-section"):
-                                with Container(classes="form-row"):
+                                with Horizontal(classes="form-row"):
                                     yield Static("Scale Factor:", classes="form-label")
                                     yield Input(
                                         str(rescaling.scale_factor) if rescaling else "1.0",
@@ -96,7 +95,7 @@ class ImageEditor(ModalScreen[ImageConfiguration]):
                                         placeholder="1.0"
                                     )
                                 
-                                with Container(classes="form-row"):
+                                with Horizontal(classes="form-row"):
                                     yield Static("Interpolation:", classes="form-label")
                                     yield Select(
                                         [
@@ -115,14 +114,14 @@ class ImageEditor(ModalScreen[ImageConfiguration]):
                         with Collapsible(title="Tiling Parameters", collapsed=True):
                             tiling = self.image_config.segmentation_options.tiling_parameters
                             with Container(classes="form-section"):
-                                with Container(classes="form-row"):
+                                with Horizontal(classes="form-row"):
                                     yield Static("Apply Tiling:", classes="form-label")
                                     yield Switch(
                                         tiling.apply_tiling if tiling else False,
                                         id="apply-tiling"
                                     )
                                 
-                                with Container(classes="form-row"):
+                                with Horizontal(classes="form-row"):
                                     yield Static("Tile Size:", classes="form-label")
                                     yield Input(
                                         str(tiling.tile_size) if tiling and tiling.tile_size else "",
@@ -131,7 +130,7 @@ class ImageEditor(ModalScreen[ImageConfiguration]):
                                         placeholder="2000"
                                     )
                                 
-                                with Container(classes="form-row"):
+                                with Horizontal(classes="form-row"):
                                     yield Static("Overlap:", classes="form-label")
                                     yield Input(
                                         str(tiling.overlap) if tiling and tiling.overlap else "100",
@@ -141,8 +140,9 @@ class ImageEditor(ModalScreen[ImageConfiguration]):
                                     )
             
             with Horizontal(classes="editor-footer"):
-                yield Button("Save", id="save", classes="footer-button", variant="primary")
-                yield Button("Cancel", id="cancel", classes="footer-button")                
+                yield Static("", classes="toolbar-spacer")
+                yield Button("Save", id="save", classes="toolbar-button", variant="primary")
+                yield Button("Cancel", id="cancel", classes="toolbar-button")                
     
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Handle button presses."""
