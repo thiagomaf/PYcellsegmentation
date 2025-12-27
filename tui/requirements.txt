@@ -1,4 +1,32 @@
+# Core TUI requirements (required for TUI to run)
 textual>=0.60.0
 textual-dev>=0.60.0
 pydantic>=2.0.0
 rich>=13.0.0
+
+# Optional dependencies (lazy loaded - only needed for specific features)
+# Install these if you want to use the corresponding features:
+
+# Stats calculation (optimization dashboard)
+# Note: Install numpy first, then opencv-python to avoid build issues
+# numpy>=1.20.0  # Required for calculating statistics from segmentation results (2.x works with Python 3.14+)
+# tifffile>=2021.0.0  # Required for reading TIFF mask files
+# opencv-python>=4.5.0  # Required by pipeline_config_parser (works with numpy 2.x)
+# scipy>=1.7.0  # Required for quality metrics calculation (Shapiro-Wilk test for log-normal distribution)
+# scikit-image>=0.19.0  # Required for quality metrics calculation (regionprops for shape/topology metrics)
+
+# Visualization packages
+# plotext>=5.0.0  # For parameter coverage plots in parameter ranges editor
+scikit-learn>=1.0.0  # For PCA in parameter space visualization and Gaussian Process regression
+# pyDOE3>=1.6.0  # For Latin Hypercube Sampling (LHS) in optimization
+
+# Bayesian optimization packages
+scikit-optimize>=0.9.0  # For acquisition functions (UCB, EI, PI, LCB) in optimizer view
+pymoo>=0.6.0  # For robust Pareto front calculation with NSGA-II/III algorithms
+scipy>=1.7.0  # For optimization in GP-based suggestions
+
+# Notes:
+# - textual-plotext is NOT needed - we use plotext directly via PlotextStatic widget
+# - numpy and tifffile are required for the "Calculate Stats" feature in optimization dashboard
+# - All optional packages are lazy-loaded, so TUI will start without them
+# - You'll get clear error messages if a feature requires a missing optional dependency

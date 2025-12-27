@@ -1,0 +1,18 @@
+# Minimal requirements for TUI only (fast startup)
+# Core TUI framework - REQUIRED
+textual>=0.60.0
+pydantic>=2.0.0
+rich>=13.0.0
+
+# Optional packages (lazy loaded when features are used):
+# - numpy>=1.20.0, tifffile>=2021.0.0, opencv-python>=4.5.0 (for stats calculation in optimization dashboard)
+#   Note: Install numpy first, then opencv-python to avoid build issues. numpy 2.x works with Python 3.14+
+# - plotext>=5.0.0 (for parameter coverage visualization)
+# - scikit-learn>=1.0.0 (for PCA in visualization)
+# - pyDOE3>=1.6.0 (for LHS sampling)
+# 
+# Notes:
+# - textual-plotext is NOT needed - we use plotext directly via PlotextStatic widget
+# - numpy, tifffile, and opencv-python are required for the "Calculate Stats" button in optimization dashboard
+# - All optional packages are lazy-loaded, so TUI will start without them
+

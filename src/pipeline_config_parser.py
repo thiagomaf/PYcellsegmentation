@@ -4,20 +4,40 @@ import json
 import time
 import traceback
 import logging
-from .pipeline_utils import clean_filename_for_dir, rescale_image_and_save, construct_full_experiment_id
+from .pipeline_utils import clean_filename_for_dir, rescale_image_and_save, construct_full_experiment_id, resolve_image_path
 from .tile_large_image import tile_image
 from .file_paths import IMAGE_DIR_BASE, TILED_IMAGE_OUTPUT_BASE, RESCALED_IMAGE_CACHE_DIR, PROJECT_ROOT
 
 logger = logging.getLogger(__name__)
 
-def load_and_expand_configurations(param_json_file_path, global_use_gpu_if_available: bool):
+def load_and_expand_configurations(param_json_file_path, global_use_gpu_if_available: bool, skip_image_file_check: bool = False):
     """
     Loads configurations from parameter_sets.json, handles rescaling and tiling,
     and generates a flat list of all individual jobs to be run.
     Each job in the list is a dictionary fully resolved with all parameters.
+    
+    Args:
+        param_json_file_path: Path to the configuration JSON file
+        global_use_gpu_if_available: Whether to use GPU if available
+        skip_image_file_check: If True, skip checking if image files exist (useful for stats calculation)
     """
+    # #region agent log
+    try:
+        import json, time
+        with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"pipeline_config_parser.py:load_and_expand_configurations","message":"FUNCTION_ENTRY","data":{"config_path":param_json_file_path,"skip_image_file_check":skip_image_file_check},"timestamp":time.time()*1000})+"\n")
+    except: pass
+    # #endregion
+    
     if not os.path.exists(param_json_file_path):
         logger.error(f"Error: Config file '{param_json_file_path}' not found.")
+        # #region agent log
+        try:
+            import json, time
+            with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"pipeline_config_parser.py:load_and_expand_configurations","message":"RETURN_CONFIG_NOT_FOUND","data":{"config_path":param_json_file_path},"timestamp":time.time()*1000})+"\n")
+        except: pass
+        # #endregion
         return []
 
     config_data = {}
@@ -31,12 +51,34 @@ def load_and_expand_configurations(param_json_file_path, global_use_gpu_if_avail
 
     image_configs_from_json = config_data.get("image_configurations", [])
     cellpose_param_configs = config_data.get("cellpose_parameter_configurations", [])
+    
+    # #region agent log
+    try:
+        import json, time
+        with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"pipeline_config_parser.py:load_and_expand_configurations","message":"CONFIG_LOADED","data":{"config_path":param_json_file_path,"image_configs_count":len(image_configs_from_json),"param_configs_count":len(cellpose_param_configs)},"timestamp":time.time()*1000})+"\n")
+    except: pass
+    # #endregion
 
     if not image_configs_from_json:
         logger.warning("No 'image_configurations' found in JSON.")
+        # #region agent log
+        try:
+            import json, time
+            with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"pipeline_config_parser.py:load_and_expand_configurations","message":"RETURN_NO_IMAGE_CONFIGS","data":{"config_path":param_json_file_path},"timestamp":time.time()*1000})+"\n")
+        except: pass
+        # #endregion
         return []
     if not cellpose_param_configs:
         logger.warning("No 'cellpose_parameter_configurations' found in JSON.")
+        # #region agent log
+        try:
+            import json, time
+            with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"pipeline_config_parser.py:load_and_expand_configurations","message":"RETURN_NO_PARAM_CONFIGS","data":{"config_path":param_json_file_path},"timestamp":time.time()*1000})+"\n")
+        except: pass
+        # #endregion
         return []
 
     all_jobs_to_create = []
@@ -64,14 +106,70 @@ def load_and_expand_configurations(param_json_file_path, global_use_gpu_if_avail
         original_image_filename = img_config.get("original_image_filename")
         image_id_base = img_config.get("image_id", clean_filename_for_dir(original_image_filename) if original_image_filename else f"img_unknown_{time.strftime('%Y%m%d%H%M%S')}")
         
+        # #region agent log
+        try:
+            import json, time
+            with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"pipeline_config_parser.py:load_and_expand_configurations","message":"PROCESSING_IMAGE_CONFIG","data":{"config_path":param_json_file_path,"image_id":image_id_base,"original_image_filename":original_image_filename,"skip_image_file_check":skip_image_file_check},"timestamp":time.time()*1000})+"\n")
+        except: pass
+        # #endregion
+        
         if not original_image_filename:
             logger.warning(f"Image config '{image_id_base}' missing 'original_image_filename'. Skipping.")
+            # #region agent log
+            try:
+                import json, time
+                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
+                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"pipeline_config_parser.py:load_and_expand_configurations","message":"SKIP_NO_ORIGINAL_FILENAME","data":{"config_path":param_json_file_path,"image_id":image_id_base},"timestamp":time.time()*1000})+"\n")
+            except: pass
+            # #endregion
             continue
         
-        original_image_path = os.path.join(PROJECT_ROOT, original_image_filename)
-        if not os.path.exists(original_image_path):
+        # Resolve the image path, handling both relative and absolute paths (including Windows paths on Colab)
+        try:
+            original_image_path = resolve_image_path(original_image_filename, PROJECT_ROOT)
+        except Exception as e:
+            # #region agent log
+            try:
+                import json, time
+                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
+                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"pipeline_config_parser.py:load_and_expand_configurations","message":"EXCEPTION_IN_RESOLVE_IMAGE_PATH","data":{"config_path":param_json_file_path,"image_id":image_id_base,"error":str(e)},"timestamp":time.time()*1000})+"\n")
+            except: pass
+            # #endregion
+            if not skip_image_file_check:
+                logger.warning(f"Error resolving image path for '{image_id_base}': {e}. Skipping.")
+                continue
+            else:
+                # In stats mode, use a dummy path
+                original_image_path = original_image_filename
+        
+        # #region agent log
+        try:
+            import json, time
+            with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
+                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"pipeline_config_parser.py:load_and_expand_configurations","message":"AFTER_RESOLVE_IMAGE_PATH","data":{"config_path":param_json_file_path,"image_id":image_id_base,"original_image_path":original_image_path,"path_exists":os.path.exists(original_image_path) if original_image_path else False,"skip_image_file_check":skip_image_file_check},"timestamp":time.time()*1000})+"\n")
+        except: pass
+        # #endregion
+        
+        if not skip_image_file_check and not os.path.exists(original_image_path):
             logger.warning(f"Original image {original_image_path} for config '{image_id_base}' not found. Skipping this image config.")
+            # #region agent log
+            try:
+                import json, time
+                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
+                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"pipeline_config_parser.py:load_and_expand_configurations","message":"SKIP_IMAGE_NOT_FOUND","data":{"config_path":param_json_file_path,"image_id":image_id_base,"original_image_path":original_image_path},"timestamp":time.time()*1000})+"\n")
+            except: pass
+            # #endregion
             continue
+        elif skip_image_file_check and not os.path.exists(original_image_path):
+            logger.debug(f"Original image {original_image_path} for config '{image_id_base}' not found, but skipping file check (stats calculation mode).")
+            # #region agent log
+            try:
+                import json, time
+                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
+                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"pipeline_config_parser.py:load_and_expand_configurations","message":"SKIP_FILE_CHECK_MODE","data":{"config_path":param_json_file_path,"image_id":image_id_base,"original_image_path":original_image_path},"timestamp":time.time()*1000})+"\n")
+            except: pass
+            # #endregion
 
         current_image_path_for_processing = original_image_path
         current_image_name_for_processing = os.path.basename(original_image_filename)
@@ -80,15 +178,27 @@ def load_and_expand_configurations(param_json_file_path, global_use_gpu_if_avail
         rescaling_cfg = segmentation_options.get("rescaling_config")
 
         if rescaling_cfg and "scale_factor" in rescaling_cfg and rescaling_cfg["scale_factor"] != 1.0 :
-            logger.info(f"  Image Config: '{image_id_base}' (Rescaling {original_image_filename} by factor {rescaling_cfg['scale_factor']})")
-            current_image_path_for_processing, applied_scale_factor = rescale_image_and_save(
-                original_image_path, 
-                image_id_base, 
-                rescaling_cfg
-            )
-            current_image_name_for_processing = os.path.basename(current_image_path_for_processing)
-            if applied_scale_factor == 1.0 and current_image_path_for_processing == original_image_path:
-                 logger.info(f"    Rescaling resulted in no change or failed, using original image: {original_image_path}")
+            if skip_image_file_check and not os.path.exists(original_image_path):
+                # In stats calculation mode, we can't actually rescale, but we need to set the scale factor
+                # for constructing the correct experiment_id and processing_unit_name
+                logger.debug(f"  Image Config: '{image_id_base}' (Skipping rescaling in stats mode, using scale_factor from config: {rescaling_cfg['scale_factor']})")
+                applied_scale_factor = rescaling_cfg["scale_factor"]
+                # Construct the expected scaled filename to match what the mask file will be named
+                base_name, ext = os.path.splitext(os.path.basename(original_image_filename))
+                scale_factor_str = str(applied_scale_factor).replace('.', '_')
+                scaled_filename = f"{base_name}_scaled_{scale_factor_str}{ext}"
+                current_image_name_for_processing = scaled_filename
+                # Keep original path but use scaled name for processing_unit_name
+            else:
+                logger.info(f"  Image Config: '{image_id_base}' (Rescaling {original_image_filename} by factor {rescaling_cfg['scale_factor']})")
+                current_image_path_for_processing, applied_scale_factor = rescale_image_and_save(
+                    original_image_path, 
+                    image_id_base, 
+                    rescaling_cfg
+                )
+                current_image_name_for_processing = os.path.basename(current_image_path_for_processing)
+                if applied_scale_factor == 1.0 and current_image_path_for_processing == original_image_path:
+                     logger.info(f"    Rescaling resulted in no change or failed, using original image: {original_image_path}")
         else:
             logger.info(f"  Image Config: '{image_id_base}' (No rescaling for {original_image_filename})")
 
@@ -111,12 +221,26 @@ def load_and_expand_configurations(param_json_file_path, global_use_gpu_if_avail
                  except OSError as e: 
                      logger.error(f"      Error creating tile storage dir {tile_storage_dir}: {e}. Skipping tiling for this image config."); continue
 
-            tile_manifest_data = tile_image( 
-                current_image_path_for_processing, tile_storage_dir, 
-                tile_size=tiling_cfg["tile_size"],
-                overlap=tiling_cfg.get("overlap", 100),
-                output_prefix=tile_prefix
-            )
+            if skip_image_file_check and not os.path.exists(current_image_path_for_processing):
+                # In stats calculation mode, we can't actually tile, but we need to simulate it
+                # to generate the expected job paths. We'll create a dummy tile manifest.
+                logger.debug(f"      Skipping tiling in stats mode (image doesn't exist), creating dummy tile manifest")
+                # Create a single "dummy" tile entry so jobs can be generated
+                # The actual mask paths will be checked later in stats calculation
+                tile_manifest_data = {
+                    "tiles": [{
+                        "path": current_image_path_for_processing,
+                        "filename": current_image_name_for_processing,
+                        "tile_index": 0
+                    }]
+                }
+            else:
+                tile_manifest_data = tile_image( 
+                    current_image_path_for_processing, tile_storage_dir, 
+                    tile_size=tiling_cfg["tile_size"],
+                    overlap=tiling_cfg.get("overlap", 100),
+                    output_prefix=tile_prefix
+                )
             if tile_manifest_data and tile_manifest_data.get("tiles"):
                 for tile_info in tile_manifest_data["tiles"]:
                     images_to_segment_this_round.append({
@@ -146,12 +270,33 @@ def load_and_expand_configurations(param_json_file_path, global_use_gpu_if_avail
             segmentation_options_for_image = img_config.get("segmentation_options", {}) 
             apply_segmentation_for_this_image = segmentation_options_for_image.get("apply_segmentation", True)
             logger.info(f"    For this img_proc_info, apply_segmentation_for_this_image = {apply_segmentation_for_this_image}")
+            # #region agent log
+            try:
+                import json, time
+                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
+                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"pipeline_config_parser.py:load_and_expand_configurations","message":"PROCESSING_IMG_PROC_INFO","data":{"config_path":param_json_file_path,"image_id":img_config.get("image_id"),"processing_unit_name":img_proc_info.get("name"),"apply_segmentation":apply_segmentation_for_this_image},"timestamp":time.time()*1000})+"\n")
+            except: pass
+            # #endregion
 
             if not cellpose_param_configs:
                 logger.warning(f"    cellpose_param_configs list is empty for image_id '{img_config.get('image_id')}'. No jobs will be generated for this image unit.")
+                # #region agent log
+                try:
+                    import json, time
+                    with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
+                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"pipeline_config_parser.py:load_and_expand_configurations","message":"SKIP_NO_PARAM_CONFIGS","data":{"config_path":param_json_file_path,"image_id":img_config.get("image_id")},"timestamp":time.time()*1000})+"\n")
+                except: pass
+                # #endregion
                 continue # Skip to the next img_proc_info or img_config
             
             logger.info(f"    Entering loop for cellpose_param_configs (total {len(cellpose_param_configs)} defined)...")
+            # #region agent log
+            try:
+                import json, time
+                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
+                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"pipeline_config_parser.py:load_and_expand_configurations","message":"ENTERING_PARAM_CONFIG_LOOP","data":{"config_path":param_json_file_path,"image_id":img_config.get("image_id"),"param_configs_count":len(cellpose_param_configs)},"timestamp":time.time()*1000})+"\n")
+            except: pass
+            # #endregion
             for cp_config_idx, cp_config in enumerate(cellpose_param_configs):
                 logger.info(f"      Checking cp_config #{cp_config_idx + 1}, param_set_id: '{cp_config.get('param_set_id')}', is_active: {cp_config.get('is_active', True)}")
                 if not cp_config.get("is_active", True): 
@@ -208,11 +353,25 @@ def load_and_expand_configurations(param_json_file_path, global_use_gpu_if_avail
                 
                 logger.info(f"        PREPARED JOB for ExpID '{job['experiment_id_final']}', Unit '{job['processing_unit_name']}', SegRun: {job['segmentation_step_should_run']}")
                 all_jobs_to_create.append(job)
+                # #region agent log
+                try:
+                    import json, time
+                    with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
+                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"pipeline_config_parser.py:load_and_expand_configurations","message":"JOB_ADDED","data":{"config_path":param_json_file_path,"param_set_id":param_set_id,"experiment_id":job.get("experiment_id_final"),"jobs_count_so_far":len(all_jobs_to_create)},"timestamp":time.time()*1000})+"\n")
+                except: pass
+                # #endregion
                 if apply_segmentation_for_this_image:
                     logger.info(f"    Created segmentation job: ExpID '{job['experiment_id_final']}' for unit '{job['processing_unit_name']}'")
                 else:
                     logger.info(f"    Created job (segmentation step will be skipped): ExpID '{job['experiment_id_final']}' for unit '{job['processing_unit_name']}'. Mask expected at standard location.")
 
     logger.info(f"--- Total jobs generated: {len(all_jobs_to_create)} ---")
+    # #region agent log
+    try:
+        import json, time
+        with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"pipeline_config_parser.py:load_and_expand_configurations","message":"RETURN_JOBS","data":{"config_path":param_json_file_path,"jobs_count":len(all_jobs_to_create)},"timestamp":time.time()*1000})+"\n")
+    except: pass
+    # #endregion
     return all_jobs_to_create
 

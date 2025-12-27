@@ -37,6 +37,45 @@ To start the application, run the following command from the project root:
 python -m tui.app
 ```
 
+### Command-Line Arguments
+
+The TUI supports command-line arguments to load a project file and optionally open a specific view:
+
+**Load a Project File:**
+```bash
+python -m tui.app --project path/to/project.opt.json
+# or using the short form:
+python -m tui.app -p path/to/project.opt.json
+```
+
+**Load a Project and Open a Specific View:**
+```bash
+# Open the parameter editor directly
+python -m tui.app --project path/to/project.opt.json --view parameters
+# or using the convenience flag:
+python -m tui.app --project path/to/project.opt.json --parameters
+
+# Open the optimization dashboard
+python -m tui.app --project path/to/project.opt.json --view optimization
+```
+
+**Available View Options:**
+- `--view parameters` or `--view params` - Opens the parameter ranges editor
+- `--view optimization` or `--view opt` - Opens the optimization dashboard
+- `--parameters` - Shortcut flag equivalent to `--view parameters`
+- `--optimization` - Shortcut flag equivalent to `--view optimization`
+
+**Examples:**
+```bash
+# Load project and open parameter editor
+python -m tui.app -p my_project.opt.json --parameters
+
+# Load project and open optimization dashboard
+python -m tui.app --project my_project.opt.json --view opt
+# or using the convenience flag:
+python -m tui.app --project my_project.opt.json --optimization
+```
+
 **Developer Mode:**
 If you need to debug layout issues or inspect widgets, run in developer mode (requires `textual-dev`):
 
@@ -44,6 +83,11 @@ If you need to debug layout issues or inspect widgets, run in developer mode (re
 textual run --dev tui/app.py
 ```
 *Press `F12` or `Ctrl+I` in this mode to open the widget inspector.*
+
+**Note:** When using command-line arguments with developer mode, pass them after the script path:
+```bash
+textual run --dev tui/app.py --project my_project.opt.json --parameters
+```
 
 ## Interface Overview
 

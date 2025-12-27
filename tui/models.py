@@ -35,7 +35,7 @@ class SegmentationOptions(BaseModel):
     """Segmentation options for an image."""
     apply_segmentation: bool = True
     rescaling_config: Optional[RescalingConfig] = None
-    tiling_parameters: Optional[TilingParameters] = None
+    tiling_parameters: TilingParameters = Field(default_factory=TilingParameters)
     
     @classmethod
     def from_dict(cls, data: dict) -> "SegmentationOptions":
@@ -44,15 +44,20 @@ class SegmentationOptions(BaseModel):
         if "rescaling_config" in data and data["rescaling_config"]:
             rescaling = RescalingConfig(**data["rescaling_config"])
         
+        # tiling_parameters now has a default_factory, so we only override if data is provided
         tiling = None
         if "tiling_parameters" in data and data["tiling_parameters"]:
             tiling = TilingParameters(**data["tiling_parameters"])
         
-        return cls(
-            apply_segmentation=data.get("apply_segmentation", True),
-            rescaling_config=rescaling,
-            tiling_parameters=tiling
-        )
+        # If tiling is None, Pydantic will use the default_factory
+        kwargs = {
+            "apply_segmentation": data.get("apply_segmentation", True),
+            "rescaling_config": rescaling,
+        }
+        if tiling is not None:
+            kwargs["tiling_parameters"] = tiling
+        
+        return cls(**kwargs)
 
 
 class ImageConfiguration(BaseModel):

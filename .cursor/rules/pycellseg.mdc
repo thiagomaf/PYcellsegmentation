@@ -1,0 +1,7 @@
+---
+alwaysApply: true
+---
+
+
+# Optimizer View
+- When a new score or calculation is created, consider (or ask) whether these should be included in the Optimizer View table. In general yes, we want to do it.

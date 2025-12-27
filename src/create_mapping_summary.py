@@ -23,7 +23,8 @@ from .pipeline_utils import (
     clean_filename_for_dir, 
     normalize_to_8bit_for_display, # For background image display
     get_image_mpp_and_path_from_config, # To get background image path
-    construct_full_experiment_id # For constructing full experiment ID
+    construct_full_experiment_id, # For constructing full experiment ID
+    resolve_image_path
 )
 from cellpose import io as cellpose_io # For loading masks
 
@@ -372,7 +373,7 @@ def create_mapping_summary(args):
         
         path_in_original_dir = None
         if original_image_filename_from_proc_config_for_paths:
-             original_image_full_raw_path = os.path.join(PROJECT_ROOT, original_image_filename_from_proc_config_for_paths)
+             original_image_full_raw_path = resolve_image_path(original_image_filename_from_proc_config_for_paths, PROJECT_ROOT)
              base_dir_of_original_raw = os.path.dirname(original_image_full_raw_path)
              path_in_original_dir = os.path.join(base_dir_of_original_raw, name_of_unit_that_was_segmented)
              potential_paths_to_check.append(path_in_original_dir)
@@ -425,7 +426,7 @@ def create_mapping_summary(args):
                  logger.warning(f"Matching pre-existing background image unit '{name_of_unit_that_was_segmented}' was either not found or did not match mask dimensions.")
             # Attempt to create it if it was a scaled name and we have the original raw image
             if "_scaled_" in name_of_unit_that_was_segmented and scale_factor_for_paths != 1.0 and original_image_filename_from_proc_config_for_paths:
-                original_raw_img_full_path = os.path.join(PROJECT_ROOT, original_image_filename_from_proc_config_for_paths)
+                original_raw_img_full_path = resolve_image_path(original_image_filename_from_proc_config_for_paths, PROJECT_ROOT)
                 if os.path.exists(original_raw_img_full_path):
                     logger.info(f"Attempting to rescale original image '{original_raw_img_full_path}' by factor {scale_factor_for_paths} to create '{name_of_unit_that_was_segmented}'.")
                     try:
@@ -505,7 +506,7 @@ def create_mapping_summary(args):
             
             # Fallback to the raw original image path if specific unit not found AND rescaling failed/not attempted
             if not actual_background_image_path:
-                raw_original_full_path = os.path.join(PROJECT_ROOT, original_image_filename_from_proc_config_for_paths) if original_image_filename_from_proc_config_for_paths else None
+                raw_original_full_path = resolve_image_path(original_image_filename_from_proc_config_for_paths, PROJECT_ROOT) if original_image_filename_from_proc_config_for_paths else None
                 if raw_original_full_path and os.path.exists(raw_original_full_path):
                     actual_background_image_path = raw_original_full_path
                     logger.warning(f"Using original raw image: {actual_background_image_path}, as scaled version not found and on-the-fly rescaling either failed or was not applicable. This might lead to dimension mismatch with scaled masks.")

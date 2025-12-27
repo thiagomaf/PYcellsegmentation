@@ -6,6 +6,8 @@ autopep8
 #flask
 #cellpose==3.0.10 # DO NOT REMOVE, this is the version that accepts choosing models
 cellpose
+napari[all]
+PyQt5  # or PySide2, usually needed for napari GUI
 
 tifffile
 imagecodecs[all]

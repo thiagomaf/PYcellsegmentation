@@ -1,39 +1,4 @@
-.venv
-.venv-cellpose-diag
-.pycellseg
-.pycellseg2
-results
-*.tif
-*.tiff
-*.parquet
-*.csv
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-.ipynb_checkpoints/
-
-# Ignore large data files and processed outputs
-data/raw/**/*.ome.tif
-data/raw/**/*.parquet
-data/processed/**/*
-data/results/**/*
-data/raw/images/**/*
-
-# Keep empty directories by not ignoring .gitkeep files
-!data/processed/**/.gitkeep
-!data/results/**/.gitkeep
-!data/raw/images/**/.gitkeep
-!data/raw/transcripts/**/.gitkeep
-!data/raw/images/*/.gitkeep
-!data/raw/transcripts/*/.gitkeep
-!data/processed/segmentation/**/.gitkeep
-!data/processed/segmentation/*/.gitkeep
-!data/processed/mapped/**/.gitkeep
-!data/processed/mapped/*/.gitkeep
-!data/results/*/.gitkeep
-!data/results/*/*/.gitkeep
+!.cursor/debug.log
 
 # Python
 __pycache__/
@@ -59,6 +24,8 @@ env/
 .conda/
 .pycellseg/
 .pycellseg2/
+.idx/
+.git/
 node_modules/
 
 # Jupyter Notebooks
@@ -73,6 +40,7 @@ data/results/
 data/status/
 results/
 temp/
+napari_viewer/
 
 # Large binary/image files
 *.tif
@@ -100,7 +68,7 @@ config/
 Thumbs.db
 
 # Logs and temporary files
-*.log
+#*.log
 *.tmp
 *.bak
 *.backup
@@ -126,8 +94,8 @@ ehthumbs.db
 Desktop.ini
 
 # Project-specific ignore patterns
-*.opt.json
-*.opt.json.backup
+#*.opt.json
+#*.opt.json.backup
 nodule_paper.json
 run_log.json
 

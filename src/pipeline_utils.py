@@ -8,12 +8,103 @@ import traceback
 import logging
 import logging.config
 import sys
+from pathlib import Path
 
 from .file_paths import RESCALED_IMAGE_CACHE_DIR, IMAGE_DIR_BASE, RESULTS_DIR_BASE, PROJECT_ROOT
 
 logger = logging.getLogger(__name__)
 
 RESCALED_IMAGE_CACHE_DIR = os.path.join("images", "rescaled_cache") # Relative to project root
+
+def resolve_image_path(original_image_filename: str, project_root: str = None) -> str:
+    """
+    Resolve an image filename to a full path, handling both relative and absolute paths.
+    
+    This function handles the case where absolute Windows paths (e.g., G:/My Drive/...)
+    are stored in config files but need to work on Colab/Linux systems.
+    
+    Args:
+        original_image_filename: The image filename from config (can be relative or absolute)
+        project_root: The project root directory (defaults to PROJECT_ROOT)
+    
+    Returns:
+        The resolved absolute path to the image file
+    """
+    if project_root is None:
+        project_root = PROJECT_ROOT
+    
+    # Normalize the path to handle mixed separators (Windows backslashes to forward slashes)
+    normalized = original_image_filename.replace('\\', '/')
+    
+    # Check if it's a Windows absolute path (starts with drive letter like G:)
+    # On Unix systems, os.path.isabs() won't recognize Windows paths as absolute
+    is_windows_absolute = bool(re.match(r'^[A-Za-z]:', normalized))
+    
+    if is_windows_absolute:
+        # Windows absolute path - need to convert to work on Colab/Linux
+        # Example: "G:\\My Drive\\Github\\PYcellsegmentation\\data\\raw\\images\\visium_marta\\RNAlater_S3.tiff"
+        # Should become: "/content/drive/MyDrive/Github/PYcellsegmentation/data/raw/images/visium_marta/RNAlater_S3.tiff"
+        
+        # Remove drive letter (e.g., "G:")
+        path_without_drive = re.sub(r'^[A-Za-z]:', '', normalized).lstrip('/')
+        
+        # Try to find the project name in the path to extract the relative part
+        # The project name is typically the last directory in PROJECT_ROOT
+        project_name = os.path.basename(project_root.rstrip('/'))
+        
+        # Split the path and try to find where the project name appears
+        path_parts = [p for p in path_without_drive.split('/') if p]
+        
+        try:
+            # Find the index of the project name
+            project_idx = path_parts.index(project_name)
+            # Everything after the project name is the relative path
+            relative_parts = path_parts[project_idx + 1:]
+            relative_path = '/'.join(relative_parts)
+            
+            # Join with current project root
+            resolved = os.path.join(project_root, relative_path)
+            resolved = os.path.normpath(resolved)
+            
+            # Check if the resolved path exists
+            if os.path.exists(resolved):
+                return os.path.abspath(resolved)
+            else:
+                logger.warning(f"Resolved path does not exist: {resolved} (from Windows path: {original_image_filename})")
+                # Fallback: return the resolved path anyway (caller will handle missing file)
+                return os.path.abspath(resolved)
+        except ValueError:
+            # Project name not found in path - try to use path as-is after removing drive
+            # This handles cases where the path structure is different
+            logger.warning(f"Could not extract relative path from Windows absolute path: {original_image_filename}")
+            # Try joining the path (without drive) directly with project root
+            # This is a fallback that might work in some cases
+            resolved = os.path.join(project_root, path_without_drive)
+            resolved = os.path.normpath(resolved)
+            return os.path.abspath(resolved)
+    
+    # Check if it's a Unix-style absolute path (starts with /)
+    # BUT: if it starts with / and is not a system root path, it might be a relative path
+    # that was stored with a leading slash (e.g., "/data/raw/..." should be treated as relative)
+    is_unix_absolute = os.path.isabs(normalized)
+    
+    if is_unix_absolute:
+        # Check if this is actually a system root path (like /usr, /etc, /home, etc.)
+        # or if it's a project-relative path that starts with /
+        # Common system roots to check
+        system_roots = ['/usr', '/etc', '/var', '/opt', '/home', '/root', '/tmp', '/bin', '/sbin', '/lib', '/sys', '/proc', '/dev', '/mnt', '/media', '/srv', '/run', '/boot']
+        
+        # If it starts with a known system root, treat as absolute
+        if any(normalized.startswith(root + '/') or normalized == root for root in system_roots):
+            return os.path.abspath(normalized)
+        
+        # Otherwise, it's likely a relative path stored with a leading slash
+        # Remove the leading slash and treat as relative
+        normalized = normalized.lstrip('/')
+    
+    # It's a relative path - join with project root
+    resolved = os.path.join(project_root, normalized)
+    return os.path.abspath(resolved)
 
 def clean_filename_for_dir(filename):
     # Get the filename without the directory path
@@ -414,7 +505,7 @@ def get_image_mpp_and_path_from_config(all_image_configs, target_image_id, targe
                 logger.warning(f"Image config for '{target_image_id}' found, but 'mpp_x' or 'mpp_y' is missing.")
                 # Continue, but mpp values might be None
 
-            original_image_full_path = os.path.join(PROJECT_ROOT, original_filename)
+            original_image_full_path = resolve_image_path(original_filename, PROJECT_ROOT)
             
             # Log if the constructed path doesn't exist, but still return it.
             # The caller can decide how to handle a non-existent path.

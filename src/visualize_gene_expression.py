@@ -20,7 +20,8 @@ from .pipeline_utils import (
     normalize_to_8bit_for_display, 
     clean_filename_for_dir, # Changed from sanitize_string_for_filesystem
     construct_full_experiment_id, # New
-    construct_mask_path          # New
+    construct_mask_path, # New
+    resolve_image_path
 )
 from .file_paths import (
     PROJECT_ROOT, # Import for resolving config path if needed when run as script
@@ -355,7 +356,7 @@ def get_job_info_and_paths(param_sets_path, target_image_id, target_param_set_id
     if not original_image_filename: 
         logger.error(f"Error: original_image_filename missing for Image ID '{target_image_id}'."); return default_return
     
-    original_source_image_full_path = os.path.join(PROJECT_ROOT, original_image_filename) # Changed IMAGE_DIR_BASE to PROJECT_ROOT
+    original_source_image_full_path = resolve_image_path(original_image_filename, PROJECT_ROOT)
     if not os.path.exists(original_source_image_full_path):
         logger.warning(f"Warning: Original source image (path constructed from PROJECT_ROOT + original_image_filename from config) not found: {original_source_image_full_path}")
         logger.info(f"  Attempted path was: PROJECT_ROOT ('{PROJECT_ROOT}') + original_image_filename ('{original_image_filename}')")
