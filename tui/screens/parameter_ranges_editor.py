@@ -1,6 +1,7 @@
 """Screen for editing parameter ranges in a project."""
 from pathlib import Path
 import logging
+from typing import Optional
 from textual.app import ComposeResult
 from textual.screen import Screen, ModalScreen
 from textual.widgets import Header, Footer, Button, Label, Input, Checkbox, Static
@@ -169,13 +170,6 @@ class ParameterRangesEditor(ModalScreen[bool]):
     
     def on_mount(self) -> None:
         """Called when the screen is mounted."""
-        # #region agent log
-        try:
-            with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                import json
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PARAM1","location":"parameter_ranges_editor.py:127","message":"ParameterRangesEditor.on_mount() entry","data":{"has_project":self.project is not None},"timestamp":__import__("time").time()*1000})+"\n")
-        except: pass
-        # #endregion
         try:
             # Clear suggested points when opening/refreshing the view
             if self.project:
@@ -189,13 +183,6 @@ class ParameterRangesEditor(ModalScreen[bool]):
             # This ensures the plot widget has a valid size before we try to render
             self.call_after_refresh(self.update_visualization)
         except Exception as e:
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json, traceback
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PARAM1","location":"parameter_ranges_editor.py:133","message":"ParameterRangesEditor.on_mount() exception","data":{"error":str(e),"traceback":traceback.format_exc()},"timestamp":__import__("time").time()*1000})+"\n")
-            except: pass
-            # #endregion
             self.notify(f"Error initializing visualization: {e}", severity="error")
     
     def _show_empty_plot(self, plt, title: str, xlabel: str, ylabel: str = "") -> None:
@@ -536,65 +523,77 @@ class ParameterRangesEditor(ModalScreen[bool]):
                                 from sklearn.decomposition import PCA
                                 import numpy as np
                                 
+                                # Check if we have suggested points even if no config data
+                                has_suggested_points = (self.project and self.project.suggested_points and
+                                                       len(self.project.suggested_points) > 0)
+                                
                                 if not all_data_points:
-                                    raise ValueError("No data points for PCA")
-                                
-                                # Convert to numpy array
-                                data_matrix = np.array(all_data_points)
-                                
-                                # Normalize parameters to [0, 1] for PCA (since they have different scales)
-                                normalized_data = []
-                                for i, (param_name, param_min, param_max) in enumerate(active_params):
-                                    col = data_matrix[:, i]
-                                    normalized_col = self._normalize_parameter_column(col, param_min, param_max)
-                                    normalized_data.append(normalized_col)
-                                normalized_matrix = np.column_stack(normalized_data)
-                                
-                                # Apply PCA
-                                pca = PCA(n_components=2)
-                                pca_result = pca.fit_transform(normalized_matrix)
-                                
-                                # Convert PCA results to lists
-                                all_x_pca = pca_result[:, 0].tolist()
-                                all_y_pca = pca_result[:, 1].tolist()
-                                
-                                # Rebuild config_data with PCA coordinates
-                                config_data = {}
-                                for i, (x_val, y_val) in enumerate(zip(all_x_pca, all_y_pca)):
-                                    config_name = labels[i]
-                                    if config_name not in config_data:
-                                        config_data[config_name] = {'x': [], 'y': []}
-                                    config_data[config_name]['x'].append(x_val)
-                                    config_data[config_name]['y'].append(y_val)
-                                
-                                # Get axis ranges from PCA results with padding
-                                x_min_pca, x_max_pca = float(np.min(pca_result[:, 0])), float(np.max(pca_result[:, 0]))
-                                y_min_pca, y_max_pca = float(np.min(pca_result[:, 1])), float(np.max(pca_result[:, 1]))
-                                
-                                x_lim_min, x_lim_max, y_lim_min, y_lim_max = self._calculate_axis_limits_with_padding(
-                                    x_min_pca, x_max_pca, y_min_pca, y_max_pca
-                                )
-                                plt.xlim(x_lim_min, x_lim_max)
-                                plt.ylim(y_lim_min, y_lim_max)
-                                
-                                # Create axis labels showing which parameters contribute most
-                                pc1_loadings = np.abs(pca.components_[0])
-                                pc2_loadings = np.abs(pca.components_[1])
-                                pc1_idx = np.argmax(pc1_loadings)
-                                pc2_idx = np.argmax(pc2_loadings)
-                                
-                                pc1_param = active_params[pc1_idx][0].replace('_', ' ').title()
-                                pc2_param = active_params[pc2_idx][0].replace('_', ' ').title()
-                                
-                                var1 = pca.explained_variance_ratio_[0] * 100
-                                var2 = pca.explained_variance_ratio_[1] * 100
-                                
-                                x_label = f"PC1 ({pc1_param}, {var1:.1f}% var)"
-                                y_label = f"PC2 ({pc2_param}, {var2:.1f}% var)"
-                                
-                                param_names = [p[0].replace('_', ' ').title() for p in active_params]
-                                title = f"Parameter Space (PCA): {', '.join(param_names)}"
-                                plt.title(title)
+                                    if not has_suggested_points:
+                                        raise ValueError("No data points for PCA")
+                                    else:
+                                        # No config data but we have suggested points - skip PCA for config data
+                                        # The suggested points section will handle PCA
+                                        logger.debug("No config data points, but have suggested points - skipping config PCA")
+                                        # Set up basic labels for now, will be updated in suggested points section
+                                        plt.xlabel("PC1")
+                                        plt.ylabel("PC2")
+                                else:
+                                    # Convert to numpy array
+                                    data_matrix = np.array(all_data_points)
+                                    
+                                    # Normalize parameters to [0, 1] for PCA (since they have different scales)
+                                    normalized_data = []
+                                    for i, (param_name, param_min, param_max) in enumerate(active_params):
+                                        col = data_matrix[:, i]
+                                        normalized_col = self._normalize_parameter_column(col, param_min, param_max)
+                                        normalized_data.append(normalized_col)
+                                    normalized_matrix = np.column_stack(normalized_data)
+                                    
+                                    # Apply PCA
+                                    pca = PCA(n_components=2)
+                                    pca_result = pca.fit_transform(normalized_matrix)
+                                    
+                                    # Convert PCA results to lists
+                                    all_x_pca = pca_result[:, 0].tolist()
+                                    all_y_pca = pca_result[:, 1].tolist()
+                                    
+                                    # Rebuild config_data with PCA coordinates
+                                    config_data = {}
+                                    for i, (x_val, y_val) in enumerate(zip(all_x_pca, all_y_pca)):
+                                        config_name = labels[i]
+                                        if config_name not in config_data:
+                                            config_data[config_name] = {'x': [], 'y': []}
+                                        config_data[config_name]['x'].append(x_val)
+                                        config_data[config_name]['y'].append(y_val)
+                                    
+                                    # Get axis ranges from PCA results with padding
+                                    x_min_pca, x_max_pca = float(np.min(pca_result[:, 0])), float(np.max(pca_result[:, 0]))
+                                    y_min_pca, y_max_pca = float(np.min(pca_result[:, 1])), float(np.max(pca_result[:, 1]))
+                                    
+                                    x_lim_min, x_lim_max, y_lim_min, y_lim_max = self._calculate_axis_limits_with_padding(
+                                        x_min_pca, x_max_pca, y_min_pca, y_max_pca
+                                    )
+                                    plt.xlim(x_lim_min, x_lim_max)
+                                    plt.ylim(y_lim_min, y_lim_max)
+                                    
+                                    # Create axis labels showing which parameters contribute most
+                                    pc1_loadings = np.abs(pca.components_[0])
+                                    pc2_loadings = np.abs(pca.components_[1])
+                                    pc1_idx = np.argmax(pc1_loadings)
+                                    pc2_idx = np.argmax(pc2_loadings)
+                                    
+                                    pc1_param = active_params[pc1_idx][0].replace('_', ' ').title()
+                                    pc2_param = active_params[pc2_idx][0].replace('_', ' ').title()
+                                    
+                                    var1 = pca.explained_variance_ratio_[0] * 100
+                                    var2 = pca.explained_variance_ratio_[1] * 100
+                                    
+                                    x_label = f"PC1 ({pc1_param}, {var1:.1f}% var)"
+                                    y_label = f"PC2 ({pc2_param}, {var2:.1f}% var)"
+                                    
+                                    param_names = [p[0].replace('_', ' ').title() for p in active_params]
+                                    title = f"Parameter Space (PCA): {', '.join(param_names)}"
+                                    plt.title(title)
                                 
                             except ImportError:
                                 self._show_empty_plot(plt, "Need sklearn for multi-parameter visualization.\nInstall with: pip install scikit-learn", "")
@@ -607,16 +606,27 @@ class ParameterRangesEditor(ModalScreen[bool]):
                                 self.call_after_refresh(update_plot)
                                 return
                             except Exception as e:
-                                logger.error(f"PCA failed: {e}", exc_info=True)
-                                self._show_empty_plot(plt, f"Error in PCA: {str(e)[:100]}", "")
-                                # Use refresh_plot instead of _display_plot
-                                def update_plot():
-                                    try:
-                                        plot_widget.refresh_plot()
-                                    except Exception as e:
-                                        logger.error(f"Error refreshing plot: {e}", exc_info=True)
-                                self.call_after_refresh(update_plot)
-                                return
+                                # Check if we have suggested points - if so, don't show error yet, let suggested points section handle it
+                                has_suggested_points = (self.project and self.project.suggested_points and
+                                                       len(self.project.suggested_points) > 0)
+                                
+                                if not has_suggested_points:
+                                    logger.error(f"PCA failed: {e}", exc_info=True)
+                                    self._show_empty_plot(plt, f"Error in PCA: {str(e)[:100]}", "")
+                                    # Use refresh_plot instead of _display_plot
+                                    def update_plot():
+                                        try:
+                                            plot_widget.refresh_plot()
+                                        except Exception as e:
+                                            logger.error(f"Error refreshing plot: {e}", exc_info=True)
+                                    self.call_after_refresh(update_plot)
+                                    return
+                                else:
+                                    # We have suggested points, so continue to let them be plotted
+                                    # Set up basic labels for now
+                                    plt.xlabel("PC1")
+                                    plt.ylabel("PC2")
+                                    logger.debug(f"PCA failed for config data, but continuing with suggested points: {e}")
                         
                         # Set axis limits from ranges with padding (only for 2D case)
                         if len(active_params) == 2:
@@ -632,19 +642,28 @@ class ParameterRangesEditor(ModalScreen[bool]):
                     # Plot data with different colors for each config file
                     # STEP 9: Use consistent color/marker mapping created earlier
                     # STEP 8: Handle case where we have active params but no data
-                    if not config_data and len(active_params) >= 2:
-                        # No data points found in config files
+                    has_suggested_points = (self.project and self.project.suggested_points and
+                                           len(self.project.suggested_points) > 0)
+                    
+                    if len(active_params) < 2:
+                        # STEP 8: Better empty state with visible plot
+                        self._show_empty_plot(plt, "Need at least 2 active parameters\nto visualize coverage",
+                                             "Enable at least 2 parameters\nin the checkboxes above")
+                    elif not config_data and not has_suggested_points:
+                        # No data points found in config files and no suggested points
                         self._show_empty_plot(plt, "No parameter data found in config files", 
                                             "Config files may not contain\nactive parameter sets")
-                    elif config_data:
-                        for config_name, data in config_data.items():
-                            if data['x'] and data['y']:
-                                # Use the consistent mapping created earlier
-                                color = config_color_map.get(config_name, 'blue')
-                                marker = config_marker_map.get(config_name, '+')
-                                plt.scatter(data['x'], data['y'], marker=marker, color=color, label=config_name)
+                    else:
+                        # Plot config data if available
+                        if config_data:
+                            for config_name, data in config_data.items():
+                                if data['x'] and data['y']:
+                                    # Use the consistent mapping created earlier
+                                    color = config_color_map.get(config_name, 'blue')
+                                    marker = config_marker_map.get(config_name, '+')
+                                    plt.scatter(data['x'], data['y'], marker=marker, color=color, label=config_name)
                         
-                        # Add suggested points if available
+                        # Add suggested points if available (works even if no config data)
                         if self.project and self.project.suggested_points:
                             suggested_x = []
                             suggested_y = []
@@ -727,6 +746,28 @@ class ParameterRangesEditor(ModalScreen[bool]):
                                         )
                                         plt.xlim(x_lim_min, x_lim_max)
                                         plt.ylim(y_lim_min, y_lim_max)
+                                        
+                                        # Set up PCA axis labels for suggested-points-only case
+                                        import numpy as np
+                                        pc1_loadings = np.abs(pca_suggested.components_[0])
+                                        pc2_loadings = np.abs(pca_suggested.components_[1])
+                                        pc1_idx = np.argmax(pc1_loadings)
+                                        pc2_idx = np.argmax(pc2_loadings)
+                                        
+                                        pc1_param = active_params[pc1_idx][0].replace('_', ' ').title()
+                                        pc2_param = active_params[pc2_idx][0].replace('_', ' ').title()
+                                        
+                                        var1 = pca_suggested.explained_variance_ratio_[0] * 100
+                                        var2 = pca_suggested.explained_variance_ratio_[1] * 100
+                                        
+                                        x_label = f"PC1 ({pc1_param}, {var1:.1f}% var)"
+                                        y_label = f"PC2 ({pc2_param}, {var2:.1f}% var)"
+                                        plt.xlabel(x_label)
+                                        plt.ylabel(y_label)
+                                        
+                                        param_names = [p[0].replace('_', ' ').title() for p in active_params]
+                                        title = f"Parameter Space (PCA): {', '.join(param_names)}"
+                                        plt.title(title)
                                 except Exception as e:
                                     logger.error(f"Error transforming suggested points for PCA: {e}", exc_info=True)
                             
@@ -734,12 +775,13 @@ class ParameterRangesEditor(ModalScreen[bool]):
                             if suggested_x and suggested_y:
                                 # For 2D case, update axis ranges to include suggested points
                                 if len(active_params) == 2:
-                                    # Collect all x and y from all config files
+                                    # Collect all x and y from all config files (if any)
                                     all_x_combined = []
                                     all_y_combined = []
-                                    for data in config_data.values():
-                                        all_x_combined.extend(data['x'])
-                                        all_y_combined.extend(data['y'])
+                                    if config_data:
+                                        for data in config_data.values():
+                                            all_x_combined.extend(data['x'])
+                                            all_y_combined.extend(data['y'])
                                     all_x_combined.extend(suggested_x)
                                     all_y_combined.extend(suggested_y)
                                     
@@ -754,6 +796,17 @@ class ParameterRangesEditor(ModalScreen[bool]):
                                     )
                                     plt.xlim(x_lim_min, x_lim_max)
                                     plt.ylim(y_lim_min, y_lim_max)
+                                    
+                                    # Set up axis labels for 2D case if not already set
+                                    if not config_data:
+                                        param1_name, param1_min, param1_max = active_params[0]
+                                        param2_name, param2_min, param2_max = active_params[1]
+                                        x_label = param1_name.replace('_', ' ').title()
+                                        y_label = param2_name.replace('_', ' ').title()
+                                        plt.xlabel(x_label)
+                                        plt.ylabel(y_label)
+                                        title = f"Parameter Space: {x_label} vs {y_label}"
+                                        plt.title(title)
                                 
                                 # Plot suggested points with distinct marker/color
                                 try:
@@ -770,14 +823,6 @@ class ParameterRangesEditor(ModalScreen[bool]):
                         plt.xlabel(x_label)
                         plt.ylabel(y_label)
                         plt.grid(True)
-                    elif len(active_params) < 2:
-                        # STEP 8: Better empty state with visible plot
-                        self._show_empty_plot(plt, "Need at least 2 active parameters\nto visualize coverage",
-                                             "Enable at least 2 parameters\nin the checkboxes above")
-                    else:
-                        # STEP 8: Better empty state with visible plot (no config files)
-                        self._show_empty_plot(plt, "No config files to visualize",
-                                             "Add config files to the project\nin the project dashboard")
                     
                     # Build and display using refresh_plot (has proper mounting checks)
                     # Use call_after_refresh to ensure widget is fully ready
@@ -945,6 +990,160 @@ class ParameterRangesEditor(ModalScreen[bool]):
         except Exception as e:
             self.notify(f"Error generating samples: {e}", severity="error")
     
+    def _normalize_path_for_comparison(self, path: str, project_root: Path, config_filepath: Optional[Path] = None) -> str:
+        """Normalize a path for comparison, handling both relative and absolute paths.
+        
+        Args:
+            path: Path to normalize (can be relative or absolute)
+            project_root: Project root directory
+            config_filepath: Optional config file path for relative resolution
+            
+        Returns:
+            Normalized absolute path string
+        """
+        import os
+        
+        if not path:
+            return ""
+        
+        # If absolute, just normalize
+        if Path(path).is_absolute():
+            return os.path.normpath(path)
+        
+        # Try relative to config file location first
+        if config_filepath:
+            config_dir = Path(config_filepath).parent
+            resolved = (config_dir / path).resolve()
+            if resolved.exists():
+                return os.path.normpath(str(resolved))
+        
+        # Try relative to PROJECT_ROOT
+        try:
+            resolved = (project_root / path).resolve()
+            if resolved.exists():
+                return os.path.normpath(str(resolved))
+        except Exception:
+            pass
+        
+        # If resolution failed, construct path relative to project_root for comparison
+        # (even if file doesn't exist, we can still compare paths)
+        try:
+            constructed = (project_root / path).resolve()
+            return os.path.normpath(str(constructed))
+        except Exception:
+            # Last resort: just normalize the original path
+            return os.path.normpath(path)
+    
+    def _find_matching_image_config(self, pool_entry, project_root: Path) -> Optional[ImageConfiguration]:
+        """Find a matching ImageConfiguration from existing config files.
+        
+        Args:
+            pool_entry: ImagePoolEntry from the project's image pool
+            project_root: Path to project root for resolving relative paths
+            
+        Returns:
+            ImageConfiguration if found, None otherwise
+        """
+        import os
+        
+        # Normalize the pool entry path for comparison
+        pool_path_normalized = self._normalize_path_for_comparison(pool_entry.filepath, project_root)
+        
+        # Also get a normalized image_id from the pool entry filename for fallback matching
+        pool_img_path = Path(pool_entry.filepath)
+        pool_image_id_from_filename = pool_img_path.stem
+        if pool_image_id_from_filename.endswith('.ome'):
+            pool_image_id_from_filename = pool_image_id_from_filename[:-4]
+        # Normalize: replace hyphens with underscores for comparison
+        pool_image_id_normalized = pool_image_id_from_filename.replace('-', '_')
+        
+        # Iterate through config files (newest first to get most recent settings)
+        config_files_sorted = sorted(
+            self.project.config_files,
+            key=lambda cf: cf.created_at,
+            reverse=True
+        )
+        
+        # Collect all matches and pick the one with most complete settings
+        best_match = None
+        best_match_score = -1
+        
+        for config_info in config_files_sorted:
+            # NOTE: We search ALL config files (both included and excluded) when looking for image settings
+            # to preserve, because the 'included' flag only affects optimization runs, not settings preservation.
+            # This ensures we can find complete settings even if a config is temporarily excluded.
+            
+            # Resolve config file path
+            config_filepath = config_info.filepath
+            if not Path(config_filepath).is_absolute():
+                config_filepath = project_root / config_filepath
+            
+            if not os.path.exists(config_filepath):
+                continue
+            
+            try:
+                existing_config = ProjectConfig.from_json_file(str(config_filepath))
+                
+                for img_config in existing_config.image_configurations:
+                    # Normalize the image path from config
+                    img_path_from_config = img_config.original_image_filename
+                    config_path_normalized = self._normalize_path_for_comparison(
+                        img_path_from_config, project_root, config_filepath
+                    )
+                    
+                    # Check if paths match
+                    path_matches = config_path_normalized == pool_path_normalized
+                    
+                    # Also try matching by image_id (normalized) as fallback
+                    config_image_id_normalized = img_config.image_id.replace('-', '_') if img_config.image_id else ""
+                    image_id_matches = config_image_id_normalized == pool_image_id_normalized
+                    
+                    if path_matches or image_id_matches:
+                        # Score this match based on completeness of settings
+                        score = 0
+                        if img_config.mpp_x is not None:
+                            score += 1
+                        if img_config.mpp_y is not None:
+                            score += 1
+                        if img_config.segmentation_options and img_config.segmentation_options.rescaling_config is not None:
+                            score += 2  # Rescaling config is more important
+                        if img_config.segmentation_options and img_config.segmentation_options.tiling_parameters:
+                            score += 1
+                        
+                        # Keep the match with highest score (most complete settings)
+                        if score > best_match_score:
+                            best_match_score = score
+                            # Found a match! Prepare a copy with updated paths if needed
+                            img_path = Path(pool_entry.filepath)
+                            if img_path.is_absolute():
+                                try:
+                                    relative_path = img_path.relative_to(project_root)
+                                    original_image_filename = str(relative_path).replace('\\', '/')
+                                except ValueError:
+                                    original_image_filename = str(img_path).replace('\\', '/')
+                            else:
+                                original_image_filename = str(img_path).replace('\\', '/')
+                            
+                            # Create a new ImageConfiguration preserving all settings
+                            seg_opts_copy = img_config.segmentation_options.model_copy(deep=True) if img_config.segmentation_options else SegmentationOptions()
+                            
+                            best_match = ImageConfiguration(
+                                image_id=img_config.image_id,  # Preserve original image_id
+                                original_image_filename=original_image_filename,
+                                is_active=True,
+                                mpp_x=img_config.mpp_x,
+                                mpp_y=img_config.mpp_y,
+                                segmentation_options=seg_opts_copy
+                            )
+            except Exception as e:
+                logger.warning(f"Error reading config file {config_filepath} for image lookup: {e}")
+                continue
+        
+        if best_match:
+            return best_match
+        
+        return None
+    
     def action_generate_config(self) -> None:
         """Generate a config file from all suggested points."""
         if not self.project:
@@ -963,17 +1162,56 @@ class ParameterRangesEditor(ModalScreen[bool]):
             # Create a new config file
             config = ProjectConfig()
             
-            # Add images from the project pool
+            # Get PROJECT_ROOT for relative path conversion
+            try:
+                from src.file_paths import PROJECT_ROOT
+                project_root = Path(PROJECT_ROOT)
+            except (ImportError, Exception):
+                # Fallback: use project file location or current directory
+                if self.project.filepath:
+                    project_root = Path(self.project.filepath).parent.parent.parent
+                else:
+                    project_root = Path(__file__).parent.parent.parent
+            
+            # Add images from the project pool, preserving settings from existing configs
             for img_entry in self.project.image_pool:
                 if img_entry.is_active:
-                    # Create image configuration
-                    img_config = ImageConfiguration(
-                        image_id=Path(img_entry.filepath).stem,
-                        original_image_filename=img_entry.filepath,
-                        is_active=True,
-                        segmentation_options=SegmentationOptions()
-                    )
-                    config.image_configurations.append(img_config)
+                    # Try to find matching image config from existing config files
+                    matching_img_config = self._find_matching_image_config(img_entry, project_root)
+                    
+                    if matching_img_config:
+                        # Use the matching config with all its settings preserved
+                        config.image_configurations.append(matching_img_config)
+                    else:
+                        # Fallback: create default image configuration
+                        # Convert absolute path to relative path
+                        img_path = Path(img_entry.filepath)
+                        if img_path.is_absolute():
+                            try:
+                                # Try to make it relative to PROJECT_ROOT
+                                relative_path = img_path.relative_to(project_root)
+                                # Convert to forward slashes
+                                original_image_filename = str(relative_path).replace('\\', '/')
+                            except ValueError:
+                                # Path is outside project root, use as-is but convert to forward slashes
+                                original_image_filename = str(img_path).replace('\\', '/')
+                        else:
+                            # Already relative, just convert to forward slashes
+                            original_image_filename = str(img_path).replace('\\', '/')
+                        
+                        # Get image_id from filename, stripping ".ome" if present (part of ".ome.tif" extension)
+                        image_id = img_path.stem
+                        if image_id.endswith('.ome'):
+                            image_id = image_id[:-4]  # Remove ".ome" suffix
+                        
+                        # Create image configuration with defaults
+                        img_config = ImageConfiguration(
+                            image_id=image_id,
+                            original_image_filename=original_image_filename,
+                            is_active=True,
+                            segmentation_options=SegmentationOptions()
+                        )
+                        config.image_configurations.append(img_config)
             
             # Create parameter configurations from ALL suggested points
             for idx, suggested in enumerate(self.project.suggested_points):
@@ -999,30 +1237,65 @@ class ParameterRangesEditor(ModalScreen[bool]):
                 config.cellpose_parameter_configurations.append(param_config)
             
             # Determine config file path - use /config folder in project root
-            try:
-                from src.file_paths import PROJECT_ROOT
-                config_dir = Path(PROJECT_ROOT) / "config"
-            except (ImportError, Exception):
-                # Fallback: use project file location or current directory
-                if self.project.filepath:
-                    project_root = Path(self.project.filepath).parent.parent.parent
-                else:
-                    project_root = Path(__file__).parent.parent.parent
-                config_dir = project_root / "config"
+            # Use the project_root already defined above
+            config_dir = project_root / "config"
             
             # Ensure config directory exists
             config_dir.mkdir(parents=True, exist_ok=True)
             
+            # Extract project name from project filepath
+            # e.g., "test.opt.json" -> "test"
+            if self.project.filepath:
+                project_name = Path(self.project.filepath).stem  # Gets filename without extension
+                # Remove ".opt" suffix if present (e.g., "test.opt" -> "test")
+                if project_name.endswith(".opt"):
+                    project_name = project_name[:-4]
+            else:
+                # Fallback if no filepath is set
+                project_name = "project"
+            
+            # Find unused config file number by checking existing files
+            existing_numbers = set()
+            for config_info in self.project.config_files:
+                # Handle both relative and absolute paths
+                config_filepath = config_info.filepath
+                # If it's a relative path, resolve it relative to project_root
+                if not Path(config_filepath).is_absolute():
+                    config_filepath = project_root / config_filepath
+                config_name = Path(config_filepath).stem
+                # Check if filename matches pattern: {project_name}_config_{number}
+                if config_name.startswith(f"{project_name}_config_"):
+                    try:
+                        # Extract number from filename
+                        number_part = config_name[len(f"{project_name}_config_"):]
+                        if number_part.isdigit():
+                            existing_numbers.add(int(number_part))
+                    except (ValueError, IndexError):
+                        pass
+            
+            # Find the next unused number
+            config_number = 1
+            while config_number in existing_numbers:
+                config_number += 1
+            
             # Generate unique config filename
-            config_filename = f"processing_config_grid_{len(self.project.config_files) + 1}.json"
+            config_filename = f"{project_name}_config_{config_number}.json"
             config_path = config_dir / config_filename
             
-            # Save config file
+            # Save config file (use absolute path for saving)
             config.to_json_file(str(config_path))
             
             # Add to project config files (created_at will be set automatically by ConfigFileInfo)
+            # Convert config path to relative path with forward slashes for storage
+            try:
+                config_path_relative = config_path.relative_to(project_root)
+                config_path_str = str(config_path_relative).replace('\\', '/')
+            except ValueError:
+                # If path is outside project root, use absolute path but convert to forward slashes
+                config_path_str = str(config_path).replace('\\', '/')
+            
             from tui.optimization.models import ConfigFileInfo
-            config_info = ConfigFileInfo(filepath=str(config_path), included=True)
+            config_info = ConfigFileInfo(filepath=config_path_str, included=True)
             self.project.config_files.append(config_info)
             
             # Clear all suggested points (they're now in the config)

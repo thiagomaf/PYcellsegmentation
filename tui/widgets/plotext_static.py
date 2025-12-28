@@ -133,14 +133,6 @@ class PlotextStatic(Static):
             else:
                 # Set a default size for plotext
                 self._plt.plotsize(70, 30)
-            # #region agent log
-            try:
-                import json, time
-                widget_size = (self.size.width, self.size.height) if hasattr(self, 'size') else None
-                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H3,H4","location":"plotext_static.py:refresh_plot","message":"BEFORE build","data":{"widget_size":widget_size},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             
             # Build the plot as a string using plotext's build() method
             # This returns the plot as a string with ANSI color codes
@@ -149,39 +141,13 @@ class PlotextStatic(Static):
             try:
                 plot_text = self._plt.build()
             except Exception as build_error:
-                # #region agent log
-                try:
-                    import json, time
-                    with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"BUILD_ERROR","location":"plotext_static.py:refresh_plot","message":"plt.build() failed","data":{"error":str(build_error),"error_type":type(build_error).__name__},"timestamp":time.time()*1000})+"\n")
-                except: pass
-                # #endregion
                 self.update(f"Error building plot: {str(build_error)[:100]}")
                 self.refresh()
                 return
-            # #region agent log
-            try:
-                import json, time
-                plot_text_len = len(plot_text) if plot_text else 0
-                plot_text_preview = plot_text[:100] if plot_text else None
-                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H3","location":"plotext_static.py:refresh_plot","message":"AFTER build","data":{"plot_text_len":plot_text_len,"plot_text_preview":plot_text_preview,"is_empty":not plot_text or plot_text.strip() == ""},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             
             # Check if plot_text is empty or None
             if not plot_text or plot_text.strip() == "":
                 # Log why it's empty
-                # #region agent log
-                try:
-                    import json, time
-                    # Check what's in the plotext object
-                    has_data = hasattr(self._plt, '_data') and len(self._plt._data) > 0 if hasattr(self._plt, '_data') else False
-                    has_figure = hasattr(self._plt, '_figure') and len(self._plt._figure) > 0 if hasattr(self._plt, '_figure') else False
-                    with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"EMPTY","location":"plotext_static.py:refresh_plot","message":"Plot text is empty","data":{"has_data":has_data,"has_figure":has_figure,"plot_size":(self._plt.plotsize()[0], self._plt.plotsize()[1]) if hasattr(self._plt, 'plotsize') else None},"timestamp":time.time()*1000})+"\n")
-                except: pass
-                # #endregion
                 self.update("Plot is empty - no data to display\nCheck that:\n- At least 2 parameters are enabled\n- Config files are added to the project")
                 self.refresh()
                 return
@@ -189,54 +155,19 @@ class PlotextStatic(Static):
             # Mark that plot has been built
             self._plot_built = True
             
-            # #region agent log
-            try:
-                import json, time
-                plot_text_preview = plot_text[:200] if plot_text else None
-                plot_text_lines = len(plot_text.split('\n')) if plot_text else 0
-                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"BEFORE_RICH","location":"plotext_static.py:refresh_plot","message":"About to convert to Rich Text","data":{"plot_text_len":len(plot_text),"plot_text_lines":plot_text_lines,"preview":plot_text_preview},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             
             # Use Rich Text to properly render ANSI codes
             # Rich's Text.from_ansi() will parse ANSI escape sequences into Rich markup
             try:
                 rich_text = Text.from_ansi(plot_text)
-                # #region agent log
-                try:
-                    import json, time
-                    rich_text_len = len(str(rich_text)) if rich_text else 0
-                    rich_text_repr = repr(rich_text)[:200] if rich_text else None
-                    with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H6,H7","location":"plotext_static.py:refresh_plot","message":"BEFORE update with Rich Text","data":{"rich_text_len":rich_text_len,"plot_text_len":len(plot_text),"rich_text_repr":rich_text_repr},"timestamp":time.time()*1000})+"\n")
-                except: pass
-                # #endregion
                 
                 # Try updating with the Rich Text object directly
                 self.update(rich_text)
                 self.refresh()
                 
-                # #region agent log - verify update worked
-                try:
-                    import json, time
-                    # Check if widget actually has content now
-                    widget_content = str(self.renderable) if hasattr(self, 'renderable') and self.renderable else None
-                    widget_content_len = len(widget_content) if widget_content else 0
-                    with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"AFTER_UPDATE","location":"plotext_static.py:refresh_plot","message":"After Rich Text update","data":{"widget_content_len":widget_content_len,"has_content":widget_content_len > 0},"timestamp":time.time()*1000})+"\n")
-                except: pass
-                # #endregion
                 
             except Exception as e:
                 # If Rich Text update fails, try converting to string
-                # #region agent log
-                try:
-                    import json, time
-                    with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H7","location":"plotext_static.py:refresh_plot","message":"Rich Text update failed, trying string","data":{"error":str(e),"error_type":type(e).__name__},"timestamp":time.time()*1000})+"\n")
-                except: pass
-                # #endregion
                 
                 # Fallback: try updating with raw plot_text as string (Textual should handle ANSI)
                 try:
@@ -272,105 +203,15 @@ class PlotextStatic(Static):
                     self.refresh()
                 except:
                     pass
-                # #region agent log
-                try:
-                    import json, time
-                    # Check what's actually in the widget after update
-                    # Try multiple ways to access widget content
-                    widget_content_renderable = None
-                    widget_content_renderable_len = 0
-                    if hasattr(self, 'renderable'):
-                        try:
-                            widget_content_renderable = str(self.renderable) if self.renderable else None
-                            widget_content_renderable_len = len(widget_content_renderable) if widget_content_renderable else 0
-                        except:
-                            pass
-                    # Try accessing _content if it exists
-                    widget_content_private = None
-                    widget_content_private_len = 0
-                    if hasattr(self, '_content'):
-                        try:
-                            widget_content_private = str(self._content) if self._content else None
-                            widget_content_private_len = len(widget_content_private) if widget_content_private else 0
-                        except:
-                            pass
-                    # Try accessing content attribute directly (widget_attrs showed "content": "Text")
-                    widget_content_direct = None
-                    widget_content_direct_len = 0
-                    if hasattr(self, 'content'):
-                        try:
-                            widget_content_direct = str(self.content) if self.content else None
-                            widget_content_direct_len = len(widget_content_direct) if widget_content_direct else 0
-                        except:
-                            pass
-                    # Try accessing render_str if it exists
-                    widget_render_str = None
-                    widget_render_str_len = 0
-                    try:
-                        if hasattr(self, 'render_str'):
-                            widget_render_str = self.render_str()
-                            widget_render_str_len = len(widget_render_str) if widget_render_str else 0
-                    except Exception as e:
-                        widget_render_str = f"ERROR: {e}"
-                    # Also check if widget is visible and mounted
-                    widget_visible = None
-                    try:
-                        widget_visible = self.is_visible if hasattr(self, 'is_visible') else None
-                    except:
-                        pass
-                    widget_mounted = None
-                    try:
-                        widget_mounted = hasattr(self, '_node') and self._node is not None
-                    except:
-                        pass
-                    # Check all attributes that might contain content
-                    widget_attrs = {}
-                    for attr in ['renderable', '_content', '_renderable', 'content']:
-                        if hasattr(self, attr):
-                            try:
-                                val = getattr(self, attr)
-                                widget_attrs[attr] = type(val).__name__ if val else None
-                            except:
-                                widget_attrs[attr] = "ERROR"
-                    with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H7,H8","location":"plotext_static.py:refresh_plot","message":"AFTER update with Rich Text and refresh","data":{"widget_content_renderable_len":widget_content_renderable_len,"widget_content_private_len":widget_content_private_len,"widget_content_direct_len":widget_content_direct_len,"widget_render_str_len":widget_render_str_len,"widget_visible":widget_visible,"widget_mounted":widget_mounted,"widget_attrs":widget_attrs,"widget_size":(self.size.width, self.size.height) if hasattr(self, 'size') else None},"timestamp":time.time()*1000})+"\n")
-                except Exception as e:
-                    try:
-                        import json, time, traceback
-                        with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H8","location":"plotext_static.py:refresh_plot","message":"EXCEPTION checking widget content","data":{"error":str(e),"error_type":type(e).__name__,"traceback":traceback.format_exc()},"timestamp":time.time()*1000})+"\n")
-                    except: pass
-                # #endregion
             except Exception as e:
-                # #region agent log
-                try:
-                    import json, time, traceback
-                    with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H6","location":"plotext_static.py:refresh_plot","message":"EXCEPTION in Rich Text parsing","data":{"error":str(e),"error_type":type(e).__name__,"traceback":traceback.format_exc()},"timestamp":time.time()*1000})+"\n")
-                except: pass
-                # #endregion
                 # Fallback to plain text if Rich parsing fails
                 # But try to at least remove visible ANSI codes
                 import re
                 # Remove ANSI escape sequences for fallback
                 ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
                 clean_text = ansi_escape.sub('', plot_text)
-                # #region agent log
-                try:
-                    import json, time
-                    with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H6","location":"plotext_static.py:refresh_plot","message":"Using fallback plain text","data":{"clean_text_len":len(clean_text),"has_content":bool(clean_text.strip())},"timestamp":time.time()*1000})+"\n")
-                except: pass
-                # #endregion
                 if clean_text.strip():
                     self.update(clean_text)
-                    # #region agent log
-                    try:
-                        import json, time
-                        with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H7","location":"plotext_static.py:refresh_plot","message":"AFTER update with clean text","data":{},"timestamp":time.time()*1000})+"\n")
-                    except: pass
-                    # #endregion
                 else:
                     self.update("Plot rendered but appears empty")
         except Exception as e:

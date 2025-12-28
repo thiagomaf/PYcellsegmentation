@@ -55,7 +55,7 @@ napari_viewer/
 *.gz
 
 # Config directories (may contain large files)
-config/
+#config/
 .python-version
 
 # IDE and editor files

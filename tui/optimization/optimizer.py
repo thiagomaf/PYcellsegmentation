@@ -2,6 +2,7 @@ import os
 import json
 import random
 import logging
+from pathlib import Path
 from typing import Dict, Optional, List, Tuple
 from datetime import datetime
 
@@ -19,13 +20,14 @@ def identify_best_parameter_set(
 ) -> Optional[Tuple[str, str]]:
     """
     Identify the best parameter set based on GP/acquisition/Pareto logic.
+    Each parameter_set x image combination is treated as a separate data point.
     
     Args:
         project: OptimizationProject instance
         method: Method to use ('acquisition', 'pareto', 'hybrid', or 'score')
         
     Returns:
-        Tuple of (config_file_path, param_set_id) for the best set, or None
+        Tuple of (param_set_id, image_path) for the best set, or None
     """
     from tui.optimization.models import OptimizationResult
     from tui.optimization.gp_multidim import fit_multidim_gp_for_objective, get_active_parameters
@@ -37,10 +39,10 @@ def identify_best_parameter_set(
         """Check if result has default/zero quality metrics."""
         return project._result_has_default_metrics(result)
     
-    # Get parameter sets with results
+    # Get parameter sets with results (each parameter_set x image is a separate entry)
     sets_with_results = [
         ps for ps in project.get_filtered_parameter_sets()
-        if ps.result is not None and not _has_default_metrics(ps.result)
+        if ps.result is not None and not _has_default_metrics(ps.result) and ps.image_path
     ]
     
     if not sets_with_results:
@@ -49,9 +51,9 @@ def identify_best_parameter_set(
     active_params = get_active_parameters(project)
     
     if method == "score":
-        # Simple: best score
+        # Simple: best score across all parameter_set x image combinations
         best_ps = max(sets_with_results, key=lambda ps: ps.result.score if ps.result else 0.0)
-        return (best_ps.config_file_path, best_ps.param_set_id)
+        return (best_ps.param_set_id, best_ps.image_path or "")
     
     elif method == "acquisition":
         # Use acquisition function to find best
@@ -68,28 +70,24 @@ def identify_best_parameter_set(
         if not enabled_objectives:
             # Fallback to score
             best_ps = max(sets_with_results, key=lambda ps: ps.result.score if ps.result else 0.0)
-            return (best_ps.config_file_path, best_ps.param_set_id)
+            return (best_ps.param_set_id, best_ps.image_path or "")
         
         # Use first enabled objective (or score if available)
         primary_obj = "score" if "score" in enabled_objectives else enabled_objectives[0]
         
-        # Get data for primary objective
-        data = []
-        for ps in sets_with_results:
-            if all(pname in ps.parameters for pname in active_params):
-                if primary_obj == "score":
-                    obj_value = ps.result.score if ps.result else 0.0
-                else:
-                    obj_value = getattr(ps.result, primary_obj, None)
-                if obj_value is not None:
-                    data.append((ps.parameters, float(obj_value)))
+        # Get data for primary objective (using get_objective_data which returns per-image results)
+        # Format: List[Tuple[Dict[str, float], float, str]] where last element is image_path
+        data_with_images = project.get_objective_data(primary_obj)
+        
+        # Extract just (parameters, value) for GP fitting (GP doesn't need image info)
+        data = [(params, value) for params, value, _ in data_with_images]
         
         if len(data) < 3:
             # Not enough data for GP, use score
             best_ps = max(sets_with_results, key=lambda ps: ps.result.score if ps.result else 0.0)
-            return (best_ps.config_file_path, best_ps.param_set_id)
+            return (best_ps.param_set_id, best_ps.image_path or "")
         
-        # Fit GP
+        # Fit GP using all parameter_set x image combinations as training data
         gp_model = fit_multidim_gp_for_objective(
             primary_obj,
             data,
@@ -100,9 +98,10 @@ def identify_best_parameter_set(
         if not gp_model:
             # GP fitting failed, use score
             best_ps = max(sets_with_results, key=lambda ps: ps.result.score if ps.result else 0.0)
-            return (best_ps.config_file_path, best_ps.param_set_id)
+            return (best_ps.param_set_id, best_ps.image_path or "")
         
         # Prepare parameter matrix for batch prediction (more efficient)
+        # Use all parameter_set x image combinations for prediction
         param_arrays = []
         valid_param_sets = []
         
@@ -115,7 +114,7 @@ def identify_best_parameter_set(
         if not valid_param_sets:
             # Fallback to score
             best_ps = max(sets_with_results, key=lambda ps: ps.result.score if ps.result else 0.0)
-            return (best_ps.config_file_path, best_ps.param_set_id)
+            return (best_ps.param_set_id, best_ps.image_path or "")
         
         # Batch predict using sklearn (more efficient than loop)
         X_batch = np.array(param_arrays)
@@ -137,7 +136,7 @@ def identify_best_parameter_set(
         best_idx = np.argmax(acq_values)
         best_ps = valid_param_sets[best_idx]
         
-        return (best_ps.config_file_path, best_ps.param_set_id)
+        return (best_ps.param_set_id, best_ps.image_path or "")
     
     elif method in ["pareto", "hybrid"]:
         # Use Pareto front to find best - leveraging pymoo directly
@@ -153,7 +152,7 @@ def identify_best_parameter_set(
         if len(enabled_objectives) < 2:
             # Not enough objectives for Pareto, use score
             best_ps = max(sets_with_results, key=lambda ps: ps.result.score if ps.result else 0.0)
-            return (best_ps.config_file_path, best_ps.param_set_id)
+            return (best_ps.param_set_id, best_ps.image_path or "")
         
         # Use first two objectives for Pareto
         obj1, obj2 = enabled_objectives[0], enabled_objectives[1]
@@ -164,6 +163,7 @@ def identify_best_parameter_set(
         maximize = [dir1 is True, dir2 is True]  # True = maximize, False = minimize
         
         # Prepare objective matrix for pymoo (n_points x n_objectives)
+        # Each parameter_set x image combination is a separate point
         # Store mapping from index to parameter set
         objective_matrix = []
         index_to_param_set = []
@@ -187,7 +187,7 @@ def identify_best_parameter_set(
         if len(objective_matrix) < 2:
             # Not enough data, use score
             best_ps = max(sets_with_results, key=lambda ps: ps.result.score if ps.result else 0.0)
-            return (best_ps.config_file_path, best_ps.param_set_id)
+            return (best_ps.param_set_id, best_ps.image_path or "")
         
         # Use pymoo's NonDominatedSorting directly
         try:
@@ -200,7 +200,7 @@ def identify_best_parameter_set(
             if len(fronts) == 0 or len(fronts[0]) == 0:
                 # No Pareto front found, use score
                 best_ps = max(sets_with_results, key=lambda ps: ps.result.score if ps.result else 0.0)
-                return (best_ps.config_file_path, best_ps.param_set_id)
+                return (best_ps.param_set_id, best_ps.image_path or "")
             
             # Get Pareto-optimal indices
             pareto_indices = fronts[0].tolist()
@@ -216,22 +216,22 @@ def identify_best_parameter_set(
             best_pareto_idx = pareto_indices[np.argmax(weighted_sums)]
             best_ps = index_to_param_set[best_pareto_idx]
             
-            return (best_ps.config_file_path, best_ps.param_set_id)
+            return (best_ps.param_set_id, best_ps.image_path or "")
             
         except ImportError:
             # pymoo not available, fallback to score
             logger.warning("pymoo not available for Pareto analysis, using score-based selection")
             best_ps = max(sets_with_results, key=lambda ps: ps.result.score if ps.result else 0.0)
-            return (best_ps.config_file_path, best_ps.param_set_id)
+            return (best_ps.param_set_id, best_ps.image_path or "")
         except Exception as e:
             logger.error(f"Error using pymoo for Pareto analysis: {e}")
             # Fallback to score
             best_ps = max(sets_with_results, key=lambda ps: ps.result.score if ps.result else 0.0)
-            return (best_ps.config_file_path, best_ps.param_set_id)
+            return (best_ps.param_set_id, best_ps.image_path or "")
     
     # Fallback: use score
     best_ps = max(sets_with_results, key=lambda ps: ps.result.score if ps.result else 0.0)
-    return (best_ps.config_file_path, best_ps.param_set_id) if best_ps else None
+    return (best_ps.param_set_id, best_ps.image_path or "") if best_ps else None
 
 class FileBasedOptimizer:
     """
@@ -335,6 +335,239 @@ class FileBasedOptimizer:
 
         return new_params
 
+    def _normalize_path_for_comparison(self, path: str, project_root: Path, config_filepath: Optional[Path] = None) -> str:
+        """Normalize a path for comparison, handling both relative and absolute paths.
+        
+        Args:
+            path: Path to normalize (can be relative or absolute)
+            project_root: Project root directory
+            config_filepath: Optional config file path for relative resolution
+            
+        Returns:
+            Normalized absolute path string
+        """
+        if not path:
+            return ""
+        
+        # If absolute, just normalize
+        if Path(path).is_absolute():
+            return os.path.normpath(path)
+        
+        # Try relative to config file location first
+        if config_filepath:
+            config_dir = Path(config_filepath).parent
+            resolved = (config_dir / path).resolve()
+            if resolved.exists():
+                return os.path.normpath(str(resolved))
+        
+        # Try relative to PROJECT_ROOT
+        try:
+            resolved = (project_root / path).resolve()
+            if resolved.exists():
+                return os.path.normpath(str(resolved))
+        except Exception:
+            pass
+        
+        # If resolution failed, construct path relative to project_root for comparison
+        # (even if file doesn't exist, we can still compare paths)
+        try:
+            constructed = (project_root / path).resolve()
+            return os.path.normpath(str(constructed))
+        except Exception:
+            # Last resort: just normalize the original path
+            return os.path.normpath(path)
+    
+    def _find_matching_image_config_from_pool(self, pool_entry) -> Optional[Dict]:
+        """Find a matching ImageConfiguration from existing config files.
+        
+        Args:
+            pool_entry: ImagePoolEntry from the project's image pool
+            
+        Returns:
+            Dictionary representation of ImageConfiguration if found, None otherwise
+        """
+        from tui.models import ProjectConfig
+        from pathlib import Path
+        
+        # Get PROJECT_ROOT for path resolution
+        try:
+            from src.file_paths import PROJECT_ROOT
+            project_root = Path(PROJECT_ROOT)
+        except (ImportError, Exception):
+            if self.project.filepath:
+                project_root = Path(self.project.filepath).parent.parent.parent
+            else:
+                project_root = Path.cwd()
+        
+        # Normalize the pool entry path for comparison
+        pool_path_normalized = self._normalize_path_for_comparison(pool_entry.filepath, project_root)
+        
+        # Also get a normalized image_id from the pool entry filename for fallback matching
+        pool_img_path = Path(pool_entry.filepath)
+        pool_image_id_from_filename = pool_img_path.stem
+        if pool_image_id_from_filename.endswith('.ome'):
+            pool_image_id_from_filename = pool_image_id_from_filename[:-4]
+        # Normalize: replace hyphens with underscores for comparison
+        pool_image_id_normalized = pool_image_id_from_filename.replace('-', '_')
+        
+        # Iterate through config files (newest first to get most recent settings)
+        config_files_sorted = sorted(
+            self.project.config_files,
+            key=lambda cf: cf.created_at,
+            reverse=True
+        )
+        
+        # Collect all matches and pick the one with most complete settings
+        best_match = None
+        best_match_score = -1
+        
+        for config_info in config_files_sorted:
+            # NOTE: We search ALL config files (both included and excluded) when looking for image settings
+            # to preserve, because the 'included' flag only affects optimization runs, not settings preservation.
+            # This ensures we can find complete settings even if a config is temporarily excluded.
+            
+            # Resolve config file path
+            config_filepath = config_info.filepath
+            if not Path(config_filepath).is_absolute():
+                config_filepath = project_root / config_filepath
+            
+            if not os.path.exists(config_filepath):
+                continue
+            
+            try:
+                existing_config = ProjectConfig.from_json_file(str(config_filepath))
+                
+                for img_config in existing_config.image_configurations:
+                    # Normalize the image path from config
+                    img_path_from_config = img_config.original_image_filename
+                    config_path_normalized = self._normalize_path_for_comparison(
+                        img_path_from_config, project_root, config_filepath
+                    )
+                    
+                    # Check if paths match
+                    path_matches = config_path_normalized == pool_path_normalized
+                    
+                    # Also try matching by image_id (normalized) as fallback
+                    config_image_id_normalized = img_config.image_id.replace('-', '_') if img_config.image_id else ""
+                    image_id_matches = config_image_id_normalized == pool_image_id_normalized
+                    
+                    if path_matches or image_id_matches:
+                        # Score this match based on completeness of settings
+                        score = 0
+                        if img_config.mpp_x is not None:
+                            score += 1
+                        if img_config.mpp_y is not None:
+                            score += 1
+                        if img_config.segmentation_options and img_config.segmentation_options.rescaling_config is not None:
+                            score += 2  # Rescaling config is more important
+                        if img_config.segmentation_options and img_config.segmentation_options.tiling_parameters:
+                            score += 1
+                        
+                        # Keep the match with highest score (most complete settings)
+                        if score > best_match_score:
+                            best_match_score = score
+                            # Found a match! Return dict representation preserving all settings
+                            img_dict = img_config.model_dump(mode='json', exclude_none=True)
+                            
+                            # Update original_image_filename to match pool entry format (but preserve relative path format)
+                            # Keep the original_image_filename format from config if it was relative
+                            if not Path(img_config.original_image_filename).is_absolute():
+                                # If config used relative path, try to make pool entry relative too
+                                try:
+                                    pool_path = Path(pool_entry.filepath)
+                                    if pool_path.is_absolute():
+                                        relative_path = pool_path.relative_to(project_root)
+                                        img_dict['original_image_filename'] = str(relative_path).replace('\\', '/')
+                                    else:
+                                        img_dict['original_image_filename'] = pool_entry.filepath
+                                except ValueError:
+                                    img_dict['original_image_filename'] = pool_entry.filepath
+                            else:
+                                img_dict['original_image_filename'] = pool_entry.filepath
+                            img_dict['is_active'] = True
+                            
+                            best_match = img_dict
+            except Exception as e:
+                logger.warning(f"Error reading config file {config_filepath} for image lookup: {e}")
+                continue
+        
+        if best_match:
+            return best_match
+        
+        return None
+    
+    def _ensure_image_configs_from_pool(self, template_config: dict) -> None:
+        """Ensure image_configurations in template match project's image_pool, preserving settings.
+        
+        Args:
+            template_config: Template config dictionary to update
+        """
+        from pathlib import Path
+        
+        # Get PROJECT_ROOT for path resolution
+        try:
+            from src.file_paths import PROJECT_ROOT
+            project_root = Path(PROJECT_ROOT)
+        except (ImportError, Exception):
+            if self.project.filepath:
+                project_root = Path(self.project.filepath).parent.parent.parent
+            else:
+                project_root = Path.cwd()
+        
+        # Build a set of image paths already in template (normalized)
+        template_image_paths = set()
+        template_image_ids = set()
+        for img_config in template_config.get("image_configurations", []):
+            img_path = img_config.get("original_image_filename", "")
+            if img_path:
+                normalized_path = self._normalize_path_for_comparison(img_path, project_root)
+                template_image_paths.add(normalized_path)
+            # Also track image_ids for fallback matching
+            img_id = img_config.get("image_id", "")
+            if img_id:
+                template_image_ids.add(img_id.replace('-', '_'))
+        
+        # Ensure all active images from pool are in template
+        if self.project.image_pool:
+            for img_entry in self.project.image_pool:
+                if not img_entry.is_active:
+                    continue
+                
+                pool_path_normalized = self._normalize_path_for_comparison(img_entry.filepath, project_root)
+                
+                # Also get normalized image_id for fallback check
+                pool_img_path = Path(img_entry.filepath)
+                pool_image_id_from_filename = pool_img_path.stem
+                if pool_image_id_from_filename.endswith('.ome'):
+                    pool_image_id_from_filename = pool_image_id_from_filename[:-4]
+                pool_image_id_normalized = pool_image_id_from_filename.replace('-', '_')
+                
+                # Check if already in template (by path or image_id)
+                if pool_path_normalized in template_image_paths:
+                    continue
+                if pool_image_id_normalized in template_image_ids:
+                    continue
+                
+                # Try to find matching config from existing configs
+                matching_img_dict = self._find_matching_image_config_from_pool(img_entry)
+                
+                if matching_img_dict:
+                    # Use the matching config with all settings preserved
+                    template_config.setdefault("image_configurations", []).append(matching_img_dict)
+                else:
+                    # Fallback: create default image configuration
+                    img_path = Path(img_entry.filepath)
+                    image_id = img_path.stem
+                    if image_id.endswith('.ome'):
+                        image_id = image_id[:-4]
+                    
+                    template_config.setdefault("image_configurations", []).append({
+                        "image_id": image_id,
+                        "original_image_filename": img_entry.filepath,
+                        "is_active": True,
+                        "segmentation_options": {"apply_segmentation": True}
+                    })
+    
     def create_iteration_config(self, params: Dict[str, float]) -> str:
         """
         Create a JSON configuration file for the given parameters.
@@ -376,16 +609,9 @@ class FileBasedOptimizer:
                 "image_configurations": [],
                 "cellpose_parameter_configurations": []
             }
-            # Add active images from pool if available
-            if self.project.image_pool:
-                 for img_entry in self.project.image_pool:
-                     if img_entry.is_active:
-                         template_config["image_configurations"].append({
-                             "image_id": os.path.splitext(os.path.basename(img_entry.filepath))[0],
-                             "original_image_filename": img_entry.filepath,
-                             "is_active": True,
-                             "segmentation_options": {"apply_segmentation": True}
-                         })
+        
+        # Ensure image_configurations match project's image_pool, preserving settings
+        self._ensure_image_configs_from_pool(template_config)
 
         # 2. Update cellpose_parameter_configurations
         # We replace whatever was there with our single optimized parameter set
@@ -492,16 +718,9 @@ class FileBasedOptimizer:
                 "image_configurations": [],
                 "cellpose_parameter_configurations": []
             }
-            # Add active images from pool if available
-            if self.project.image_pool:
-                for img_entry in self.project.image_pool:
-                    if img_entry.is_active:
-                        template_config["image_configurations"].append({
-                            "image_id": os.path.splitext(os.path.basename(img_entry.filepath))[0],
-                            "original_image_filename": img_entry.filepath,
-                            "is_active": True,
-                            "segmentation_options": {"apply_segmentation": True}
-                        })
+        
+        # Ensure image_configurations match project's image_pool, preserving settings
+        self._ensure_image_configs_from_pool(template_config)
         
         # 2. Create parameter configurations from all suggestions
         param_configs = []
@@ -595,10 +814,11 @@ class FileBasedOptimizer:
     def scan_config_files_for_parameter_sets(self) -> List[ParameterSetEntry]:
         """
         Scan all included config files and extract all active parameter sets.
+        Creates one ParameterSetEntry per parameter_set x image combination.
         Only processes images that are active in the project's image pool.
         
         Returns:
-            List of ParameterSetEntry objects, one for each parameter set found.
+            List of ParameterSetEntry objects, one for each parameter_set x image combination.
         """
         parameter_sets = []
         
@@ -706,6 +926,29 @@ class FileBasedOptimizer:
                     should_process_config = config_has_matching_images
                 
                 if should_process_config:
+                    # Get active images from config that are also in project's active pool
+                    active_images_in_config = []
+                    for img_config in config.image_configurations:
+                        if not img_config.is_active:
+                            continue
+                        
+                        image_path = normalize_image_path(
+                            img_config.original_image_filename,
+                            config_file_info.filepath
+                        )
+                        normalized_image_path = os.path.normpath(image_path)
+                        
+                        # Only include if in project's active image pool (or if no pool filter)
+                        if not active_image_paths_normalized or normalized_image_path in active_image_paths_normalized:
+                            # Use original_image_filename from config (may be relative)
+                            active_images_in_config.append(img_config.original_image_filename)
+                    
+                    # If no active images match, skip this config
+                    if not active_images_in_config:
+                        logger.debug(f"Skipping config {os.path.basename(config_file_info.filepath)}: no matching active images")
+                        continue
+                    
+                    # For each parameter set, create one entry per active image
                     for param_config in config.cellpose_parameter_configurations:
                         if not param_config.is_active:
                             continue
@@ -721,14 +964,23 @@ class FileBasedOptimizer:
                             'cellprob_threshold': cp_params.CELLPROB_THRESHOLD,
                         }
                         
-                        # Get or create parameter set entry
-                        param_set = self.project.get_or_create_parameter_set(
-                            config_file_path=config_file_info.filepath,
-                            param_set_id=param_set_id,
-                            parameters=params
-                        )
-                        
-                        parameter_sets.append(param_set)
+                        # Create one ParameterSetEntry per image
+                        for image_filename in active_images_in_config:
+                            # Normalize the image path for storage
+                            image_path = normalize_image_path(
+                                image_filename,
+                                config_file_info.filepath
+                            )
+                            
+                            # Get or create parameter set entry (one per param_set x image)
+                            param_set = self.project.get_or_create_parameter_set(
+                                param_set_id=param_set_id,
+                                image_path=image_path,
+                                parameters=params,
+                                config_file_path=config_file_info.filepath
+                            )
+                            
+                            parameter_sets.append(param_set)
                 else:
                     logger.debug(f"Skipping config {os.path.basename(config_file_info.filepath)}: no matching images in project pool")
                     
@@ -740,26 +992,35 @@ class FileBasedOptimizer:
 
     def check_parameter_set_status(self, param_set: ParameterSetEntry) -> Optional[OptimizationResult]:
         """
-        Check if results exist for the given parameter set.
-        Only processes images that are active in the project's image pool.
+        Check if results exist for the given parameter set and image combination.
+        Calculates stats for the specific image in the parameter set entry.
         """
+        # Need image_path to calculate stats for specific image
+        if not param_set.image_path:
+            logger.warning(f"Parameter set {param_set.param_set_id} has no image_path, cannot calculate stats")
+            return None
+        
+        # Need config_file_path to load config
+        if not param_set.config_file_path:
+            logger.warning(f"Parameter set {param_set.param_set_id} has no config_file_path, cannot calculate stats")
+            return None
+        
         # Lazy import to avoid importing numpy/tifffile at module level
-        from tui.optimization.stats import calculate_stats_for_config
+        from tui.optimization.stats import calculate_stats_for_image
         
         # Normalize config path to handle drive letter mismatches
         config_path = self._normalize_config_path(param_set.config_file_path)
         
-        # Build set of active image paths from project's image pool
-        active_image_paths = {
-            entry.filepath for entry in self.project.image_pool 
-            if entry.is_active
-        }
         
-        return calculate_stats_for_config(
-            config_path, 
-            param_set_id=param_set.param_set_id,
-            active_image_paths=active_image_paths if active_image_paths else None
-        )
+        try:
+            result = calculate_stats_for_image(
+                config_path=config_path,
+                param_set_id=param_set.param_set_id,
+                image_path=param_set.image_path
+            )
+            return result
+        except Exception as e:
+            raise
     
     def _normalize_and_store_path(self, path: str, context: str = "") -> Tuple[str, str]:
         """
@@ -822,27 +1083,16 @@ class FileBasedOptimizer:
         Lightweight check if output files exist for a parameter set without importing numpy or cv2.
         This reads the JSON config directly and constructs expected paths without full job expansion.
         
+        If param_set.image_path is provided, only checks for that specific image.
+        Otherwise, checks if ANY image in the config has masks.
+        
         Returns:
             True if output mask files exist, False otherwise.
         """
-        # #region agent log
-        try:
-            import json, time
-            with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"optimizer.py:has_output_files","message":"ENTRY","data":{"config_path":param_set.config_file_path,"param_set_id":param_set.param_set_id},"timestamp":time.time()*1000})+"\n")
-        except: pass
-        # #endregion
-        from src.file_paths import RESULTS_DIR_BASE
+        from src.file_paths import RESULTS_DIR_BASE, PROJECT_ROOT
         
         # Normalize config path to handle drive letter mismatches
         config_path = self._normalize_config_path(param_set.config_file_path)
-        # #region agent log
-        try:
-            import json, time
-            with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"optimizer.py:has_output_files","message":"normalized config path","data":{"original_path":param_set.config_file_path,"normalized_path":config_path,"exists":os.path.exists(config_path)},"timestamp":time.time()*1000})+"\n")
-        except: pass
-        # #endregion
         
         if not os.path.exists(config_path):
             return False
@@ -876,6 +1126,15 @@ class FileBasedOptimizer:
                 if entry.is_active
             }
             
+            # If param_set has a specific image_path, only check for that image
+            # Otherwise, check all images in the config
+            target_image_path = None
+            if param_set.image_path:
+                # Normalize the target image path for comparison
+                target_image_path = os.path.normpath(
+                    os.path.join(PROJECT_ROOT, param_set.image_path) if not os.path.isabs(param_set.image_path) else param_set.image_path
+                )
+            
             # Check for mask files for each active image config that's also in project's active image pool
             masks_found = 0
             for img_config in image_configs:
@@ -891,6 +1150,10 @@ class FileBasedOptimizer:
                 image_path_normalized = os.path.normpath(
                     os.path.join(PROJECT_ROOT, image_path) if not os.path.isabs(image_path) else image_path
                 )
+                
+                # If we're checking for a specific image, skip if this doesn't match
+                if target_image_path and image_path_normalized != target_image_path:
+                    continue
                 
                 # Skip if image is not in project's active image pool
                 if active_image_paths:  # Only filter if project has defined image pool
@@ -935,10 +1198,12 @@ class FileBasedOptimizer:
                 # This is a simplified check - we look for directories that start with base_experiment_id
                 try:
                     if os.path.exists(RESULTS_DIR_BASE):
+                        matching_dirs = []
                         for dirname in os.listdir(RESULTS_DIR_BASE):
                             if dirname.startswith(base_experiment_id):
                                 exp_dir = os.path.join(RESULTS_DIR_BASE, dirname)
                                 if os.path.isdir(exp_dir):
+                                    matching_dirs.append(dirname)
                                     try:
                                         for filename in os.listdir(exp_dir):
                                             if filename.endswith("_mask.tif"):
@@ -950,23 +1215,9 @@ class FileBasedOptimizer:
                     pass
             
             result = masks_found > 0
-            # #region agent log
-            try:
-                import json, time
-                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"optimizer.py:has_output_files","message":"RETURN","data":{"masks_found":masks_found,"result":result,"param_set_id":param_set.param_set_id},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             return result
             
         except Exception as e:
-            # #region agent log
-            try:
-                import json, time
-                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"optimizer.py:has_output_files","message":"EXCEPTION","data":{"error":str(e),"param_set_id":param_set.param_set_id},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             logger.debug(f"Error checking output files for {param_set.param_set_id}: {e}")
             return False
 

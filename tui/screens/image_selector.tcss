@@ -1,0 +1,46 @@
+ImageSelector {
+    align: center middle;
+}
+
+.image-selector-container {
+    width: 60;
+    height: 80%;
+    max-height: 40;
+    background: $panel;
+    border: heavy $primary;
+    padding: 1 2;
+    layout: vertical;
+}
+
+.image-selector-header {
+    text-style: bold;
+    color: $accent;
+    text-align: center;
+    margin-bottom: 1;
+    height: auto;
+}
+
+.image-selector-list {
+    height: 1fr;
+    min-height: 10;
+    border: solid $primary;
+    background: $surface;
+    padding: 1;
+    margin: 1 0;
+    overflow-y: auto;
+}
+
+.image-selector-footer {
+    height: auto;
+    align: right middle;
+    margin-top: 1;
+    padding-top: 1;
+    border-top: solid $primary;
+}
+
+.image-selector-footer Button {
+    margin-left: 1;
+}
+
+
+

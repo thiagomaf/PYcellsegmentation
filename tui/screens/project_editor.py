@@ -3,6 +3,7 @@ from typing import Optional
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
+from textual.screen import Screen
 from textual.widgets import Button, Static
 
 from tui.models import ProjectConfig
@@ -163,3 +164,25 @@ class ProjectEditor(Container):
         
         # Show save dialog with current config and filepath
         self.app.push_screen(SaveDialog(self.config, self.filepath), on_dismiss)
+
+
+class ProjectEditorScreen(Screen):
+    """Screen wrapper for ProjectEditor container."""
+    
+    BINDINGS = [
+        ("escape", "back", "Back"),
+    ]
+    
+    def __init__(self, config: Optional[ProjectConfig] = None, filepath: Optional[str] = None):
+        """Initialize the project editor screen."""
+        super().__init__()
+        self.config = config
+        self.filepath = filepath
+    
+    def compose(self) -> ComposeResult:
+        """Create child widgets for the screen."""
+        yield ProjectEditor(self.config, self.filepath)
+    
+    def action_back(self) -> None:
+        """Go back to the previous screen."""
+        self.app.pop_screen()

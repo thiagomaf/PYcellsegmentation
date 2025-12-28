@@ -20,59 +20,35 @@ class OptimizationDashboard(Screen):
     
     CSS_PATH = str(Path(__file__).parent / "optimization_dashboard.tcss")
     
+    def on_scroll(self, event) -> None:
+        """Handle scroll events to pause table updates during scrolling."""
+        self._is_scrolling = True
+        # Reset scroll flag after 500ms of no scrolling
+        if self._scroll_timer:
+            self._scroll_timer.stop()
+        self._scroll_timer = self.set_timer(0.5, self._reset_scroll_flag)
+    
+    def _reset_scroll_flag(self) -> None:
+        """Reset the scrolling flag after user stops scrolling."""
+        self._is_scrolling = False
+    
     def __init__(self, project: OptimizationProject):
-        # #region agent log
-        try:
-            with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                import json
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H4","location":"optimization_dashboard.py:67","message":"OptimizationDashboard.__init__() entry","data":{"project_filepath":project.filepath},"timestamp":__import__("time").time()*1000})+"\n")
-        except: pass
-        # #endregion
         try:
             super().__init__()
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H4","location":"optimization_dashboard.py:73","message":"super().__init__() completed","data":{},"timestamp":__import__("time").time()*1000})+"\n")
-            except: pass
-            # #endregion
             self.project = project
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H4","location":"optimization_dashboard.py:78","message":"About to create FileBasedOptimizer (lazy import)","data":{},"timestamp":__import__("time").time()*1000})+"\n")
-            except: pass
-            # #endregion
             # Lazy import - only import when OptimizationDashboard is actually instantiated
             from tui.optimization.optimizer import FileBasedOptimizer
             self.optimizer = FileBasedOptimizer(project)
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H4","location":"optimization_dashboard.py:82","message":"FileBasedOptimizer created","data":{},"timestamp":__import__("time").time()*1000})+"\n")
-            except: pass
-            # #endregion
             self.auto_run = False
             self.current_tab = "objective"  # Track current tab
-            self._best_param_set_key = None  # (config_file_path, param_set_id) for best parameter set
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H4","location":"optimization_dashboard.py:86","message":"OptimizationDashboard.__init__() completed","data":{},"timestamp":__import__("time").time()*1000})+"\n")
-            except: pass
-            # #endregion
+            self._best_param_set_key = None  # (param_set_id, image_path) for best parameter set
+            self._row_key_to_index = {}  # Cache mapping from (param_set_id, image_path) to row index
+            self._table_rebuild_pending = False  # Flag to batch table rebuilds
+            self._last_check_time = {}  # Track last check time per parameter set for rate limiting
+            self._batch_check_index = 0  # Track which batch of parameter sets to check (for batch processing)
+            self._is_scrolling = False  # Track if user is actively scrolling
+            self._scroll_timer = None  # Timer to reset scroll flag
         except Exception as e:
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json, traceback
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H4","location":"optimization_dashboard.py:90","message":"OptimizationDashboard.__init__() exception","data":{"error":str(e),"error_type":type(e).__name__,"traceback":traceback.format_exc()},"timestamp":__import__("time").time()*1000})+"\n")
-            except: pass
-            # #endregion
             raise
         
     def compose(self) -> ComposeResult:
@@ -126,6 +102,7 @@ class OptimizationDashboard(Screen):
         with Horizontal(classes="control-bar"):
             with Horizontal(classes="control-bar-left"):
                 yield Button("Calculate", id="btn-calculate", variant="success")
+                yield Button("Clear", id="btn-clear", variant="default")
                 # yield Static("", id="calc-status")
                 
             with Horizontal(classes="control-bar-right"):
@@ -148,32 +125,11 @@ class OptimizationDashboard(Screen):
         """Initialize the dashboard with existing data."""
         import time
         mount_start = time.time()
-        # #region agent log
-        try:
-            with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                import json
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF1","location":"optimization_dashboard.py:152","message":"on_mount() entry","data":{"timestamp":time.time()*1000},"timestamp":time.time()*1000})+"\n")
-        except: pass
-        # #endregion
         try:
             table = self.query_one("#history-table", DataTable)
             table_start = time.time()
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF1","location":"optimization_dashboard.py:160","message":"DataTable queried","data":{"elapsed_ms":(table_start-mount_start)*1000},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"G","location":"optimization_dashboard.py:93","message":"DataTable queried","data":{},"timestamp":__import__("time").time()*1000})+"\n")
-            except: pass
-            # #endregion
             table.add_columns(
-                "Config", "Param Set", 
+                "Image", "Param Set", 
                 "Diameter", "Min Size", "CellProb", "Flow",
                 "Status", 
                 "Cells", "Mean Area",
@@ -181,27 +137,14 @@ class OptimizationDashboard(Screen):
                 "CV", "GeoCV", "LogNorm p", "Eccent", "Score"
             )
             columns_done = time.time()
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF1","location":"optimization_dashboard.py:168","message":"Columns added","data":{"elapsed_ms":(columns_done-table_start)*1000},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             
             # Load existing parameter sets (fast - just display what we have)
             # Only show parameter sets from included config files
             history_start = time.time()
+            self._row_key_to_index.clear()  # Clear cache on mount
             for ps in self.project.get_filtered_parameter_sets():
-                self._add_row_to_table(table, ps)
+                self._add_row_to_table(table, ps, update_cache=True)
             history_done = time.time()
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF1","location":"optimization_dashboard.py:180","message":"Parameter sets loaded","data":{"elapsed_ms":(history_done-history_start)*1000,"num_parameter_sets":len(self.project.parameter_sets)},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             
             # Update best parameter set after loading table
             self._update_best_parameter_set()
@@ -211,57 +154,54 @@ class OptimizationDashboard(Screen):
                 self.call_after_refresh(self.update_objective_function_plots)
             
             update_done = time.time()
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF1","location":"optimization_dashboard.py:190","message":"on_mount() completed","data":{"total_elapsed_ms":(update_done-mount_start)*1000},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             
             # Defer config file scanning to after UI is rendered (don't block initialization)
             # This scans config files and adds any new parameter sets found
             self.set_timer(0.5, self._scan_config_files_async)
             
-            # Set up periodic checking AFTER mount is complete (don't block initialization)
-            # Use a small delay to ensure UI is fully rendered first
-            self.set_timer(1.0, self._start_periodic_checking)
+            # Note: check_results is NOT called automatically on mount
+            # User must click "Calculate" or "Refresh" to trigger calculations
         except Exception as e:
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json, traceback
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"G","location":"optimization_dashboard.py:109","message":"on_mount() exception","data":{"error":str(e),"traceback":traceback.format_exc()},"timestamp":__import__("time").time()*1000})+"\n")
-            except: pass
-            # #endregion
             raise
 
-    def _add_row_to_table(self, table: DataTable, ps: ParameterSetEntry):
-        # Determine status
+    def _add_row_to_table(self, table: DataTable, ps: ParameterSetEntry, update_cache: bool = True):
+        # Determine status (cache this to avoid repeated file system checks)
         if ps.result is None:
-            # Check if masks exist
+            # Check if masks exist - if they do, mark as "Ready" for calculation
+            # If not, mark as "Pending" (waiting for masks to be generated)
             if self.optimizer.has_output_files(ps):
-                status = "Ready"
+                status = "Ready"  # Masks exist, ready for calculation
             else:
-                status = "Pending"
+                status = "Pending"  # No masks yet, waiting
         elif self._has_default_quality_metrics(ps.result):
             status = "Ready"  # Has result but needs recalculation
         else:
             status = "Scored"  # Has valid result
         
-        # Get config file name (basename) and param_set_id for display
-        config_name = os.path.basename(ps.config_file_path) if ps.config_file_path else "..."
+        # Get image name and param_set_id for display
+        # Use image_id if available, otherwise derive from image_path
+        if ps.image_id:
+            image_display = ps.image_id
+        elif ps.image_path:
+            image_display = os.path.basename(ps.image_path)
+            # Remove .ome extension if present
+            if image_display.endswith('.ome'):
+                image_display = image_display[:-4]
+        else:
+            image_display = "..."
+        
         param_set_id = ps.param_set_id or "..."
+        row_key = (param_set_id, ps.image_path or "")
         
         # Check if this is the best parameter set
         is_best = (
             self._best_param_set_key is not None and
-            self._best_param_set_key[0] == ps.config_file_path and
-            self._best_param_set_key[1] == ps.param_set_id
+            self._best_param_set_key[0] == ps.param_set_id and
+            self._best_param_set_key[1] == ps.image_path
         )
         
-        # Add star indicator to config name if best
-        display_config_name = f"★ {config_name}" if is_best else config_name
+        # Add star indicator to image name if best
+        display_image_name = f"★ {image_display}" if is_best else image_display
         
         # Format metric values
         if ps.result and not self._has_default_quality_metrics(ps.result):
@@ -289,8 +229,9 @@ class OptimizationDashboard(Screen):
             eccent = ""
             score = ""
         
-        table.add_row(
-            display_config_name,
+        row_key_str = f"{ps.param_set_id}:{ps.image_path}" if ps.param_set_id and ps.image_path else None
+        row_key_obj = table.add_row(
+            display_image_name,
             param_set_id,
             f"{ps.parameters.get('diameter', 0):.1f}",
             f"{ps.parameters.get('min_size', 0)}",
@@ -308,8 +249,17 @@ class OptimizationDashboard(Screen):
             lognorm_p,
             eccent,
             score,
-            key=f"{ps.config_file_path}:{ps.param_set_id}" if ps.config_file_path and ps.param_set_id else None
+            key=row_key_str
         )
+        
+        # Convert RowKey to integer index for storage and comparisons
+        # Since we just added the row, it's at index row_count - 1
+        # RowKey can be used directly in update_cell_at, but for comparisons we need int
+        row_idx = table.row_count - 1
+        
+        # Update cache with integer index
+        if update_cache and row_key_str:
+            self._row_key_to_index[row_key] = row_idx
 
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
@@ -319,7 +269,17 @@ class OptimizationDashboard(Screen):
             self.app.switch_screen(ProjectDashboard(self.project))
             
         elif event.button.id == "btn-calculate":
+            # #region agent log
+            import json
+            try:
+                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a") as f:
+                    f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "A", "location": "optimization_dashboard.py:267", "message": "Button clicked - calling calculate_stats_for_ready", "data": {"button_id": "btn-calculate"}, "timestamp": __import__("time").time() * 1000}) + "\n")
+            except: pass
+            # #endregion
             self.calculate_stats_for_ready()
+            
+        elif event.button.id == "btn-clear":
+            self.clear_all_results()
             
         elif event.button.id == "btn-stop":
             self.auto_run = False
@@ -329,6 +289,8 @@ class OptimizationDashboard(Screen):
             
         elif event.button.id == "btn-refresh":
             self.refresh_iterations()
+            # Also check for completed results
+            self.check_results()
             
         elif event.button.id == "btn-auto":
             self.toggle_auto_run()
@@ -378,13 +340,6 @@ class OptimizationDashboard(Screen):
             # Scan config files to get current parameter sets (this will add new ones via get_or_create_parameter_set)
             scanned_parameter_sets = self.optimizer.scan_config_files_for_parameter_sets()
             scan_done = time.time()
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF1","location":"optimization_dashboard.py:_scan_config_files_async","message":"Scanned config files","data":{"elapsed_ms":(scan_done-scan_start)*1000,"num_parameter_sets":len(scanned_parameter_sets)},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             
             # Check if new parameter sets were added
             new_count = len(self.project.parameter_sets) - old_count
@@ -393,40 +348,30 @@ class OptimizationDashboard(Screen):
                 self.project.save()
                 logger.info(f"Added {new_count} new parameter set(s) from config files, total: {len(self.project.parameter_sets)}")
                 
-                # Add new rows to table
-                table = self.query_one("#history-table", DataTable)
-                # Rebuild table with filtered sets only
-                filtered_sets = self.project.get_filtered_parameter_sets()
-                table.clear()
-                for ps in filtered_sets:
-                    self._add_row_to_table(table, ps)
+                # Defer table rebuild to avoid blocking UI
+                def rebuild_table():
+                    if not self._is_scrolling:  # Skip if user is scrolling
+                        table = self.query_one("#history-table", DataTable)
+                        # Rebuild table with filtered sets only
+                        filtered_sets = self.project.get_filtered_parameter_sets()
+                        table.clear()
+                        self._row_key_to_index.clear()  # Clear cache when rebuilding
+                        for ps in filtered_sets:
+                            self._add_row_to_table(table, ps, update_cache=True)
+                
+                self.call_after_refresh(rebuild_table)
                 
         except Exception as e:
             logger.error(f"Error scanning config files: {e}")
     
-    def _start_periodic_checking(self):
-        """Start the periodic checking after a delay."""
-        import time
-        # #region agent log
-        try:
-            with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                import json
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF2","location":"optimization_dashboard.py:195","message":"Starting periodic checking","data":{},"timestamp":time.time()*1000})+"\n")
-        except: pass
-        # #endregion
-        self.set_interval(2.0, self.check_results)
-    
     def check_results(self):
         """Check for updates on pending iterations."""
         import time
+        # Skip updates if user is actively scrolling to prevent glitches
+        if self._is_scrolling:
+            return
+        
         check_start = time.time()
-        # #region agent log
-        try:
-            with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                import json
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF2","location":"optimization_dashboard.py:202","message":"check_results() entry","data":{},"timestamp":time.time()*1000})+"\n")
-        except: pass
-        # #endregion
         try:
             table = self.query_one("#history-table", DataTable)
             updated = False
@@ -436,92 +381,149 @@ class OptimizationDashboard(Screen):
             filtered_sets = self.project.get_filtered_parameter_sets()
             pending_count = 0
             
-            # Build a mapping from param_set to row index in table
-            param_set_to_row = {}
-            for row_idx in range(table.row_count):
-                try:
-                    row_key = (table.get_cell_at((row_idx, 0)).value, table.get_cell_at((row_idx, 1)).value)  # Config, Param Set
-                    param_set_to_row[row_key] = row_idx
-                except Exception:
-                    continue
-            
-            for i, param_set in enumerate(filtered_sets):
-                if param_set.result is None:
-                    pending_count += 1
-                    # Check status
-                    status_check_start = time.time()
-                    result = self.optimizer.check_parameter_set_status(param_set)
-                    status_check_done = time.time()
-                    # #region agent log
+            # Rebuild row mapping cache if table size changed (more efficient than rebuilding every time)
+            if len(self._row_key_to_index) != table.row_count:
+                self._row_key_to_index.clear()
+                for row_idx in range(table.row_count):
                     try:
-                        with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                            import json
-                            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF2","location":"optimization_dashboard.py:220","message":"check_parameter_set_status completed","data":{"config_file":param_set.config_file_path,"param_set_id":param_set.param_set_id,"elapsed_ms":(status_check_done-status_check_start)*1000,"has_result":result is not None},"timestamp":time.time()*1000})+"\n")
-                    except: pass
-                    # #endregion
-                    if result:
-                        self.project.update_parameter_set_result(param_set.config_file_path, param_set.param_set_id, result)
-                        updated = True
+                        image_cell = table.get_cell_at((row_idx, 0))
+                        param_cell = table.get_cell_at((row_idx, 1))
+                        # Remove star prefix if present
+                        image_name = image_cell.value.replace("★ ", "") if image_cell.value else "..."
+                        param_set_id = param_cell.value if param_cell.value else "..."
+                        # Try to get image_path from parameter set to match row_key format
+                        # For now, use image_name as fallback (less precise but works)
+                        row_key = (param_set_id, image_name)
+                        self._row_key_to_index[row_key] = row_idx
+                    except Exception:
+                        continue
+            
+            # Batch processing: Only check a subset of pending parameter sets per cycle
+            # Filter to get only pending sets (those without results)
+            pending_sets = [ps for ps in filtered_sets if ps.result is None]
+            pending_count = len(pending_sets)
+            
+            # Process only a batch at a time (e.g., 10 sets per cycle) to avoid overwhelming the system
+            batch_size = 10
+            if pending_sets:
+                # Calculate which batch to process (rotate through all pending sets)
+                start_idx = self._batch_check_index % len(pending_sets)
+                end_idx = min(start_idx + batch_size, len(pending_sets))
+                
+                # Get the batch to process
+                batch_to_check = pending_sets[start_idx:end_idx]
+                
+                # Update batch index for next cycle (wrap around if needed)
+                self._batch_check_index = end_idx if end_idx < len(pending_sets) else 0
+            else:
+                batch_to_check = []
+            
+            # Process only the batch
+            for i, param_set in enumerate(batch_to_check):
+                # FIRST: Lightweight check if files exist (avoids expensive calculation when no output yet)
+                has_files = self.optimizer.has_output_files(param_set)
+                
+                # Update status to "Ready" if masks exist but no result yet
+                if has_files and param_set.result is None:
+                    param_set_id = param_set.param_set_id or "..."
+                    row_key = (param_set_id, param_set.image_path or "")
+                    row_idx = self._row_key_to_index.get(row_key)
+                    
+                    if row_idx is not None and row_idx < table.row_count:
+                        # Update status to "Ready" since masks exist
+                        table.update_cell_at((row_idx, 6), "Ready")
+                
+                if not has_files:
+                    continue  # Skip expensive calculation if no files yet
+                
+                # Rate limiting: Only check if enough time has passed since last check (30 seconds minimum)
+                param_set_key = (param_set.param_set_id or "", param_set.image_path or "")
+                current_time = time.time()
+                last_check = self._last_check_time.get(param_set_key, 0)
+                min_check_interval = 30.0  # Minimum seconds between checks
+                
+                if current_time - last_check < min_check_interval:
+                    continue  # Skip if checked too recently
+                
+                # Update last check time
+                self._last_check_time[param_set_key] = current_time
+                
+                # THEN: Only do expensive calculation if files exist and rate limit allows
+                # Check status
+                status_check_start = time.time()
+                result = self.optimizer.check_parameter_set_status(param_set)
+                status_check_done = time.time()
+                if result:
+                    self.project.update_parameter_set_result(
+                        param_set_id=param_set.param_set_id,
+                        image_path=param_set.image_path or "",
+                        result=result,
+                        config_file_path=param_set.config_file_path
+                    )
+                    updated = True
+                    
+                    # Update table - find row index using cached mapping
+                    param_set_id = param_set.param_set_id or "..."
+                    row_key = (param_set_id, param_set.image_path or "")
+                    row_idx = self._row_key_to_index.get(row_key)
+                    
+                    if row_idx is not None and row_idx < table.row_count:
+                        # Determine status
+                        has_defaults = self._has_default_quality_metrics(result)
+                        status_text = "Scored" if not has_defaults else "Ready"
                         
-                        # Update table - find row index by matching config name and param_set_id
-                        config_name = os.path.basename(param_set.config_file_path) if param_set.config_file_path else "..."
-                        param_set_id = param_set.param_set_id or "..."
-                        row_key = (config_name, param_set_id)
-                        row_idx = param_set_to_row.get(row_key)
+                        # Batch cell updates to reduce redraws
+                        updates = []
+                        updates.append(((row_idx, 6), status_text))  # Status column (6)
+                        if not has_defaults:
+                            # Column indices: Config(0), Param Set(1), Diameter(2), Min Size(3), CellProb(4), Flow(5), 
+                            # Status(6), Cells(7), Mean Area(8), Solidity(9), Circular(10), Euler%(11), FCR(12),
+                            # CV(13), GeoCV(14), LogNorm p(15), Eccent(16), Score(17)
+                            updates.append(((row_idx, 7), str(result.num_cells)))  # Cells column
+                            updates.append(((row_idx, 8), f"{result.mean_area:.2f}"))  # Mean Area column
+                            updates.append(((row_idx, 9), f"{result.mean_solidity:.2f}"))  # Solidity
+                            updates.append(((row_idx, 10), f"{result.mean_circularity:.2f}"))  # Circular
+                            updates.append(((row_idx, 11), f"{result.euler_integrity_pct:.1f}%"))  # Euler%
+                            fcr_val = f"{result.fcr:.2f}" if result.fcr >= 0 else "N/A"
+                            updates.append(((row_idx, 12), fcr_val))  # FCR
+                            updates.append(((row_idx, 13), f"{result.cv_area:.2f}"))  # CV
+                            updates.append(((row_idx, 14), f"{result.geometric_cv:.2f}"))  # GeoCV
+                            lognorm_p = f"{result.lognormal_pvalue:.3f}" if result.lognormal_pvalue >= 0.001 else f"{result.lognormal_pvalue:.2e}"
+                            updates.append(((row_idx, 15), lognorm_p))  # LogNorm p
+                            updates.append(((row_idx, 16), f"{result.mean_eccentricity:.2f}"))  # Eccent
+                            updates.append(((row_idx, 17), f"{result.score:.4f}"))  # Score column
                         
-                        if row_idx is not None and row_idx < table.row_count:
-                            # Determine status
-                            has_defaults = self._has_default_quality_metrics(result)
-                            status_text = "Scored" if not has_defaults else "Ready"
-                            table.update_cell_at((row_idx, 6), status_text)  # Status column (6)
-                            if not has_defaults:
-                                # Column indices: Config(0), Param Set(1), Diameter(2), Min Size(3), CellProb(4), Flow(5), 
-                                # Status(6), Cells(7), Mean Area(8), Solidity(9), Circular(10), Euler%(11), FCR(12),
-                                # CV(13), GeoCV(14), LogNorm p(15), Eccent(16), Score(17)
-                                table.update_cell_at((row_idx, 7), str(result.num_cells))  # Cells column
-                                table.update_cell_at((row_idx, 8), f"{result.mean_area:.2f}")  # Mean Area column
-                                table.update_cell_at((row_idx, 9), f"{result.mean_solidity:.2f}")  # Solidity
-                                table.update_cell_at((row_idx, 10), f"{result.mean_circularity:.2f}")  # Circular
-                                table.update_cell_at((row_idx, 11), f"{result.euler_integrity_pct:.1f}%")  # Euler%
-                                fcr_val = f"{result.fcr:.2f}" if result.fcr >= 0 else "N/A"
-                                table.update_cell_at((row_idx, 12), fcr_val)  # FCR
-                                table.update_cell_at((row_idx, 13), f"{result.cv_area:.2f}")  # CV
-                                table.update_cell_at((row_idx, 14), f"{result.geometric_cv:.2f}")  # GeoCV
-                                lognorm_p = f"{result.lognormal_pvalue:.3f}" if result.lognormal_pvalue >= 0.001 else f"{result.lognormal_pvalue:.2e}"
-                                table.update_cell_at((row_idx, 15), lognorm_p)  # LogNorm p
-                                table.update_cell_at((row_idx, 16), f"{result.mean_eccentricity:.2f}")  # Eccent
-                                table.update_cell_at((row_idx, 17), f"{result.score:.4f}")  # Score column
-                             
-                        # If this was the last parameter set, mark as recently completed
-                        if i == len(filtered_sets) - 1:
-                            latest_completed = True
+                        # Defer table updates to avoid blocking UI during scroll
+                        # Use call_after_refresh to batch updates and prevent glitches
+                        def apply_updates():
+                            if not self._is_scrolling:  # Double-check we're not scrolling
+                                for (r, c), value in updates:
+                                    try:
+                                        table.update_cell_at((r, c), value)
+                                    except Exception:
+                                        pass  # Ignore errors if table was modified
+                        
+                        self.call_after_refresh(apply_updates)
+                         
+                    # If this was the last parameter set in the batch, mark as recently completed
+                    if i == len(batch_to_check) - 1:
+                        latest_completed = True
 
             check_done = time.time()
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF2","location":"optimization_dashboard.py:240","message":"check_results() completed","data":{"elapsed_ms":(check_done-check_start)*1000,"pending_count":pending_count,"updated":updated},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
 
             if updated:
                 self.project.save()
                 
-                # Update best parameter set after results change
-                self._update_best_parameter_set()
+                # Update best parameter set after results change (defer to avoid blocking)
+                if not self._is_scrolling:
+                    self.call_after_refresh(self._update_best_parameter_set)
                 
                 # Auto-run logic: if the latest iteration just completed, refresh to check for new iterations
                 if self.auto_run and latest_completed and self.project.status.state != "COMPLETED":
                     self.refresh_iterations()
         except Exception as e:
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json, traceback
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF2","location":"optimization_dashboard.py:255","message":"check_results() exception","data":{"error":str(e),"error_type":type(e).__name__,"traceback":traceback.format_exc()},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
+            import logging
+            logging.getLogger(__name__).error(f'Error: {e}')
             # Don't raise - just log the error
 
     @work(exclusive=True)
@@ -542,17 +544,23 @@ class OptimizationDashboard(Screen):
             if added_count > 0:
                 self.project.save()
                 
-                # Update table
-                table = self.query_one("#history-table", DataTable)
-                # Rebuild table with filtered sets only
-                filtered_sets = self.project.get_filtered_parameter_sets()
-                table.clear()
-                for param_set in filtered_sets:
-                    self._add_row_to_table(table, param_set)
-                    table.scroll_end()
+                # Defer table rebuild to avoid blocking UI
+                def rebuild_table_async():
+                    if not self._is_scrolling:  # Skip if user is scrolling
+                        table = self.query_one("#history-table", DataTable)
+                        # Rebuild table with filtered sets only
+                        filtered_sets = self.project.get_filtered_parameter_sets()
+                        table.clear()
+                        self._row_key_to_index.clear()  # Clear cache when rebuilding
+                        for param_set in filtered_sets:
+                            self._add_row_to_table(table, param_set, update_cache=True)
+                        # Scroll to end only once after all rows are added
+                        table.scroll_end()
+                        
+                        # Update best parameter set after refresh
+                        self._update_best_parameter_set()
                 
-                # Update best parameter set after refresh
-                self._update_best_parameter_set()
+                self.call_after_refresh(rebuild_table_async)
                 
                 self.notify(f"Added {added_count} new parameter set(s) from config files.")
             else:
@@ -607,8 +615,16 @@ class OptimizationDashboard(Screen):
         """
         return self.project._result_has_default_metrics(result)
     
-    def _update_best_parameter_set(self):
-        """Update the best parameter set based on current optimization method."""
+    def _update_best_parameter_set(self, show_notification_on_change: bool = True):
+        """Update the best parameter set based on current optimization method.
+        
+        Args:
+            show_notification_on_change: If True, show notification when best changes
+        """
+        # Skip if user is actively scrolling to prevent glitches
+        if self._is_scrolling:
+            return
+        
         try:
             from tui.optimization.optimizer import identify_best_parameter_set
             
@@ -627,147 +643,485 @@ class OptimizationDashboard(Screen):
             old_best = self._best_param_set_key
             self._best_param_set_key = best_key
             
-            # If best changed, refresh table to update highlighting
+            # Only rebuild table if best changed (to avoid expensive rebuilds)
             if old_best != best_key:
                 try:
-                    # Refresh the table to show updated highlighting
                     table = self.query_one("#history-table", DataTable)
                     filtered_sets = self.project.get_filtered_parameter_sets()
-                    table.clear()
-                    for ps in filtered_sets:
-                        self._add_row_to_table(table, ps)
+                    
+                    # Update star indicators without full rebuild - just update affected rows
+                    if old_best:
+                        old_param_set_id = old_best[0] or "..."
+                        old_image_path = old_best[1] or ""
+                        old_row_key = (old_param_set_id, old_image_path)
+                        old_row_idx = self._row_key_to_index.get(old_row_key)
+                        if old_row_idx is not None and old_row_idx < table.row_count:
+                            # Remove star from old best
+                            old_image_cell = table.get_cell_at((old_row_idx, 0))
+                            if old_image_cell.value.startswith("★ "):
+                                table.update_cell_at((old_row_idx, 0), old_image_cell.value.replace("★ ", ""))
+                    
+                    if best_key:
+                        new_param_set_id = best_key[0] or "..."
+                        new_image_path = best_key[1] or ""
+                        new_row_key = (new_param_set_id, new_image_path)
+                        new_row_idx = self._row_key_to_index.get(new_row_key)
+                        if new_row_idx is not None and new_row_idx < table.row_count:
+                            # Add star to new best
+                            new_image_cell = table.get_cell_at((new_row_idx, 0))
+                            if not new_image_cell.value.startswith("★ "):
+                                table.update_cell_at((new_row_idx, 0), f"★ {new_image_cell.value}")
+                        
+                        if show_notification_on_change:
+                            image_name = os.path.basename(new_image_path) if new_image_path else "..."
+                            self.notify(f"Best parameter set updated: {new_param_set_id} / {image_name}", severity="information")
+                        logger.debug(f"Best parameter set: {new_param_set_id} / {new_image_path} (method: {method})")
+                    else:
+                        logger.debug("No best parameter set found (no scored results?)")
                 except Exception as e:
-                    logger.debug(f"Could not refresh table for best parameter set update: {e}")
+                    logger.error(f"Could not update table for best parameter set: {e}")
+                    import traceback
+                    logger.debug(traceback.format_exc())
         except Exception as e:
             logger.error(f"Error updating best parameter set: {e}")
+            import traceback
+            logger.debug(traceback.format_exc())
             # Don't raise - just log the error
     
-    @work(exclusive=True)
-    async def calculate_stats_for_ready(self):
+    @work(exclusive=True, thread=True)
+    def calculate_stats_for_ready(self):
         """Calculate statistics for all parameter sets that are ready for scoring."""
-        from textual.widgets import Static
-        
-        # Get filtered parameter sets (only from included config files)
-        filtered_sets = self.project.get_filtered_parameter_sets()
-        
-        # Find parameter sets that are ready for scoring
-        ready_sets = [ps for ps in filtered_sets if self._is_ready_for_scoring(ps)]
-        
-        if not ready_sets:
-            self.notify("No parameter sets ready for calculation.", severity="info")
-            return
-        
-        # Update status
-        calc_status = self.query_one("#calc-status", Static)
-        calc_status.update(f"Calculating stats for {len(ready_sets)} set(s)...")
-        
-        table = self.query_one("#history-table", DataTable)
-        updated_count = 0
-        error_count = 0
-        
-        for param_set in ready_sets:
+        # #region agent log
+        import json, time, threading
+        try:
+            with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a") as f:
+                f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "B", "location": "optimization_dashboard.py:680", "message": "Method entry - worker starting", "data": {"thread_id": threading.current_thread().ident, "thread_name": threading.current_thread().name}, "timestamp": time.time() * 1000}) + "\n")
+        except: pass
+        # #endregion
+        try:
+            logger.info("calculate_stats_for_ready: Starting calculation")
+            
+            # #region agent log
             try:
-                # Find row index for this parameter set
-                row_idx = None
-                for i, ps in enumerate(filtered_sets):
-                    if ps.config_file_path == param_set.config_file_path and ps.param_set_id == param_set.param_set_id:
-                        row_idx = i
-                        break
-                
-                if row_idx is None:
-                    continue
-                
-                # Show spinner in status column
-                if row_idx < table.row_count:
-                    table.update_cell_at((row_idx, 6), "Calculating...")  # Status column (index 6)
-                
-                # Calculate stats
-                result = self.optimizer.check_parameter_set_status(param_set)
-                
-                if result:
-                    self.project.update_parameter_set_result(
-                        param_set.config_file_path,
-                        param_set.param_set_id,
-                        result
-                    )
-                    updated_count += 1
-                    
-                    # Update table - clear spinner and show results (use call_from_thread)
-                    def update_table_scored():
-                        table = self.query_one("#history-table", DataTable)
-                        if row_idx < table.row_count:
-                            # Only mark as "Scored" if result doesn't have default values
-                            has_defaults = self._has_default_quality_metrics(result)
-                            status_text = "Scored" if not has_defaults else "Ready"
-                            table.update_cell_at((row_idx, 6), status_text)  # Status column
-                            
-                            # Only update metric cells if result doesn't have default values
-                            if not has_defaults:
-                                table.update_cell_at((row_idx, 7), str(result.num_cells))  # Num Cells column (index 7)
-                                table.update_cell_at((row_idx, 8), f"{result.mean_area:.2f}")  # Mean Area column (index 8)
-                                table.update_cell_at((row_idx, 9), f"{result.score:.4f}")  # Score column (index 9)
-                    
-                    self.app.call_from_thread(update_table_scored)
-                else:
-                    error_count += 1
-                    # Update table to show error
-                    def update_table_error():
-                        table = self.query_one("#history-table", DataTable)
-                        if row_idx < table.row_count:
-                            table.update_cell_at((row_idx, 6), "Error")
-                    
-                    self.app.call_from_thread(update_table_error)
-                    
-            except Exception as e:
-                error_count += 1
-                error_msg = str(e)
-                logger.error(f"Error calculating stats for {param_set.param_set_id}: {error_msg}", exc_info=True)
-        
-        # Update UI with final results (use call_from_thread)
-        def update_final_ui():
-            # Check if quality metrics were calculated - if not, warn about missing dependencies
-            if updated_count > 0:
-                # Check if any results have default metrics (indicating missing dependencies)
-                filtered_sets = self.project.get_filtered_parameter_sets()
-                results_with_defaults = sum(1 for ps in filtered_sets 
-                                          if ps.result is not None and self._has_default_quality_metrics(ps.result))
-                if results_with_defaults > 0:
-                    # Check if scikit-image is missing
+                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a") as f:
+                    f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "B", "location": "optimization_dashboard.py:685", "message": "Inside try block - worker thread confirmed", "data": {}, "timestamp": time.time() * 1000}) + "\n")
+            except: pass
+            # #endregion
+            
+            # Notify that we're starting (on main thread)
+            def notify_starting():
+                self.notify("Starting calculation...", severity="info")
+            # #region agent log
+            try:
+                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a") as f:
+                    f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "E", "location": "optimization_dashboard.py:691", "message": "Before call_from_thread for notify_starting", "data": {}, "timestamp": time.time() * 1000}) + "\n")
+            except: pass
+            # #endregion
+            self.app.call_from_thread(notify_starting)
+            
+            # Get filtered parameter sets (only from included config files)
+            filtered_sets = self.project.get_filtered_parameter_sets()
+            logger.info(f"calculate_stats_for_ready: Found {len(filtered_sets)} filtered parameter sets")
+            # #region agent log
+            try:
+                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a") as f:
+                    f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "C", "location": "optimization_dashboard.py:696", "message": "Filtered sets retrieved", "data": {"count": len(filtered_sets)}, "timestamp": time.time() * 1000}) + "\n")
+            except: pass
+            # #endregion
+            
+            # Find parameter sets that are ready for scoring
+            ready_sets = []
+            for ps in filtered_sets:
+                try:
+                    is_ready = self._is_ready_for_scoring(ps)
+                    if is_ready:
+                        ready_sets.append(ps)
+                    logger.debug(f"Parameter set {ps.param_set_id} / {ps.image_path}: has_masks={self.optimizer.has_output_files(ps)}, result={ps.result is not None}, ready={is_ready}")
+                except Exception as e:
+                    logger.error(f"Error checking if parameter set {ps.param_set_id} is ready: {e}", exc_info=True)
+            
+            logger.info(f"Found {len(ready_sets)} ready parameter sets out of {len(filtered_sets)} total")
+            # #region agent log
+            try:
+                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a") as f:
+                    f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "C", "location": "optimization_dashboard.py:710", "message": "Ready sets count", "data": {"ready_count": len(ready_sets), "total_count": len(filtered_sets)}, "timestamp": time.time() * 1000}) + "\n")
+            except: pass
+            # #endregion
+            
+            if not ready_sets:
+                def notify_no_ready():
+                    self.notify(f"No parameter sets ready for calculation. Checked {len(filtered_sets)} sets. Check that masks exist and status is 'Ready'.", severity="info")
+                # #region agent log
+                try:
+                    with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a") as f:
+                        f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "C", "location": "optimization_dashboard.py:714", "message": "No ready sets - returning early", "data": {}, "timestamp": time.time() * 1000}) + "\n")
+                except: pass
+                # #endregion
+                self.app.call_from_thread(notify_no_ready)
+                return
+            
+            # Update status (must use call_from_thread since we're in a worker thread)
+            def update_status():
+                try:
+                    from textual.widgets import Static
+                    calc_status = self.query_one("#calc-status", Static)
+                    calc_status.update(f"Calculating stats for {len(ready_sets)} set(s)...")
+                    # #region agent log
                     try:
-                        import skimage
-                    except ImportError:
-                        self.notify(
-                            "Quality metrics could not be calculated: scikit-image is missing. "
-                            "Install with: pip install scikit-image scipy",
-                            severity="warning"
-                        )
-                    else:
+                        with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a") as f:
+                            f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "D", "location": "optimization_dashboard.py:722", "message": "Status widget updated successfully", "data": {"ready_count": len(ready_sets)}, "timestamp": time.time() * 1000}) + "\n")
+                    except: pass
+                    # #endregion
+                except Exception as e:
+                    # #region agent log
+                    try:
+                        with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a") as f:
+                            f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "D", "location": "optimization_dashboard.py:725", "message": "Status widget update failed", "data": {"error": str(e)}, "timestamp": time.time() * 1000}) + "\n")
+                    except: pass
+                    # #endregion
+                    pass  # Widget might not exist
+            # #region agent log
+            try:
+                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a") as f:
+                    f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "E", "location": "optimization_dashboard.py:732", "message": "Before call_from_thread for update_status", "data": {"ready_count": len(ready_sets)}, "timestamp": time.time() * 1000}) + "\n")
+            except: pass
+            # #endregion
+            self.app.call_from_thread(update_status)
+            
+            updated_count = 0
+            error_count = 0
+            
+            # Braille spinner frames for status updates
+            spinner_frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+            spinner_idx = 0
+            
+            # #region agent log
+            try:
+                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a") as f:
+                    f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "C", "location": "optimization_dashboard.py:740", "message": "Starting loop over ready_sets", "data": {"ready_count": len(ready_sets)}, "timestamp": time.time() * 1000}) + "\n")
+            except: pass
+            # #endregion
+            
+            # Use ThreadPoolExecutor to run heavy calculations in separate threads
+            # This allows the worker thread to yield and update UI
+            from concurrent.futures import ThreadPoolExecutor, as_completed
+            import time
+            
+            # Process calculations with a limited number of concurrent workers
+            max_workers = 2  # Limit concurrent calculations to avoid overwhelming system
+            
+            def calculate_single(param_set_with_idx):
+                """Calculate stats for a single parameter set - runs in thread pool."""
+                param_set, actual_idx = param_set_with_idx
+                try:
+                    result = self.optimizer.check_parameter_set_status(param_set)
+                    return (param_set, actual_idx, result, None)
+                except Exception as e:
+                    return (param_set, actual_idx, None, e)
+            
+            # Track active calculations for spinner animation
+            active_calculations = {}  # Maps row_idx_int to (future, param_set)
+            import threading
+            stop_spinner_animation = threading.Event()
+            
+            # Helper function to find row index for a parameter set (returns integer index)
+            def find_row_idx_for_param_set(param_set):
+                import os
+                row_key = (param_set.param_set_id or "", param_set.image_path or "")
+                row_idx = self._row_key_to_index.get(row_key)
+                
+                # Fallback: find by matching all fields in filtered_sets
+                if row_idx is None:
+                    for i, ps in enumerate(filtered_sets):
+                        ps_image = os.path.normpath(ps.image_path) if ps.image_path else None
+                        param_image = os.path.normpath(param_set.image_path) if param_set.image_path else None
+                        
+                        if (ps.param_set_id == param_set.param_set_id and 
+                            ps_image == param_image and
+                            ps.config_file_path == param_set.config_file_path):
+                            row_idx = i
+                            self._row_key_to_index[row_key] = row_idx
+                            break
+                
+                # Return integer index (cache should already have integers)
+                return row_idx if isinstance(row_idx, int) else None
+            
+            # Submit all calculations to thread pool
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # First, set "Calculating" for all rows that will be calculated
+                def set_all_calculating():
+                    table = self.query_one("#history-table", DataTable)
+                    for param_set in ready_sets:
+                        row_idx_int = find_row_idx_for_param_set(param_set)
+                        if row_idx_int is not None and isinstance(row_idx_int, int) and row_idx_int < table.row_count:
+                            table.update_cell_at((row_idx_int, 6), "Calculating")
+                self.app.call_from_thread(set_all_calculating)
+                
+                # Submit all calculations
+                futures = {}
+                for idx, param_set in enumerate(ready_sets):
+                    future = executor.submit(calculate_single, (param_set, idx))
+                    futures[future] = (param_set, idx)
+                    
+                    # Find row index and track for spinner animation
+                    row_idx_int = find_row_idx_for_param_set(param_set)
+                    if row_idx_int is not None:
+                        # Track this calculation for spinner animation
+                        active_calculations[row_idx_int] = (future, param_set)
+                        # Immediately set spinner for this row
+                        spinner_char = spinner_frames[0]
+                        def update_spinner_immediate(row_idx=row_idx_int, spinner=spinner_char):
+                            table = self.query_one("#history-table", DataTable)
+                            if isinstance(row_idx, int) and row_idx < table.row_count:
+                                table.update_cell_at((row_idx, 6), spinner)
+                        self.app.call_from_thread(update_spinner_immediate)
+                
+                # Animate spinner for active calculations in a separate loop
+                def animate_spinners():
+                    """Continuously update spinner animation for active calculations."""
+                    # Small delay to ensure calculations have started
+                    time.sleep(0.1)
+                    frame_idx = 0
+                    while not stop_spinner_animation.is_set():
+                        if not active_calculations:
+                            time.sleep(0.1)
+                            continue
+                        
+                        frame_idx = (frame_idx + 1) % len(spinner_frames)
+                        spinner_char = spinner_frames[frame_idx]
+                        
+                        # Update all active calculations with spinner only
+                        def update_all_spinners():
+                            table = self.query_one("#history-table", DataTable)
+                            for row_idx_int, (future, param_set) in list(active_calculations.items()):
+                                if isinstance(row_idx_int, int) and row_idx_int < table.row_count:
+                                    # Only update if still running - show ONLY spinner character
+                                    if not future.done():
+                                        table.update_cell_at((row_idx_int, 6), spinner_char)
+                        self.app.call_from_thread(update_all_spinners)
+                        time.sleep(0.2)  # Update every 200ms
+                
+                # Start spinner animation thread
+                spinner_thread = threading.Thread(target=animate_spinners, daemon=True)
+                spinner_thread.start()
+                
+                # Process results as they complete
+                for future in as_completed(futures):
+                    param_set, actual_idx, result, error = future.result()
+                    
+                    # Remove from active calculations
+                    row_idx_int = find_row_idx_for_param_set(param_set)
+                    if row_idx_int is not None and row_idx_int in active_calculations:
+                        del active_calculations[row_idx_int]
+                    
+                    # Process result as it completes
+                    # #region agent log
+                    try:
+                        import json, time
+                        with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a") as f:
+                            f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "F", "location": "optimization_dashboard.py:800", "message": "Calculation completed", "data": {"iteration": actual_idx, "param_set_id": param_set.param_set_id, "has_result": result is not None, "has_error": error is not None}, "timestamp": time.time() * 1000}) + "\n")
+                    except: pass
+                    # #endregion
+                    
+                    try:
+                        if row_idx_int is None:
+                            row_idx_int = find_row_idx_for_param_set(param_set)
+                        
+                        if row_idx_int is None:
+                            logger.warning(f"Could not find row for param_set_id={param_set.param_set_id}, image_path={param_set.image_path}")
+                            continue
+                        
+                        # Small yield to allow UI to update
+                        time.sleep(0.05)
+                        
+                        # Handle error case
+                        if error:
+                            error_count += 1
+                            logger.error(f"Error calculating stats for {param_set.param_set_id}: {error}", exc_info=True)
+                            def update_table_error():
+                                table = self.query_one("#history-table", DataTable)
+                                if isinstance(row_idx_int, int) and row_idx_int < table.row_count:
+                                    table.update_cell_at((row_idx_int, 6), "Error")
+                            self.app.call_from_thread(update_table_error)
+                            continue
+                        
+                        # Handle successful result
+                        if result:
+                            self.project.update_parameter_set_result(
+                                param_set_id=param_set.param_set_id,
+                                image_path=param_set.image_path or "",
+                                result=result,
+                                config_file_path=param_set.config_file_path
+                            )
+                            updated_count += 1
+                            
+                            # Update table - clear spinner and show results (use call_from_thread)
+                            def update_table_scored():
+                                table = self.query_one("#history-table", DataTable)
+                                if isinstance(row_idx_int, int) and row_idx_int < table.row_count:
+                                    # Only mark as "Scored" if result doesn't have default values
+                                    has_defaults = self._has_default_quality_metrics(result)
+                                    status_text = "Scored" if not has_defaults else "Ready"
+                                    table.update_cell_at((row_idx_int, 6), status_text)  # Status column
+                                    
+                                    # Update ALL metric cells if result doesn't have default values
+                                    # Use same formatting as _add_row_to_table
+                                    if not has_defaults:
+                                        table.update_cell_at((row_idx_int, 7), str(result.num_cells))  # Cells
+                                        table.update_cell_at((row_idx_int, 8), f"{result.mean_area:.2f}")  # Mean Area
+                                        table.update_cell_at((row_idx_int, 9), f"{result.mean_solidity:.2f}")  # Solidity
+                                        table.update_cell_at((row_idx_int, 10), f"{result.mean_circularity:.2f}")  # Circular
+                                        table.update_cell_at((row_idx_int, 11), f"{result.euler_integrity_pct:.1f}%")  # Euler%
+                                        fcr_str = f"{result.fcr:.2f}" if result.fcr >= 0 else "N/A"
+                                        table.update_cell_at((row_idx_int, 12), fcr_str)  # FCR
+                                        table.update_cell_at((row_idx_int, 13), f"{result.cv_area:.2f}")  # CV
+                                        table.update_cell_at((row_idx_int, 14), f"{result.geometric_cv:.2f}")  # GeoCV
+                                        lognorm_str = f"{result.lognormal_pvalue:.3f}" if result.lognormal_pvalue >= 0.001 else f"{result.lognormal_pvalue:.2e}"
+                                        table.update_cell_at((row_idx_int, 15), lognorm_str)  # LogNorm p
+                                        table.update_cell_at((row_idx_int, 16), f"{result.mean_eccentricity:.2f}")  # Eccent
+                                        table.update_cell_at((row_idx_int, 17), f"{result.score:.4f}")  # Score
+                            
+                            self.app.call_from_thread(update_table_scored)
+                        else:
+                            error_count += 1
+                            def update_table_error():
+                                table = self.query_one("#history-table", DataTable)
+                                if isinstance(row_idx_int, int) and row_idx_int < table.row_count:
+                                    table.update_cell_at((row_idx_int, 6), "Error")
+                            self.app.call_from_thread(update_table_error)
+                    
+                    except Exception as e:
+                        error_count += 1
+                        logger.error(f"Error processing result for {param_set.param_set_id}: {e}", exc_info=True)
+                
+                # Stop spinner animation when all calculations are done
+                stop_spinner_animation.set()
+                # Wait a bit for the spinner thread to finish
+                time.sleep(0.3)
+            
+            # Update UI with final results (use call_from_thread)
+            def update_final_ui():
+                from textual.widgets import Static
+                # Check if quality metrics were calculated - if not, warn about missing dependencies
+                if updated_count > 0:
+                    # Check if any results have default metrics (indicating missing dependencies)
+                    filtered_sets = self.project.get_filtered_parameter_sets()
+                    results_with_defaults = sum(1 for ps in filtered_sets 
+                                              if ps.result is not None and self._has_default_quality_metrics(ps.result))
+                    if results_with_defaults > 0:
+                        # Check if scikit-image is missing
                         try:
-                            import scipy
+                            import skimage
                         except ImportError:
                             self.notify(
-                                "Quality metrics could not be calculated: scipy is missing. "
-                                "Install with: pip install scipy",
+                                "Quality metrics could not be calculated: scikit-image is missing. "
+                                "Install with: pip install scikit-image scipy",
                                 severity="warning"
                             )
-            calc_status = self.query_one("#calc-status", Static)
+                        else:
+                            try:
+                                import scipy
+                            except ImportError:
+                                self.notify(
+                                    "Quality metrics could not be calculated: scipy is missing. "
+                                    "Install with: pip install scipy",
+                                    severity="warning"
+                                )
+                    try:
+                        calc_status = self.query_one("#calc-status", Static)
+                        if updated_count > 0:
+                            calc_status.update(f"✓ Completed: {updated_count} set(s) calculated")
+                            if error_count > 0:
+                                self.notify(f"Calculated stats for {updated_count} set(s). {error_count} error(s).", severity="warning")
+                            else:
+                                self.notify(f"Successfully calculated stats for {updated_count} parameter set(s).", severity="success")
+                            
+                            # Update best parameter set after calculations
+                            self._update_best_parameter_set()
+                        else:
+                            calc_status.update(f"✗ No stats calculated ({error_count} error(s))")
+                    except Exception:
+                        pass  # Widget might not exist
+            
+            self.app.call_from_thread(update_final_ui)
+            
+            # Save project
             if updated_count > 0:
-                calc_status.update(f"✓ Completed: {updated_count} set(s) calculated")
-                if error_count > 0:
-                    self.notify(f"Calculated stats for {updated_count} set(s). {error_count} error(s).", severity="warning")
-                else:
-                    self.notify(f"Successfully calculated stats for {updated_count} parameter set(s).", severity="success")
+                self.project.save()
                 
-                # Update best parameter set after calculations
-                self._update_best_parameter_set()
-            else:
-                calc_status.update(f"✗ No stats calculated ({error_count} error(s))")
+        except Exception as e:
+            logger.error(f"Error in calculate_stats_for_ready: {e}", exc_info=True)
+            # #region agent log
+            try:
+                import json, time
+                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a") as f:
+                    f.write(json.dumps({"sessionId": "debug-session", "runId": "run1", "hypothesisId": "A", "location": "optimization_dashboard.py:872", "message": "Exception caught in calculate_stats_for_ready", "data": {"error": str(e), "error_type": type(e).__name__}, "timestamp": time.time() * 1000}) + "\n")
+            except: pass
+            # #endregion
+            def notify_error():
+                self.notify(f"Error during calculation: {e}", severity="error")
+            self.app.call_from_thread(notify_error)
+    
+    def clear_all_results(self):
+        """Clear all stored results from parameter sets, allowing recalculation."""
+        from textual.widgets import DataTable
         
-        self.app.call_from_thread(update_final_ui)
+        # Clear results from all parameter sets
+        cleared_count = 0
+        for ps in self.project.parameter_sets:
+            if ps.result is not None:
+                ps.result = None
+                ps.last_updated = None
+                cleared_count += 1
         
-        # Save project
-        if updated_count > 0:
-            self.project.save()
+        # Reset best score tracking
+        self.project.status.best_score = 0.0
+        self.project.status.best_parameters = {}
+        self.project.status.best_param_set_id = None
+        self.project.status.best_config_file_path = None
+        self._best_param_set_key = None
+        
+        # Save the project
+        self.project.save()
+        
+        # Update the table to reflect cleared status
+        try:
+            table = self.query_one("#history-table", DataTable)
+            filtered_sets = self.project.get_filtered_parameter_sets()
+            
+            # Update status column for all rows
+            for i, ps in enumerate(filtered_sets):
+                if i < table.row_count:
+                    # Update status to "Pending" since results are cleared
+                    table.update_cell_at((i, 6), "Pending")  # Status column (index 6)
+                    
+                    # Clear metric columns
+                    table.update_cell_at((i, 7), "")  # Cells column
+                    table.update_cell_at((i, 8), "")  # Mean Area column
+                    table.update_cell_at((i, 9), "")  # Solidity
+                    table.update_cell_at((i, 10), "")  # Circular
+                    table.update_cell_at((i, 11), "")  # Euler%
+                    table.update_cell_at((i, 12), "")  # FCR
+                    table.update_cell_at((i, 13), "")  # CV
+                    table.update_cell_at((i, 14), "")  # GeoCV
+                    table.update_cell_at((i, 15), "")  # LogNorm p
+                    table.update_cell_at((i, 16), "")  # Eccent
+                    table.update_cell_at((i, 17), "")  # Score column
+            
+            # Update best parameter set display (will clear the star)
+            self._update_best_parameter_set(show_notification_on_change=False)
+            
+        except Exception as e:
+            logger.error(f"Error updating table after clearing results: {e}")
+        
+        # Show notification
+        self.notify(f"Cleared results for {cleared_count} parameter set(s). Ready for recalculation.", severity="success")
+        
+        # Refresh plots since results are cleared
+        if self.current_tab == "objective":
+            self.call_after_refresh(self.update_objective_function_plots)
+        elif self.current_tab == "pareto":
+            self.call_after_refresh(self.update_pareto_front_plots)
     
     def _switch_tab(self, tab_name: str) -> None:
         """Switch the visible tab in the plot panel."""
@@ -865,6 +1219,24 @@ class OptimizationDashboard(Screen):
         self.project.save()
         
         # Update button and border title directly (no plot refresh needed)
+        
+        # Update best parameter set since direction change affects selection
+        # Store old best before update to check if it changed
+        old_best_before_update = self._best_param_set_key
+        self._update_best_parameter_set(show_notification_on_change=True)
+        
+        # Show notification about direction change if best didn't change
+        # (if best changed, _update_best_parameter_set already showed notification)
+        direction_text = "maximize" if new_direction is True else "minimize" if new_direction is False else "not used"
+        if old_best_before_update == self._best_param_set_key:
+            # Best didn't change, but show confirmation that direction was updated
+            if self._best_param_set_key:
+                param_set_id = self._best_param_set_key[0] or "..."
+                image_path = self._best_param_set_key[1] or "..."
+                image_name = os.path.basename(image_path) if image_path != "..." else "..."
+                self.notify(f"Objective '{obj_name}' set to {direction_text}. Best unchanged: {param_set_id} / {image_name}", severity="information")
+            else:
+                self.notify(f"Objective '{obj_name}' set to {direction_text}. No best parameter set found.", severity="information")
         try:
             btn = self.query_one(f"#direction-btn-{obj_name}", Button)
             if new_direction is True:
@@ -928,13 +1300,6 @@ class OptimizationDashboard(Screen):
             
             # Get all objective fields and remove duplicates
             objective_fields = list(dict.fromkeys(OptimizationResult.get_objective_fields()))  # Preserve order, remove duplicates
-            # #region agent log
-            try:
-                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H1","location":"optimization_dashboard.py:983","message":"Objective fields list","data":{"objective_fields":objective_fields,"count":len(objective_fields)},"timestamp":__import__("time").time()*1000})+"\n")
-            except: pass
-            # #endregion
             logger.debug(f"Objective fields to plot: {objective_fields} (count: {len(objective_fields)})")
             
             # Get active parameters
@@ -951,13 +1316,6 @@ class OptimizationDashboard(Screen):
             
             # SIMPLIFIED: Create a plot for each objective - no duplicate tracking needed, just iterate
             for obj_name in objective_fields:
-                # #region agent log
-                try:
-                    with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                        import json
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H2","location":"optimization_dashboard.py:1000","message":"Processing objective","data":{"obj_name":obj_name,"loop_index":objective_fields.index(obj_name)},"timestamp":__import__("time").time()*1000})+"\n")
-                except: pass
-                # #endregion
                 # Collect data for this objective
                 data = []
                 for ps in sets_with_results:
@@ -1113,22 +1471,7 @@ class OptimizationDashboard(Screen):
                     'y_obs': y_obs.copy() if hasattr(y_obs, 'copy') else y_obs,
                     'gp_model': gp_model_stored,  # Store GP model for suggestion predictions
                 })
-                # #region agent log
-                try:
-                    with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                        import json
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H3","location":"optimization_dashboard.py:1142","message":"Stored plot entry","data":{"obj_name":obj_name,"plots_count":len(plots_to_mount)},"timestamp":__import__("time").time()*1000})+"\n")
-                except: pass
-                # #endregion
             
-            # #region agent log
-            try:
-                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    stored_obj_names = [p['obj_name'] for p in plots_to_mount]
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H3","location":"optimization_dashboard.py:1145","message":"All stored objectives","data":{"stored_objectives":stored_obj_names,"unique_count":len(set(stored_obj_names))},"timestamp":__import__("time").time()*1000})+"\n")
-            except: pass
-            # #endregion
             
             # Mount all plots at once on main thread (after clearing)
             def mount_all_plots():
@@ -1149,13 +1492,6 @@ class OptimizationDashboard(Screen):
                     
                     # Mount all plots
                     for idx, plot_data in enumerate(plots_to_mount):
-                        # #region agent log
-                        try:
-                            with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                                import json
-                                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H4","location":"optimization_dashboard.py:1155","message":"Mounting plot","data":{"idx":idx,"obj_name":plot_data['obj_name']},"timestamp":__import__("time").time()*1000})+"\n")
-                        except: pass
-                        # #endregion
                         plot_obj_name = plot_data['obj_name']  # Get directly from dict
                         obj_card = plot_data['obj_card']
                         direction_button = plot_data['direction_button']
@@ -1298,13 +1634,6 @@ class OptimizationDashboard(Screen):
                         
                         plot_widget.refresh_plot()
                     
-                    # #region agent log
-                    try:
-                        with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                            import json
-                            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H4","location":"optimization_dashboard.py:1265","message":"Mounting complete","data":{"mounted_count":len(plots_to_mount)},"timestamp":__import__("time").time()*1000})+"\n")
-                    except: pass
-                    # #endregion
                     
                     # Restore scroll position after all plots are mounted
                     try:

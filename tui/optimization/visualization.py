@@ -503,21 +503,7 @@ def setup_parameter_coverage_plot(
         plt.clear_figure()
         # Also clear any color/marker settings that might persist
         plt.clear_color()
-        # #region agent log
-        try:
-            import json, time
-            with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H1","location":"visualization.py:setup_parameter_coverage_plot","message":"Cleared plot in setup function","data":{},"timestamp":time.time()*1000})+"\n")
-        except: pass
-        # #endregion
     except Exception as e:
-        # #region agent log
-        try:
-            with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                import json, traceback
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"DIV2","location":"visualization.py:clear","message":"error clearing plot","data":{"error":str(e),"traceback":traceback.format_exc()},"timestamp":__import__("time").time()*1000})+"\n")
-        except: pass
-        # #endregion
         # Don't set plotsize here - let the widget handle it
         plt.title(f"Error initializing plot: {e}")
         return
@@ -535,13 +521,6 @@ def setup_parameter_coverage_plot(
             active_params.append(('cellprob_threshold', parameter_ranges.cellprob_threshold_min, parameter_ranges.cellprob_threshold_max))
         
         if len(active_params) < 2:
-            # #region agent log
-            try:
-                import json, time
-                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H2","location":"visualization.py:setup_parameter_coverage_plot","message":"EARLY RETURN - less than 2 params","data":{"active_params_count":len(active_params)},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             # Don't set plotsize here - let the widget handle it
             plt.clear_data()
             plt.clear_figure()
@@ -564,13 +543,6 @@ def setup_parameter_coverage_plot(
             config_files = config_filepaths
         
         if not config_files:
-            # #region agent log
-            try:
-                import json, time
-                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H2","location":"visualization.py:setup_parameter_coverage_plot","message":"EARLY RETURN - no config files","data":{"has_project":project is not None},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             # Don't set plotsize here - let the widget handle it
             plt.clear_data()
             plt.clear_figure()
@@ -630,13 +602,6 @@ def setup_parameter_coverage_plot(
                 colors_list.append(color)
         
         if not all_data_points:
-            # #region agent log
-            try:
-                import json, time
-                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H2","location":"visualization.py:setup_parameter_coverage_plot","message":"EARLY RETURN - no data points","data":{"config_files_count":len(config_files)},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             # Don't set plotsize here - let the widget handle it
             plt.clear_data()
             plt.clear_figure()
@@ -681,14 +646,6 @@ def setup_parameter_coverage_plot(
             for i, (param_name, param_min, param_max) in enumerate(active_params):
                 col = data_matrix[:, i]
                 # Normalize array of values
-                # #region agent log
-                try:
-                    with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                        import json
-                        param_range = float(param_max - param_min) if param_max != param_min else 0.0
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"DIV1","location":"visualization.py:normalize","message":"normalizing parameter","data":{"param_name":param_name,"param_min":float(param_min),"param_max":float(param_max),"col_min":float(np.min(col)),"col_max":float(np.max(col)),"range":param_range,"will_divide":param_max != param_min},"timestamp":__import__("time").time()*1000})+"\n")
-                except: pass
-                # #endregion
                 if param_max == param_min or abs(param_max - param_min) < 1e-10:
                     normalized_col = np.full_like(col, 0.5, dtype=float)
                 else:
@@ -903,13 +860,6 @@ def setup_parameter_coverage_plot(
         # Add grid
         plt.grid(True)
         
-        # #region agent log
-        try:
-            import json, time
-            with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H2","location":"visualization.py:setup_parameter_coverage_plot","message":"END of setup - plot configured","data":{"all_x_count":len(all_x) if all_x else 0,"all_y_count":len(all_y) if all_y else 0,"has_title":True},"timestamp":time.time()*1000})+"\n")
-        except: pass
-        # #endregion
         
         # Ensure plot is ready to be built
         # Note: PlotextPlot widget handles rendering automatically
@@ -926,13 +876,6 @@ def setup_parameter_coverage_plot(
             plt.grid(True)
             plt.scatter([0], [0], marker='+', color='blue', label='')
     except Exception as e:
-        # #region agent log
-        try:
-            with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                import json, traceback
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"DIV3","location":"visualization.py:setup_plot","message":"error setting up plot","data":{"error":str(e),"error_type":type(e).__name__,"traceback":traceback.format_exc()},"timestamp":__import__("time").time()*1000})+"\n")
-        except: pass
-        # #endregion
         # Don't set plotsize here - let the widget handle it
         plt.title(f"Error creating visualization: {e}")
         return

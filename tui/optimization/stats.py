@@ -127,13 +127,6 @@ def calculate_stats_for_config(
     Returns:
         OptimizationResult object if results are found and valid, None otherwise.
     """
-    # #region agent log
-    try:
-        import json, time
-        with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A,B,C,E","location":"stats.py:calculate_stats_for_config","message":"ENTRY","data":{"config_path":config_path,"param_set_id":param_set_id},"timestamp":time.time()*1000})+"\n")
-    except: pass
-    # #endregion
     # Lazy import heavy dependencies to avoid slow startup
     missing_deps = []
     try:
@@ -162,78 +155,15 @@ def calculate_stats_for_config(
         logger.error(f"Cannot calculate stats: {error_msg}")
         raise ImportError(error_msg)
     
-    # #region agent log
-    try:
-        import json, time
-        with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"stats.py:calculate_stats_for_config","message":"BEFORE imports from src","data":{"config_path":config_path,"param_set_id":param_set_id},"timestamp":time.time()*1000})+"\n")
-    except: pass
-    # #endregion
-    # #region agent log
-    try:
-        import json, time
-        with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"stats.py:calculate_stats_for_config","message":"BEFORE_IMPORT_pipeline_config_parser","data":{"config_path":config_path,"param_set_id":param_set_id},"timestamp":time.time()*1000})+"\n")
-    except: pass
-    # #endregion
     from src.pipeline_config_parser import load_and_expand_configurations
     from src.file_paths import RESULTS_DIR_BASE, PROJECT_ROOT
-    # #region agent log
-    try:
-        import json, time
-        with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"stats.py:calculate_stats_for_config","message":"AFTER_IMPORT_pipeline_config_parser","data":{"config_path":config_path,"param_set_id":param_set_id,"has_function":hasattr(load_and_expand_configurations, '__call__')},"timestamp":time.time()*1000})+"\n")
-    except: pass
-    # #endregion
-    # #region agent log
-    try:
-        import json, time
-        with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"stats.py:calculate_stats_for_config","message":"AFTER imports from src","data":{"config_path":config_path,"param_set_id":param_set_id},"timestamp":time.time()*1000})+"\n")
-    except: pass
-    # #endregion
     
-    # #region agent log
-    try:
-        import json, time
-        config_exists = os.path.exists(config_path)
-        with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"stats.py:calculate_stats_for_config","message":"BEFORE config file check","data":{"config_path":config_path,"config_exists":config_exists,"param_set_id":param_set_id},"timestamp":time.time()*1000})+"\n")
-    except: pass
-    # #endregion
     if not os.path.exists(config_path):
         logger.warning(f"Config file not found: {config_path}")
-        # #region agent log
-        try:
-            import json, time
-            with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"stats.py:calculate_stats_for_config","message":"RETURN None - config not found","data":{"config_path":config_path},"timestamp":time.time()*1000})+"\n")
-        except: pass
-        # #endregion
         return None
 
     try:
         # Check config structure before calling load_and_expand_configurations
-        # #region agent log
-        try:
-            import json, time
-            with open(config_path, 'r') as f:
-                config_preview = json.load(f)
-            image_configs_count = len(config_preview.get("image_configurations", []))
-            active_image_configs = sum(1 for img in config_preview.get("image_configurations", []) if img.get("is_active", True))
-            param_configs_count = len(config_preview.get("cellpose_parameter_configurations", []))
-            active_param_configs = sum(1 for p in config_preview.get("cellpose_parameter_configurations", []) if p.get("is_active", True))
-            matching_param_configs = sum(1 for p in config_preview.get("cellpose_parameter_configurations", []) if p.get("is_active", True) and p.get("param_set_id") == param_set_id)
-            with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"stats.py:calculate_stats_for_config","message":"BEFORE load_and_expand_configurations - config structure","data":{"config_path":config_path,"param_set_id":param_set_id,"image_configs_count":image_configs_count,"active_image_configs":active_image_configs,"param_configs_count":param_configs_count,"active_param_configs":active_param_configs,"matching_param_configs":matching_param_configs},"timestamp":time.time()*1000})+"\n")
-        except Exception as e:
-            # #region agent log
-            try:
-                import json, time
-                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"stats.py:calculate_stats_for_config","message":"ERROR reading config preview","data":{"config_path":config_path,"error":str(e)},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
         # #endregion
         
         # Expand the configuration to get the list of expected jobs
@@ -245,33 +175,11 @@ def calculate_stats_for_config(
             import traceback
             logger.error(f"Exception in load_and_expand_configurations: {e}")
             logger.debug(f"Traceback: {traceback.format_exc()}")
-            # #region agent log
-            try:
-                import json, time
-                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"stats.py:calculate_stats_for_config","message":"EXCEPTION_IN_LOAD_AND_EXPAND","data":{"config_path":config_path,"error":str(e),"traceback":traceback.format_exc()},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             jobs = []
         jobs_before_filter = len(jobs) if jobs else 0
-        # #region agent log
-        try:
-            import json, time
-            job_param_set_ids = [job.get("param_set_id_for_log") for job in jobs[:10]] if jobs else []  # Sample first 10
-            with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"stats.py:calculate_stats_for_config","message":"AFTER load_and_expand_configurations","data":{"jobs_count":jobs_before_filter,"param_set_id":param_set_id,"sample_param_set_ids":job_param_set_ids},"timestamp":time.time()*1000})+"\n")
-        except: pass
-        # #endregion
         
         if not jobs:
             logger.warning(f"No jobs generated from config: {config_path}")
-            # #region agent log
-            try:
-                import json, time
-                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"C","location":"stats.py:calculate_stats_for_config","message":"RETURN None - no jobs","data":{"config_path":config_path},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             return None
 
         total_cells = 0
@@ -297,13 +205,6 @@ def calculate_stats_for_config(
             # Filter by param_set_id if provided
             if param_set_id is not None:
                 job_param_set_id = job.get("param_set_id_for_log")
-                # #region agent log
-                try:
-                    import json, time
-                    with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A,C","location":"stats.py:calculate_stats_for_config","message":"param_set_id filter check","data":{"param_set_id":param_set_id,"job_param_set_id":job_param_set_id,"match":job_param_set_id == param_set_id},"timestamp":time.time()*1000})+"\n")
-                except: pass
-                # #endregion
                 if job_param_set_id != param_set_id:
                     continue
             
@@ -315,24 +216,50 @@ def calculate_stats_for_config(
                 if not original_image_filename:
                     continue
                 
-                # Normalize job image path
+                # Normalize job image path - use absolute path for reliable comparison
                 if not os.path.isabs(original_image_filename):
-                    original_image_filename = os.path.join(PROJECT_ROOT, original_image_filename)
-                normalized_job_path = os.path.normpath(original_image_filename)
+                    job_abs_path = os.path.normpath(os.path.join(PROJECT_ROOT, original_image_filename))
+                else:
+                    job_abs_path = os.path.normpath(original_image_filename)
+                
+                # Also try relative path for comparison
+                try:
+                    job_rel_path = os.path.relpath(job_abs_path, PROJECT_ROOT)
+                except ValueError:
+                    job_rel_path = None
                 
                 # Check if this image is in the active image pool
+                # Compare against all normalized formats in active_image_paths
                 image_in_pool = False
                 for active_path in active_image_paths:
-                    # Normalize active path using SAME logic
-                    normalized_active = os.path.normpath(
-                        os.path.join(PROJECT_ROOT, active_path) if not os.path.isabs(active_path) else active_path
-                    )
-                    if normalized_active == normalized_job_path:
+                    # Normalize active path to absolute for comparison
+                    if os.path.isabs(active_path):
+                        active_abs = os.path.normpath(active_path)
+                    else:
+                        active_abs = os.path.normpath(os.path.join(PROJECT_ROOT, active_path))
+                    
+                    # Compare absolute paths (most reliable)
+                    if active_abs == job_abs_path:
+                        image_in_pool = True
+                        break
+                    
+                    # Also try relative path comparison if available
+                    if job_rel_path:
+                        try:
+                            active_rel = os.path.relpath(active_abs, PROJECT_ROOT)
+                            if active_rel == job_rel_path:
+                                image_in_pool = True
+                                break
+                        except ValueError:
+                            pass
+                    
+                    # Fallback: compare original strings (case-insensitive on Windows)
+                    if os.path.normpath(active_path).lower() == os.path.normpath(original_image_filename).lower():
                         image_in_pool = True
                         break
                 
                 if not image_in_pool:
-                    logger.debug(f"Skipping job - image not in active pool: {normalized_job_path}")
+                    logger.debug(f"Skipping job - image not in active pool: {job_abs_path} (looking for one of {active_image_paths})")
                     continue  # Skip this job - image not in project's active pool
             
             jobs_after_filter += 1
@@ -340,22 +267,8 @@ def calculate_stats_for_config(
             experiment_id = job.get("experiment_id_final")
             processing_unit_name = job.get("processing_unit_name")
             
-            # #region agent log
-            try:
-                import json, time
-                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"E","location":"stats.py:calculate_stats_for_config","message":"PROCESSING_JOB","data":{"param_set_id":param_set_id,"job_param_set_id":job.get("param_set_id_for_log"),"experiment_id":experiment_id,"processing_unit_name":processing_unit_name},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             
             if not experiment_id or not processing_unit_name:
-                # #region agent log
-                try:
-                    import json, time
-                    with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"E","location":"stats.py:calculate_stats_for_config","message":"SKIP_JOB_NO_EXPERIMENT_ID","data":{"param_set_id":param_set_id,"job_param_set_id":job.get("param_set_id_for_log")},"timestamp":time.time()*1000})+"\n")
-                except: pass
-                # #endregion
                 continue
 
             # Construct the expected mask path
@@ -371,14 +284,39 @@ def calculate_stats_for_config(
             mask_filename = f"{base_name}_mask.tif"
             mask_path = os.path.join(RESULTS_DIR_BASE, experiment_id, mask_filename)
             
-            # #region agent log
-            try:
-                import json, time
-                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"E","location":"stats.py:calculate_stats_for_config","message":"CHECKING_MASK_PATH","data":{"param_set_id":param_set_id,"experiment_id":experiment_id,"processing_unit_name":processing_unit_name,"mask_path":mask_path,"mask_exists":os.path.exists(mask_path)},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             
+            # If exact mask path not found, try searching for variant directories
+            # (similar to has_output_files logic - check directories that start with base experiment ID)
+            if not os.path.exists(mask_path):
+                mask_found_in_variant = False
+                try:
+                    # Construct base experiment ID: image_id_param_set_id (without scale/tile suffixes)
+                    image_id = job.get("original_image_id_for_log", "")
+                    if image_id and param_set_id:
+                        base_experiment_id = f"{image_id}_{param_set_id}"
+                        # Search for directories that start with base_experiment_id
+                        if os.path.exists(RESULTS_DIR_BASE):
+                            for dirname in os.listdir(RESULTS_DIR_BASE):
+                                if dirname.startswith(base_experiment_id):
+                                    variant_dir = os.path.join(RESULTS_DIR_BASE, dirname)
+                                    if os.path.isdir(variant_dir):
+                                        # Check if mask file exists in this variant directory
+                                        variant_mask_path = os.path.join(variant_dir, mask_filename)
+                                        if os.path.exists(variant_mask_path):
+                                            # Found mask in variant directory - use it
+                                            mask_path = variant_mask_path
+                                            mask_found_in_variant = True
+                                            break
+                except Exception as e:
+                    logger.debug(f"Error searching variant directories: {e}")
+                
+                if not mask_found_in_variant:
+                    # If a mask is missing, we might consider the run incomplete
+                    # But for now, let's just log it. The optimizer might keep waiting or accept partial results.
+                    logger.debug(f"Mask not found: {mask_path}")
+                    continue  # Skip this job - no mask found
+            
+            # Process the mask (either from exact path or variant directory)
             if os.path.exists(mask_path):
                 try:
                     mask_data = tifffile.imread(mask_path)
@@ -421,43 +359,13 @@ def calculate_stats_for_config(
                     
                 except Exception as e:
                     logger.error(f"Error reading mask {mask_path}: {e}")
-                    # #region agent log
-                    try:
-                        import json, time
-                        with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"E","location":"stats.py:calculate_stats_for_config","message":"MASK_READ_ERROR","data":{"param_set_id":param_set_id,"mask_path":mask_path,"error":str(e)},"timestamp":time.time()*1000})+"\n")
-                    except: pass
-                    # #endregion
-            else:
-                # If a mask is missing, we might consider the run incomplete
-                # But for now, let's just log it. The optimizer might keep waiting or accept partial results.
-                logger.debug(f"Mask not found: {mask_path}")
-                # #region agent log
-                try:
-                    import json, time
-                    with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                        # Check if the directory exists
-                        mask_dir = os.path.dirname(mask_path)
-                        dir_exists = os.path.exists(mask_dir)
-                        dir_contents = []
-                        if dir_exists:
-                            try:
-                                dir_contents = os.listdir(mask_dir)[:10]  # First 10 files
-                            except:
-                                pass
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"E","location":"stats.py:calculate_stats_for_config","message":"MASK_NOT_FOUND","data":{"param_set_id":param_set_id,"mask_path":mask_path,"mask_dir":mask_dir,"dir_exists":dir_exists,"dir_contents":dir_contents},"timestamp":time.time()*1000})+"\n")
-                except: pass
-                # #endregion
 
         if masks_found == 0:
-            # #region agent log
-            try:
-                import json, time
-                with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A,E","location":"stats.py:calculate_stats_for_config","message":"RETURN None - masks_found==0","data":{"config_path":config_path,"param_set_id":param_set_id,"jobs_before_filter":jobs_before_filter,"jobs_after_filter":jobs_after_filter},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             return None
+        
+        # Log how many jobs were processed to help debug aggregation issues
+        if active_image_paths:
+            logger.debug(f"Processed {jobs_after_filter} jobs for {len(active_image_paths)} image path(s), found {masks_found} mask(s)")
 
         # Aggregate stats
         # Mean area across all processed images (weighted by cell count essentially)
@@ -535,27 +443,81 @@ def calculate_stats_for_config(
             mean_area=avg_mean_area,
             **aggregated_metrics
         )
-        # #region agent log
-        try:
-            import json, time
-            with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A,B,C,E","location":"stats.py:calculate_stats_for_config","message":"RETURN result","data":{"num_cells":total_cells,"mean_area":avg_mean_area,"masks_found":masks_found,"param_set_id":param_set_id},"timestamp":time.time()*1000})+"\n")
-        except: pass
-        # #endregion
         return result
 
     except Exception as e:
         import traceback
-        # #region agent log
-        try:
-            import json, time
-            with open(r"c:\Users\Thiago\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"B","location":"stats.py:calculate_stats_for_config","message":"EXCEPTION","data":{"error":str(e),"error_type":type(e).__name__,"traceback":traceback.format_exc(),"config_path":config_path,"param_set_id":param_set_id},"timestamp":time.time()*1000})+"\n")
-        except: pass
-        # #endregion
         logger.error(f"Error calculating stats for {config_path}: {e}")
         logger.debug(f"Traceback: {traceback.format_exc()}")
         # Re-raise the exception so the caller can see what went wrong
         # This will be caught by the dashboard and shown to the user
         raise
+
+def calculate_stats_for_image(
+    config_path: str,
+    param_set_id: str,
+    image_path: str
+) -> Optional[OptimizationResult]:
+    """
+    Calculate statistics for a single image with a specific parameter set.
+    
+    This function calculates stats for one image only, unlike calculate_stats_for_config
+    which aggregates across multiple images. Each parameter_set x image combination
+    gets its own result.
+    
+    Args:
+        config_path: Path to the configuration file used for the run
+        param_set_id: Parameter set ID to filter results
+        image_path: Path to the specific image file to calculate stats for (can be absolute or relative)
+        
+    Returns:
+        OptimizationResult object if results are found and valid, None otherwise
+    """
+    import os
+    from src.file_paths import PROJECT_ROOT
+    
+    # Normalize image path - try both absolute and relative formats
+    # The job's original_image_filename_for_log might be in either format
+    normalized_abs = None
+    normalized_rel = None
+    
+    if os.path.isabs(image_path):
+        normalized_abs = os.path.normpath(image_path)
+        # Try to get relative path too
+        try:
+            normalized_rel = os.path.relpath(image_path, PROJECT_ROOT)
+        except ValueError:
+            normalized_rel = None
+    else:
+        # Try relative to PROJECT_ROOT
+        normalized_rel = os.path.normpath(image_path)
+        normalized_abs = os.path.normpath(os.path.join(PROJECT_ROOT, image_path))
+    
+    # Create set with both formats to ensure matching
+    # calculate_stats_for_config will normalize and compare, so we provide both possibilities
+    active_image_paths = set()
+    if normalized_abs:
+        active_image_paths.add(normalized_abs)
+    if normalized_rel:
+        active_image_paths.add(normalized_rel)
+    # Also add original in case it matches exactly
+    active_image_paths.add(image_path)
+    
+    # Ensure we're only calculating for a single image
+    # If active_image_paths has multiple entries, they should all refer to the same image (just different path formats)
+    # But log a warning if we have too many distinct paths
+    if len(active_image_paths) > 3:  # Allow for abs, rel, and original formats
+        logger.warning(f"calculate_stats_for_image called with {len(active_image_paths)} path formats for image_path={image_path}. This might indicate a path normalization issue.")
+    
+    result = calculate_stats_for_config(
+        config_path=config_path,
+        param_set_id=param_set_id,
+        active_image_paths=active_image_paths if active_image_paths else None
+    )
+    
+    # Log the result to help debug if scores are being shared incorrectly
+    if result:
+        logger.debug(f"Calculated stats for image {image_path}, param_set {param_set_id}: score={result.score:.4f}, cells={result.num_cells}")
+    
+    return result
 

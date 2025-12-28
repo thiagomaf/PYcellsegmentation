@@ -6,30 +6,9 @@ from textual.widgets import Header, Footer, Button, Label, Input, Checkbox, Stat
 from textual.containers import Vertical, Horizontal, Grid, Container
 from textual.message import Message
 
-# #region agent log
-try:
-    with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-        import json
-        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"E","location":"optimization_setup.py:9","message":"Starting imports","data":{},"timestamp":__import__("time").time()*1000})+"\n")
-except: pass
-# #endregion
 try:
     from tui.optimization.models import OptimizationProject, ParameterRanges
-    # #region agent log
-    try:
-        with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-            import json
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"E","location":"optimization_setup.py:12","message":"optimization.models imported","data":{},"timestamp":__import__("time").time()*1000})+"\n")
-    except: pass
-    # #endregion
 except Exception as e:
-    # #region agent log
-    try:
-        with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-            import json, traceback
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"E","location":"optimization_setup.py:15","message":"optimization.models import failed","data":{"error":str(e),"traceback":traceback.format_exc()},"timestamp":__import__("time").time()*1000})+"\n")
-    except: pass
-    # #endregion
     raise
 from tui.screens.file_picker import FilePicker
 
@@ -116,22 +95,8 @@ class OptimizationSetup(Screen):
     """
 
     def compose(self) -> ComposeResult:
-        # #region agent log
-        try:
-            with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                import json
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H","location":"optimization_setup.py:118","message":"OptimizationSetup.compose() entry","data":{},"timestamp":__import__("time").time()*1000})+"\n")
-        except: pass
-        # #endregion
         try:
             yield Header()
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H","location":"optimization_setup.py:123","message":"Header yielded","data":{},"timestamp":__import__("time").time()*1000})+"\n")
-            except: pass
-            # #endregion
             with Container(classes="setup-container"):
                 yield Label("Project Setup", classes="title")
                 yield Static("Configure parameter search space (optional - can be edited later)", classes="section-subtitle")
@@ -180,21 +145,7 @@ class OptimizationSetup(Screen):
                     yield Button("Back", id="back-btn", variant="error")
 
             yield Footer()
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H","location":"optimization_setup.py:186","message":"OptimizationSetup.compose() completed","data":{},"timestamp":__import__("time").time()*1000})+"\n")
-            except: pass
-            # #endregion
         except Exception as e:
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json, traceback
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"H","location":"optimization_setup.py:192","message":"OptimizationSetup.compose() exception","data":{"error":str(e),"traceback":traceback.format_exc()},"timestamp":__import__("time").time()*1000})+"\n")
-            except: pass
-            # #endregion
             raise
 
     def on_mount(self) -> None:

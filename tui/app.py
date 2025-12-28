@@ -77,50 +77,19 @@ class PyCellSegTUI(App):
         import sys
         
         # Check if numpy is imported at module level (should NOT be) - moved to runtime
-        # #region agent log
-        try:
-            numpy_imported = 'numpy' in sys.modules
-            with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                import json
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF6","location":"app.py:__init__","message":"Module-level import check","data":{"numpy_imported":numpy_imported},"timestamp":time.time()*1000})+"\n")
-        except: pass
-        # #endregion
         
         init_start = time.time()
         try:
             super_start = time.time()
             super().__init__()
             super_done = time.time()
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF3","location":"app.py:__init__","message":"super().__init__() completed","data":{"elapsed_ms":(super_done-super_start)*1000},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             self.current_project: ProjectConfig | None = None
             self.current_filepath: str | None = None
             self._content_area: Container | None = None
             self.initial_project_filepath = project_filepath
             self.initial_view = initial_view
             init_done = time.time()
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF3","location":"app.py:__init__","message":"PyCellSegTUI.__init__() completed","data":{"total_elapsed_ms":(init_done-init_start)*1000},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
         except Exception as e:
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json, traceback
-                    error_msg = str(e)
-                    error_type = type(e).__name__
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF3","location":"app.py:95","message":"PyCellSegTUI.__init__() exception","data":{"error":error_msg,"error_type":error_type,"traceback":traceback.format_exc()},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             raise
     
     def compose(self) -> ComposeResult:
@@ -140,15 +109,6 @@ class PyCellSegTUI(App):
                 load_start = time.time()
                 from tui.optimization.models import OptimizationProject
                 project = OptimizationProject.load(self.initial_project_filepath)
-                load_done = time.time()
-                # #region agent log
-                try:
-                    with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                        import json
-                        f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF3","location":"app.py:140","message":"project loaded","data":{"elapsed_ms":(load_done-load_start)*1000},"timestamp":time.time()*1000})+"\n")
-                except: pass
-                # #endregion
-                
                 # Check if a specific view was requested
                 if hasattr(self, 'initial_view') and self.initial_view:
                     self._open_initial_view(project, self.initial_view)
@@ -164,32 +124,11 @@ class PyCellSegTUI(App):
             query_start = time.time()
             self._content_area = self.query_one("#content-area", Container)
             query_done = time.time()
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF3","location":"app.py:162","message":"content area queried","data":{"elapsed_ms":(query_done-query_start)*1000},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             # Mount the dashboard in the content area
             dashboard_start = time.time()
             self.show_dashboard()
             dashboard_done = time.time()
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF3","location":"app.py:172","message":"show_dashboard() completed","data":{"elapsed_ms":(dashboard_done-dashboard_start)*1000,"total_mount_ms":(dashboard_done-mount_start)*1000},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
         except Exception as e:
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json, traceback
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF3","location":"app.py:181","message":"on_mount() exception","data":{"error":str(e),"traceback":traceback.format_exc()},"timestamp":time.time()*1000})+"\n")
-            except: pass
-            # #endregion
             raise
     
     def show_dashboard(self) -> None:
@@ -202,35 +141,14 @@ class PyCellSegTUI(App):
         clear_start = time.time()
         self._content_area.remove_children()
         clear_done = time.time()
-        # #region agent log
-        try:
-            with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                import json
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF3","location":"app.py:191","message":"children removed","data":{"elapsed_ms":(clear_done-clear_start)*1000},"timestamp":time.time()*1000})+"\n")
-        except: pass
-        # #endregion
         
         create_start = time.time()
         dashboard = Dashboard()
         create_done = time.time()
-        # #region agent log
-        try:
-            with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                import json
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF3","location":"app.py:199","message":"Dashboard created","data":{"elapsed_ms":(create_done-create_start)*1000},"timestamp":time.time()*1000})+"\n")
-        except: pass
-        # #endregion
         
         mount_start = time.time()
         self._content_area.mount(dashboard)
         mount_done = time.time()
-        # #region agent log
-        try:
-            with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                import json
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF3","location":"app.py:207","message":"Dashboard mounted","data":{"elapsed_ms":(mount_done-mount_start)*1000},"timestamp":time.time()*1000})+"\n")
-        except: pass
-        # #endregion
         
         # Update header and footer to dashboard state
         self.update_header("Project Manager", "")
@@ -320,46 +238,11 @@ class PyCellSegTUI(App):
         
     def action_open_optimization(self) -> None:
         """Open the optimization setup screen."""
-        # #region agent log
-        try:
-            with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                import json
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"D","location":"app.py:186","message":"action_open_optimization() entry","data":{},"timestamp":__import__("time").time()*1000})+"\n")
-        except: pass
-        # #endregion
         try:
             from tui.screens.optimization_setup import OptimizationSetup
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"D","location":"app.py:190","message":"OptimizationSetup imported","data":{},"timestamp":__import__("time").time()*1000})+"\n")
-            except: pass
-            # #endregion
             screen = OptimizationSetup()
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"D","location":"app.py:194","message":"OptimizationSetup() created","data":{},"timestamp":__import__("time").time()*1000})+"\n")
-            except: pass
-            # #endregion
             self.push_screen(screen)
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"D","location":"app.py:198","message":"push_screen() completed","data":{},"timestamp":__import__("time").time()*1000})+"\n")
-            except: pass
-            # #endregion
         except Exception as e:
-            # #region agent log
-            try:
-                with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                    import json, traceback
-                    f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"D","location":"app.py:201","message":"action_open_optimization() exception","data":{"error":str(e),"traceback":traceback.format_exc()},"timestamp":__import__("time").time()*1000})+"\n")
-            except: pass
-            # #endregion
             raise
     
     def action_new_optimization_project(self) -> None:
@@ -608,13 +491,6 @@ def main():
         
         logging.info(f"Logging to file: {args.log_file}")
     
-    # #region agent log
-    try:
-        with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-            import json
-            f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"app.py:298","message":"main() entry","data":{"args":vars(args)},"timestamp":__import__("time").time()*1000})+"\n")
-    except: pass
-    # #endregion
     
     # Validate project filepath if provided
     project_filepath = None
@@ -632,31 +508,10 @@ def main():
         app_creation_start = time.time()
         app = PyCellSegTUI(project_filepath=project_filepath, initial_view=args.view)
         app_creation_done = time.time()
-        # #region agent log
-        try:
-            with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                import json
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF4","location":"app.py:567","message":"PyCellSegTUI() created","data":{"elapsed_ms":(app_creation_done-app_creation_start)*1000,"has_project":project_filepath is not None},"timestamp":time.time()*1000})+"\n")
-        except: pass
-        # #endregion
         run_start = time.time()
         app.run()
         run_done = time.time()
-        # #region agent log
-        try:
-            with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                import json
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"PERF4","location":"app.py:575","message":"app.run() completed","data":{"elapsed_ms":(run_done-run_start)*1000},"timestamp":time.time()*1000})+"\n")
-        except: pass
-        # #endregion
     except Exception as e:
-        # #region agent log
-        try:
-            with open(r"g:\My Drive\Github\PYcellsegmentation\.cursor\debug.log", "a", encoding="utf-8") as f:
-                import json, traceback
-                f.write(json.dumps({"sessionId":"debug-session","runId":"run1","hypothesisId":"A","location":"app.py:315","message":"main() exception","data":{"error":str(e),"traceback":traceback.format_exc()},"timestamp":__import__("time").time()*1000})+"\n")
-        except: pass
-        # #endregion
         raise
 
 
