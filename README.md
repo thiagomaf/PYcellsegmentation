@@ -17,6 +17,7 @@ Whether you are working with standard tissue slides or large-scale OME-TIFFs, th
 *   **Spatial Mapping**: Assigns transcript locations (e.g., from Xenium or other platforms) to specific cells, creating a feature-cell matrix.
 *   **Beautiful Visualizations**: Generates high-quality images overlaying gene expression data onto cell masks.
 *   **Batch Processing**: Configure once and run multiple experiments or image channels in parallel.
+*    **Modular & Portable Pipeline**: Each individual processing step can be executed either locally or remotely (e.g., Google Colab), allowing flexible deployment across different computing environments.
 
 ![Pipeline Overview](docs/images/image2.png)
 
